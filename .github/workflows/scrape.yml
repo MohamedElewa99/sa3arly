@@ -1,0 +1,33 @@
+name: scrape
+
+on:
+  schedule:
+    - cron: "17 1 * * *"
+    - cron: "17 3 * * 5"
+  workflow_dispatch:
+    inputs:
+      job: { description: "daily or weekly", default: "daily" }
+
+concurrency: { group: scrape, cancel-in-progress: false }
+
+jobs:
+  scrape:
+    runs-on: ubuntu-latest
+    timeout-minutes: 340
+    strategy:
+      fail-fast: false
+      max-parallel: 1
+      matrix:
+        job: ${{ (github.event.schedule == '17 3 * * 5' || inputs.job == 'weekly')
+                 && fromJSON('["used --source hatla2ee --max-pages 800 --max-details 0"]')
+                 || fromJSON('["zero --source hatla2ee", "used --source hatla2ee --max-pages 60 --max-details 300"]') }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12", cache: pip }
+      - run: pip install -r requirements.txt && python -m playwright install --with-deps chromium
+      - run: python -m pytest -q tests
+      - name: scrape
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: python -m sa3arly ${{ matrix.job }}
