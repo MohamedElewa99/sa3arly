@@ -8,6 +8,9 @@ Scrapes Egyptian car prices into one Postgres database.
 | --- | --- | --- |
 | Hatla2ee — new cars | ✅ working | Every class of every model: official price, Hatla2ee market price (over/under official), model year. Plus every official price change (old, new, date), all pages |
 | Hatla2ee — used | ✅ working | ~20,000 ads (729 list pages): price, km, year, class, city, badges (Factory Paint, Financed, Disabled, Personal Use…), instalment. Ad pages add description (e.g. "فابريكة بالكامل"), colour, posted date and Hatla2ee's own min/max price for that model-year |
+| Sylndr | ✅ working | ~1,200 inspected cars at fixed prices (closest thing to real deal prices): make, model, year, class, km, price, instalment |
+| OpenSooq | ✅ working | ~950 ads: make, model, trim, year, km, fuel, city, seller title (often has "فابريكا"). Zero-km dealer stock is skipped |
+| YallaMotor | ⛔ off | Search page opens, every next page answers 403 |
 | Dubizzle | ⛔ off | Serves a "Security check" bot challenge |
 | ContactCars | ⛔ off | Answers 403 from the second page |
 | Facebook Marketplace | ⛔ off | Logged-out visitors see only price + place, no car name/year/km |

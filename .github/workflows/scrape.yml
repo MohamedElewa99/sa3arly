@@ -1,5 +1,8 @@
 name: scrape
 
+# Hatla2ee answers a page in ~10 s, so work is split:
+#   daily  03:17 Cairo : zero prices + newest 60 list pages + up to 300 new ad pages   (~3 h, jobs run one after the other)
+#   Friday 05:17 Cairo : full sweep of every list page, no ad pages (prices + removals) (~3.5 h)
 on:
   schedule:
     - cron: "17 1 * * *"
@@ -16,11 +19,11 @@ jobs:
     timeout-minutes: 340
     strategy:
       fail-fast: false
-      max-parallel: 1
+      max-parallel: 1          # one request stream at a time to Hatla2ee
       matrix:
         job: ${{ (github.event.schedule == '17 3 * * 5' || inputs.job == 'weekly')
                  && fromJSON('["used --source hatla2ee --max-pages 800 --max-details 0"]')
-                 || fromJSON('["zero --source hatla2ee", "used --source hatla2ee --max-pages 60 --max-details 300"]') }}
+                 || fromJSON('["zero --source hatla2ee", "used --source hatla2ee --max-pages 60 --max-details 300", "used --source opensooq --max-pages 60", "used --source sylndr --max-pages 40"]') }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5

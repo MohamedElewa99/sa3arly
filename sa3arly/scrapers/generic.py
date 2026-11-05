@@ -16,7 +16,7 @@ from ..common import (
 )
 
 PRICE_LINE = re.compile(r"(?i)(?:EGP|E£|LE|جنيه|ج\.م)\s*[\d,\.]+|[\d,\.]+\s*(?:EGP|E£|LE|جنيه|ج\.م|مليون|ألف|الف)")
-KM_LINE = re.compile(r"(?i)^[\d,\.]+\s*(?:k\s*)?(?:km|kms|كم|كيلو)(?:\b|$)|^(?:km|كم)\s*[\d,\.]+")
+KM_LINE = re.compile(r"(?i)^[\d,\.]+(?:\s*(?:-|–|to|إلى)\s*[\d,\.]+)?\s*(?:k\s*)?(?:km|kms|كم|كيلو)(?:\b|$)|^(?:km|كم)\s*[\d,\.]+")
 SKIP = re.compile(r"(?i)^(call|chat|whatsapp|featured|premium|elite|new|used|اتصل|دردشة|مميز)$")
 
 
@@ -31,7 +31,9 @@ def parse_generic_card(text: str, href: str, source: str, source_id: str) -> Opt
         elif lst.price_egp is None and l in ("EGP", "جنيه", "ج.م") and i > 0:
             lst.price_egp = parse_price(ls[i - 1])
         if lst.km is None and KM_LINE.search(l):
-            lst.km = parse_km(l)
+            lst.km = km_from_value(l)
+            if re.search(r"\d\s*(?:-|–|to|إلى)\s*\d", l):
+                lst.raw["km_raw"] = l
         if lst.transmission is None and len(l) < 25:
             lst.transmission = norm_transmission(l)
         if lst.year is None and re.fullmatch(r"(19|20)\d{2}", l):

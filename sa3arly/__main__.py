@@ -19,15 +19,17 @@ from collections import Counter
 from pathlib import Path
 
 from .common import Fetcher
-from .scrapers import contactcars, dubizzle, facebook, hatla2ee
+from .scrapers import contactcars, dubizzle, facebook, hatla2ee, more_sites
 from .scrapers.generic import listings_from_json, parse_detail_labels, parse_generic_card
 from .store import open_store
 
-USED = {"hatla2ee": hatla2ee, "contactcars": contactcars, "dubizzle": dubizzle, "facebook": facebook}
+USED = {"hatla2ee": hatla2ee, "contactcars": contactcars, "dubizzle": dubizzle, "facebook": facebook,
+        "yallamotor": more_sites, "opensooq": more_sites, "sylndr": more_sites}
 # Live probe 4 Nov 2026: Dubizzle serves a "Security check" bot challenge, ContactCars answers 403
 # after the first page, Facebook shows only price + place to logged-out visitors. Sa3arly does not
 # try to get around any of that, so the daily run uses Hatla2ee only.
-BLOCKED = {"dubizzle": "bot challenge", "contactcars": "403 after first page", "facebook": "no car details logged out"}
+BLOCKED = {"dubizzle": "bot challenge", "contactcars": "403 after first page", "facebook": "no car details logged out",
+           "yallamotor": "403 from the second page (5 Nov 2026)"}
 ZERO = {"hatla2ee": hatla2ee, "contactcars": contactcars}
 
 
@@ -46,8 +48,11 @@ def run_used(f, store, source, max_pages, max_details=300):
     mod = USED[source]
     known = store.known_ids(source)
     n = 0
-    kw = {"max_details": max_details} if source == "hatla2ee" else {}
-    gen = mod.scrape_used(f, max_pages=max_pages, known_ids=known, **kw)
+    if mod is more_sites:
+        gen = more_sites.scrape_used(f, source, max_pages=max_pages)
+    else:
+        kw = {"max_details": max_details} if source == "hatla2ee" else {}
+        gen = mod.scrape_used(f, max_pages=max_pages, known_ids=known, **kw)
     for l in gen:
         store.listing(l)
         n += 1
@@ -55,7 +60,8 @@ def run_used(f, store, source, max_pages, max_details=300):
             print(f"[{source}] {n} listings")
     print(f"[{source}] listings saved: {n}")
     store.run(f"{source}:used", pages=f.pages, items=n)
-    if hasattr(store, "mark_removed") and source != "facebook" and max_pages >= 700:
+    full_sweep = source in ("opensooq", "sylndr") or max_pages >= 700   # small sites are read whole every run
+    if hasattr(store, "mark_removed") and source != "facebook" and full_sweep:
         store.mark_removed(source)          # only after a full sweep, so unseen = really gone
     return n
 
@@ -153,12 +159,25 @@ def main(argv=None):
                    help="list pages to walk, newest first (60 = all new ads of a day; 800 = full sweep)")
     u.add_argument("--max-details", type=int, default=300,
                    help="ad pages to open for description/colour/posted date (new ads only)")
+    im = sub.add_parser("import", help="import pages saved with the Sa3arly browser button")
+    im.add_argument("--folder", default=str(Path.home() / "Downloads"))
     dl = sub.add_parser("daily")
     dl.add_argument("--max-pages", type=int, default=60)
     a = ap.parse_args(argv)
 
     if a.cmd == "probe":
         return probe(headless=not a.show)
+
+    if a.cmd == "import":
+        from .capture.importer import import_folder
+        store = open_store()
+        try:
+            st = import_folder(store, a.folder)
+        finally:
+            store.close()
+        print(f"imported {st['saved']} ads from {st['files']} pages ({st['skipped']} skipped) — files moved to "
+              f"{Path(a.folder) / 'sa3arly-imported'}")
+        return 0
 
     store = open_store()
     f = Fetcher()
@@ -171,7 +190,7 @@ def main(argv=None):
                 print(f"[{a.source}] warning: {BLOCKED[a.source]} at last probe — expect few or no results")
             run_used(f, store, a.source, a.max_pages, a.max_details)
         else:
-            jobs = [("zero", "hatla2ee"), ("used", "hatla2ee")]
+            jobs = [("zero", "hatla2ee"), ("used", "hatla2ee"), ("used", "opensooq"), ("used", "sylndr")]
             for kind, src in jobs:
                 try:
                     run_zero(f, store, src) if kind == "zero" else run_used(f, store, src, a.max_pages)

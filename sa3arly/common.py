@@ -302,10 +302,13 @@ class Fetcher:
           for (const a of ads) {
             let best = a, n = a.parentElement, depth = 0;
             while (n && n !== document.body && depth < 12) {
-              if (owners.get(n).size > 1 || (n.textContent || '').length > 3000) break;
+              if (owners.get(n).size > 1 || (n.textContent || '').length > 20000) break;
               best = n; n = n.parentElement; depth++;
             }
-            const t = best.innerText || '';
+            // off-screen cards (content-visibility) have no innerText: rebuild it from leaf elements
+            let t = best.innerText || '';
+            if (!t.trim()) t = [...best.querySelectorAll('*')].filter(e => !e.children.length)
+                               .map(e => (e.textContent || '').trim()).filter(Boolean).join('\n');
             if (!out.has(a.href) || t.length > out.get(a.href).length) out.set(a.href, t);
           }
           return [...out].map(([href, text]) => ({href, text}));
