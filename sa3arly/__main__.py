@@ -159,6 +159,15 @@ def main(argv=None):
                    help="list pages to walk, newest first (60 = all new ads of a day; 800 = full sweep)")
     u.add_argument("--max-details", type=int, default=300,
                    help="ad pages to open for description/colour/posted date (new ads only)")
+    pr = sub.add_parser("price", help="fair market range for one car")
+    pr.add_argument("--make", required=True)
+    pr.add_argument("--model", required=True)
+    pr.add_argument("--year", type=int, required=True)
+    pr.add_argument("--km", type=int, required=True)
+    pr.add_argument("--paint", default="", help="e.g. hood=repainted,door_fl=replaced")
+    pr.add_argument("--repair", action="append", default=[], help="min-max EGP, e.g. 15000-35000 (repeatable)")
+    bm = sub.add_parser("benchmark", help="compare Sa3arly ranges with Hatla2ee's own min/max on saved ads")
+    bm.add_argument("--limit", type=int, default=200)
     im = sub.add_parser("import", help="import pages saved with the Sa3arly browser button")
     im.add_argument("--folder", default=str(Path.home() / "Downloads"))
     dl = sub.add_parser("daily")
@@ -167,6 +176,45 @@ def main(argv=None):
 
     if a.cmd == "probe":
         return probe(headless=not a.show)
+
+    if a.cmd in ("price", "benchmark"):
+        import os
+        import psycopg
+        from .pricing import Pricer
+        cx = psycopg.connect(os.environ["DATABASE_URL"])
+        pricer = Pricer(cx)
+        if a.cmd == "price":
+            paint = dict(kv.split("=", 1) for kv in a.paint.split(",") if "=" in kv)
+            reps = [tuple(int(x) for x in r.split("-", 1)) for r in a.repair]
+            q = pricer.quote(a.make, a.model, a.year, a.km, paint, reps)
+            print(q.text())
+            for c in q.comparables[:5]:
+                print(f"   {c.source:9} {c.year} {c.km or 0:>7,} km  {c.price:>11,}  {c.url}")
+            return 0
+        rows = cx.execute("""select l.make_raw, l.model_raw, l.year, l.km, (l.raw->>'hatla2ee_market_min')::int,
+                                    (l.raw->>'hatla2ee_market_max')::int, l.source_id
+                             from listings l where l.raw ? 'hatla2ee_market_min' and l.km is not null
+                             order by l.id desc limit %s""", (a.limit,)).fetchall()
+        n = inside = overlap = 0
+        errs = []
+        for make, model, year, km, mn, mx, sid in rows:
+            q = pricer.quote(make, model, year, km)
+            if not q.mid or not mn or not mx:
+                continue
+            n += 1
+            # Hatla2ee's band is built from asking prices; compare ours on the same (asking) basis
+            mid_a, low_a, high_a = q.mid / 0.95, q.low / 0.95, q.high / 0.95
+            ref = (mn + mx) / 2
+            errs.append(abs(mid_a - ref) / ref)
+            inside += mn <= mid_a <= mx
+            overlap += not (high_a < mn or low_a > mx)
+        if n:
+            errs.sort()
+            print(f"cars compared: {n}\nSa3arly midpoint inside Hatla2ee's min–max: {inside/n:.0%}\n"
+                  f"ranges overlap: {overlap/n:.0%}\nmedian gap between midpoints: {errs[len(errs)//2]:.1%}")
+        else:
+            print("no comparable cars yet")
+        return 0
 
     if a.cmd == "import":
         from .capture.importer import import_folder
