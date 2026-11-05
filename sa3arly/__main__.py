@@ -1,0 +1,192 @@
+"""Sa3arly scraper CLI.
+
+  python -m sa3arly probe                      # check every site, save page snapshots to probe_out/
+  python -m sa3arly zero  --source hatla2ee    # zero prices (hatla2ee | contactcars)
+  python -m sa3arly used  --source dubizzle    # used listings (hatla2ee | contactcars | dubizzle | facebook)
+  python -m sa3arly daily                      # everything except facebook (what GitHub Actions runs)
+
+Writes to Postgres when DATABASE_URL is set, otherwise to out/*.jsonl.
+"""
+from __future__ import annotations
+
+import argparse
+import json
+import re
+import shutil
+import sys
+import traceback
+from collections import Counter
+from pathlib import Path
+
+from .common import Fetcher
+from .scrapers import contactcars, dubizzle, facebook, hatla2ee
+from .scrapers.generic import listings_from_json, parse_detail_labels, parse_generic_card
+from .store import open_store
+
+USED = {"hatla2ee": hatla2ee, "contactcars": contactcars, "dubizzle": dubizzle, "facebook": facebook}
+# Live probe 4 Nov 2026: Dubizzle serves a "Security check" bot challenge, ContactCars answers 403
+# after the first page, Facebook shows only price + place to logged-out visitors. Sa3arly does not
+# try to get around any of that, so the daily run uses Hatla2ee only.
+BLOCKED = {"dubizzle": "bot challenge", "contactcars": "403 after first page", "facebook": "no car details logged out"}
+ZERO = {"hatla2ee": hatla2ee, "contactcars": contactcars}
+
+
+def run_zero(f, store, source, brands=None):
+    n = 0
+    gen = hatla2ee.scrape_zero(f, brands) if source == "hatla2ee" else contactcars.scrape_zero(f)
+    for z in gen:
+        store.zero(z)
+        n += 1
+    print(f"[{source}] zero prices saved: {n}")
+    store.run(f"{source}:zero", pages=f.pages, items=n)
+    return n
+
+
+def run_used(f, store, source, max_pages, max_details=300):
+    mod = USED[source]
+    known = store.known_ids(source)
+    n = 0
+    kw = {"max_details": max_details} if source == "hatla2ee" else {}
+    gen = mod.scrape_used(f, max_pages=max_pages, known_ids=known, **kw)
+    for l in gen:
+        store.listing(l)
+        n += 1
+        if n % 100 == 0:
+            print(f"[{source}] {n} listings")
+    print(f"[{source}] listings saved: {n}")
+    store.run(f"{source}:used", pages=f.pages, items=n)
+    if hasattr(store, "mark_removed") and source != "facebook" and max_pages >= 700:
+        store.mark_removed(source)          # only after a full sweep, so unseen = really gone
+    return n
+
+
+# ------------------------------------------------------------------ probe
+
+PROBE_PAGES = {
+    "hatla2ee_price_change": ("https://eg.hatla2ee.com/en/new-car/price-change/hyundai", None),
+    "hatla2ee_model_page": ("https://eg.hatla2ee.com/en/new-car/hyundai/tucson", None),
+    "hatla2ee_new_index": ("https://eg.hatla2ee.com/en/new-car", None),
+    "hatla2ee_used_list": ("https://eg.hatla2ee.com/en/car", hatla2ee.AD_RE),
+    "hatla2ee_used_page2": ("https://eg.hatla2ee.com/en/car/page/2", hatla2ee.AD_RE),
+    "contactcars_new_index": ("https://www.contactcars.com/en/new-cars", None),
+    "contactcars_new_model": ("https://www.contactcars.com/en/new-cars/mg-zs", None),
+    "contactcars_used_list": ("https://www.contactcars.com/en/used-cars", contactcars.AD_RE),
+    "dubizzle_used_list": ("https://www.dubizzle.com.eg/en/vehicles/cars-for-sale/", dubizzle.AD_RE),
+    "facebook_used_list": ("https://www.facebook.com/marketplace/cairo/vehicles", facebook.AD_RE),
+}
+
+
+def probe(out="probe_out", headless=True):
+    d = Path(out)
+    shutil.rmtree(d, ignore_errors=True)
+    d.mkdir()
+    f = Fetcher(min_gap=3, max_gap=6, headless=headless)
+    report = []
+    try:
+        for name, (url, ad_re) in PROBE_PAGES.items():
+            row = {"name": name, "url": url}
+            try:
+                html, text, links = f.get(url, scroll=bool(ad_re))
+                (d / f"{name}.html").write_text(html, encoding="utf-8")
+                (d / f"{name}.txt").write_text(text, encoding="utf-8")
+                (d / f"{name}.links.txt").write_text("\n".join(links), encoding="utf-8")
+                row["text_chars"], row["links"] = len(text), len(links)
+                # most common link shapes (numbers -> N) to discover ad URL patterns
+                shapes = Counter(re.sub(r"\d+", "N", l.split("?")[0]) for l in links)
+                row["top_link_shapes"] = shapes.most_common(12)
+                if name == "hatla2ee_price_change":
+                    row["parsed"] = len(hatla2ee.parse_price_changes(text, "Hyundai", url))
+                elif name == "hatla2ee_model_page":
+                    row["parsed"] = len(hatla2ee.parse_model_page(text, "Hyundai", url))
+                elif name == "contactcars_new_model":
+                    row["parsed"] = len(contactcars.parse_new_car_page(text, url))
+                if ad_re:
+                    cards = f.cards(ad_re)
+                    (d / f"{name}.cards.json").write_text(json.dumps(cards[:30], ensure_ascii=False, indent=1), encoding="utf-8")
+                    row["ad_cards"] = len(cards)
+                    if name.startswith("hatla2ee"):
+                        parsed = [hatla2ee.parse_card(c["text"], c["href"]) for c in cards]
+                    else:
+                        parsed = [parse_generic_card(c["text"], c["href"], name, "x") for c in cards]
+                    ok = [p for p in parsed if p]
+                    row["cards_parsed"] = len(ok)
+                    row["json_ads"] = len(listings_from_json(html, name, lambda dd, s: ""))
+                    if ok:
+                        row["sample"] = {k: v for k, v in ok[0].dict().items() if v not in (None, {}, "")}
+                        # one ad page too
+                        try:
+                            _, t, _ = f.get(cards[0]["href"])
+                            (d / f"{name}.ad.txt").write_text(t, encoding="utf-8")
+                            if name.startswith("hatla2ee"):
+                                ad = hatla2ee.parse_ad_page(t, ok[0])
+                            else:
+                                ad = parse_detail_labels(t, ok[0])
+                            row["ad_sample"] = {k: (v[:120] if isinstance(v, str) else v)
+                                                for k, v in ad.dict().items() if v not in (None, {}, "")}
+                        except Exception as e:
+                            row["ad_error"] = str(e)
+                row["status"] = "OK" if row.get("parsed", 1) and row.get("cards_parsed", 1) else "CHECK"
+            except Exception as e:
+                row["status"] = "FAIL"
+                row["error"] = f"{e}"
+                (d / f"{name}.error.txt").write_text(traceback.format_exc(), encoding="utf-8")
+            report.append(row)
+            print(f"{row['status']:5} {name:24} parsed={row.get('parsed', row.get('cards_parsed', '-'))}")
+    finally:
+        f.close()
+    (d / "report.json").write_text(json.dumps(report, ensure_ascii=False, indent=1), encoding="utf-8")
+    zip_path = shutil.make_archive("probe_out", "zip", d)
+    print(f"\nSaved {zip_path} — send this file back so the parsers can be checked against the live sites.")
+
+
+def main(argv=None):
+    ap = argparse.ArgumentParser(prog="sa3arly")
+    sub = ap.add_subparsers(dest="cmd", required=True)
+    p = sub.add_parser("probe")
+    p.add_argument("--show", action="store_true", help="open a visible browser window")
+    z = sub.add_parser("zero")
+    z.add_argument("--source", choices=ZERO, required=True)
+    z.add_argument("--brands", help="comma-separated slugs, e.g. hyundai,kia (default: all)")
+    u = sub.add_parser("used")
+    u.add_argument("--source", choices=USED, required=True)
+    u.add_argument("--max-pages", type=int, default=60,
+                   help="list pages to walk, newest first (60 = all new ads of a day; 800 = full sweep)")
+    u.add_argument("--max-details", type=int, default=300,
+                   help="ad pages to open for description/colour/posted date (new ads only)")
+    dl = sub.add_parser("daily")
+    dl.add_argument("--max-pages", type=int, default=60)
+    a = ap.parse_args(argv)
+
+    if a.cmd == "probe":
+        return probe(headless=not a.show)
+
+    store = open_store()
+    f = Fetcher()
+    failures = 0
+    try:
+        if a.cmd == "zero":
+            run_zero(f, store, a.source, a.brands.split(",") if a.brands else None)
+        elif a.cmd == "used":
+            if a.source in BLOCKED:
+                print(f"[{a.source}] warning: {BLOCKED[a.source]} at last probe — expect few or no results")
+            run_used(f, store, a.source, a.max_pages, a.max_details)
+        else:
+            jobs = [("zero", "hatla2ee"), ("used", "hatla2ee")]
+            for kind, src in jobs:
+                try:
+                    run_zero(f, store, src) if kind == "zero" else run_used(f, store, src, a.max_pages)
+                except Exception as e:   # one site failing never stops the others
+                    failures += 1
+                    print(f"[{src}] {kind} FAILED: {e}", file=sys.stderr)
+                    store.run(f"{src}:{kind}", errors=1, note=str(e)[:500])
+                    if f.blocked:
+                        f.close()
+                        f = Fetcher()
+    finally:
+        f.close()
+        store.close()
+    return 1 if failures else 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())
