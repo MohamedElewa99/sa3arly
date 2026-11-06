@@ -143,11 +143,13 @@ def _paint_weight(part: str) -> float:
     return 0.015
 
 
-def _ai_weight(n: int, known_model: bool, has_zero: bool, error: float = 0.0) -> float:
+def _ai_weight(n: int, known_model: bool, has_zero: bool, error: float = 0.0, learned: Optional[dict] = None) -> float:
     """How much the learned model counts next to n close comparables (checked on held-out cars, see tests).
     A model whose held-out error is above 6 % counts proportionally less."""
     if n == 0:
         return 1.0
+    if learned:                          # weights the nightly training measured on left-out real ads
+        return float(learned.get("<8 ads" if n < 8 else "8-19 ads" if n < 20 else "20+ ads", 0.0))
     w = 0.6 if n < 8 else 0.45 if n < 20 else 0.3
     if not known_model and not has_zero:
         w *= 0.4                     # the model never saw this car and has no zero price to anchor on
@@ -172,7 +174,7 @@ class Pricer:
         f = ml.row_features(make, model, year, km, trim, "hatla2ee", zero=zero)
         p = m.predict(f)
         disc = 1 - DEAL_DISCOUNT["default"]           # predicted as a Hatla2ee ask -> a deal price
-        return {k: v * disc for k, v in p.items()}, {"metrics": m.metrics, "known": m.known(f)}
+        return {k: v * disc for k, v in p.items()}, {"metrics": m.metrics, "known": m.known(f), "blend": m.blend}
 
     # ---------------------------------------------------------------- data
     def _make_id(self, make: str) -> Optional[int]:
@@ -279,15 +281,18 @@ class Pricer:
         ai_out = None
         if ai and (mid is not None or info["known"]["model"] or zero):
             met = info["metrics"]
-            w = _ai_weight(n, info["known"]["model"], bool(zero), met.get("median_ape") or 0.0)
+            w = _ai_weight(n, info["known"]["model"], bool(zero), met.get("median_ape") or 0.0, info.get("blend"))
             ai_out = {"mid": _round(ai["mid"]), "low": _round(ai["lo"]), "high": _round(ai["hi"]), "weight": round(w, 2),
                       "n_train": met.get("n_all", met.get("n_train")), "error": met.get("median_ape"), "comps_mid": _round(mid) if mid else None}
             if mid is None:
-                # no close ads: the model's own middle, with its range held to ±15 %
+                # no close ads: the model's own middle; the range is as wide as its measured error on such cars
+                err = (info.get("blend") or {}).get("no_ads_error") or 0.15
+                half = min(0.30, max(0.10, err))
                 mid = ai["mid"]
-                low, high = max(ai["lo"], mid * 0.85), min(ai["hi"], mid * 1.15)
-                conf = "متوسطة" if info["known"]["model"] and zero else "منخفضة"
-                lines.append("مفيش عربيات شبهها كفاية، فالسعر جاي من نموذج الذكاء الاصطناعي اللي اتعلّم من كل الإعلانات")
+                low, high = mid * (1 - half), mid * (1 + half)
+                conf = "منخفضة"
+                lines.append("مفيش عربيات شبهها كفاية، فده تقدير تقريبي من الذكاء الاصطناعي اللي اتعلّم من كل الإعلانات "
+                             f"(غلطه في الحالات دي حوالي {err:.0%})")
             else:
                 gap = (ai["mid"] - mid) / mid
                 if abs(gap) > 0.20 and n >= 5:
@@ -305,7 +310,8 @@ class Pricer:
                         lines.append(f"الإعلانات القريبة {'أرخص' if gap > 0 else 'أغلى'} بـ {abs(gap):.0%} من اللي متوقع لعربية زيها، "
                                      "بص على العربيات اللي اتقارنت قبل ما تقرر")
             lines.append(f"الذكاء الاصطناعي: اتعلّم من {met.get('n_all', met.get('n_train', 0)):,} إعلان (غلطه المعتاد {met.get('median_ape', 0):.0%})، "
-                         f"توقّع {_round(ai['mid']):,} جنيه، ووزنه في السعر {w:.0%}")
+                         f"توقّع {_round(ai['mid']):,} جنيه، ووزنه في السعر {w:.0%}"
+                         + (" (لسه مش أدق من الإعلانات القريبة للعربية دي، فبنستخدمه للمراجعة بس)" if w == 0 and n else ""))
         if mid is None:
             return Quote(None, None, None, "منخفضة", [], zero, zero_year,
                          lines + ["مفيش عربيات شبهها في القاعدة لسه"])

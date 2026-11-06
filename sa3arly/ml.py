@@ -24,7 +24,7 @@ BASE = ["make", "model", "age", "km", "log_km", "trim", "source", "gearbox", "bo
 TE = ["model_te", "make_te"]                      # what this model / make usually sells for, learned out-of-fold
 TEXT = ["fabrika", "paint", "accident", "first_owner", "agency"]
 AD = ["photos", "dom", "drops", "h_market", "km_year"]
-FEATURES = BASE + TE
+FEATURES = BASE                                    # measured best on the real ads (see train --experiment)
 CATEGORICAL = ["make", "model", "trim", "source", "gearbox", "body", "city", "seller"]
 QUANTILES = {"lo": 0.25, "mid": 0.5, "hi": 0.75}
 MIN_CAT = 5            # a category value seen fewer times than this is folded into "other"
@@ -401,6 +401,29 @@ def blend_eval(cx, rows, n: int = 400, **kw) -> dict:
     return out
 
 
+BUCKETS = ("<8 ads", "8-19 ads", "20+ ads")
+
+
+def learn_weights(cx, rows, min_n: int = 40) -> dict:
+    """How much the model should count, per number of close ads, chosen on left-out real ads.
+    A bucket with too few test ads keeps the model out (weight 0) until there is evidence."""
+    ev = blend_eval(cx, rows, n=800)
+    out = {}
+    for b in BUCKETS:
+        ws = ev.get(b, {})
+        if not ws or next(iter(ws.values()))[1] < min_n:
+            out[b] = 0.0
+            continue
+        best = min(ws.items(), key=lambda kv: kv[1][0])
+        base = ws.get("w=0.0", (1, 0))[0]
+        # only trust it if it really helps (at least 0.3 points better than the ads alone)
+        out[b] = min(0.7, float(best[0][2:])) if base - best[1][0] >= 0.003 else 0.0   # the ads always keep a say
+    none = ev.get("no ads", {}).get("w=1.0")
+    out["no_ads_error"] = none[0] if none else None
+    out["eval"] = ev
+    return out
+
+
 def experiment(rows, cx=None) -> dict:
     """Train every variant on the same split and return their test metrics (for choosing the setup)."""
     out = {}
@@ -466,6 +489,7 @@ class Model:
     def __init__(self, data: dict):
         self.d = data
         self.metrics = data.get("metrics", {})
+        self.blend = data.get("blend")          # learned weights per bucket, None on older models
 
     def vector(self, f: dict) -> list[float]:
         if self.d.get("te"):

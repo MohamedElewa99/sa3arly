@@ -197,6 +197,8 @@ def main(argv=None):
                     print(f"[train] {name:24s} {m}")
                 return 0
             model, metrics = ml.train(rows)
+            model["blend"] = ml.learn_weights(cx, rows)
+            print(f"[train] learned weights: { {k: v for k, v in model['blend'].items() if k != 'eval'} }")
             mid = ml.save(cx, model)
             print(f"[train] saved model #{mid}: {metrics}")
         return 0
