@@ -40,3 +40,8 @@ def test_market_shows_zero_changes_and_cheap_new_ads(db):
     assert zero and zero[0]["delta"] == 30000 and zero[0]["up"] and zero[0]["car"]["model"] == "Elantra AD"
     assert "فئة Top" in zero[0]["name"] and zero[0]["old"] == 1200000
     assert any(d["price"] == 700000 and d["delta"] < -10 and d["km"] == 90000 and d["median"] > 700000 and d["url"] == "c" for d in deals)
+
+
+def test_junk_names():
+    from sa3arly.web_api import _junk
+    assert _junk("Other") and _junk(" others ") and _junk("أخرى") and not _junk("Corolla")

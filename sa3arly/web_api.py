@@ -40,6 +40,14 @@ def _ref_price(rows: list[tuple[int, Optional[int], int]]) -> Optional[int]:
     return int(round(statistics.median(adj) / 5000) * 5000) if adj else None
 
 
+JUNK = {"other", "others", "أخرى", "اخرى", "غير ذلك", "unknown", ""}
+
+
+def _junk(name) -> bool:
+    """Catch-all buckets from the listing sites ("Other") aren't a car anyone can pick."""
+    return (name or "").strip().lower() in JUNK
+
+
 def catalog(cx, days: int = 90, min_ads: int = 3) -> dict:
     rows = cx.execute("""
         select mk.name_en, mo.name_en, l.year, l.km, l.price_egp, l.trim_raw, l.body_type
@@ -63,7 +71,7 @@ def catalog(cx, days: int = 90, min_ads: int = 3) -> dict:
     best, best_n = None, 0
     this_year = date.today().year
     for (mk, mo), rs in groups.items():
-        if len(rs) < min_ads:
+        if len(rs) < min_ads or _junk(mk) or _junk(mo):
             continue
         years = sorted({r[2] for r in rs if 1990 <= r[2] <= this_year + 1})
         trims: dict[str, int] = {}
