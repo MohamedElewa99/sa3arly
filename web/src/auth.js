@@ -138,12 +138,13 @@ function takePending() {
 
 // photo -> what the server's vision model sees: { make, model, years, trim, confidence, note } or { km, confidence }
 async function readPhoto(kind, file, makes) {
+  if (!auth.user) { const e = new Error('sign in'); e.status = 401; throw e; }
   const image = await shrink(file, 1024, 0.82);
   const res = await fetch(API + '/api/vision', {
-    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + auth.token },
     body: JSON.stringify({ kind, image, makes: makes || [] }),
   });
-  if (!res.ok) throw new Error('vision ' + res.status);
+  if (!res.ok) { const e = new Error('vision ' + res.status); e.status = res.status; throw e; }
   return res.json();
 }
 

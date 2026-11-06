@@ -269,6 +269,14 @@ class Component extends React.Component {
   readShot(k, file) {
     var self = this, read = Component.readPhoto;
     if (!read || !file) return;
+    var A = Component.auth;
+    if (A && !A.user) {
+      if (A.pending) A.pending(null);
+      return this.setState({ login: 'photos', loginSent: false, loginErr: '', vis: { busy: false, note: 'ادخل حسابك وإحنا نعرف العربية والعداد من الصور لوحدنا.' } });
+    }
+    var fail = function (e) {
+      self.setState({ vis: { busy: false, note: e && e.status === 429 ? 'قريت صور كتير الساعة دي. كمّل بإيدك وجرّب كمان شوية.' : '' } });
+    };
     var CAT = Component.remoteCat || Component.CAT;
     var F = Component._fz || (Component._fz = Component.fzInit());
     var fmtN = function (n) { return String(n).replace(/\B(?=(\d{3})+(?!\d))/g, ','); };
@@ -277,7 +285,7 @@ class Component extends React.Component {
       return read('odo', file).then(function (r) {
         if (r.km == null || r.confidence < 0.5) return self.setState({ vis: { busy: false, note: 'ماقدرناش نقرا العداد من الصورة دي. اكتبه بإيدك تحت.' } });
         self.setState({ km: r.km, agencyKm: Math.min(self.state.agencyKm, Math.floor(r.km / 10000) * 10000), vis: { busy: false, note: 'قرينا العداد: ' + fmtN(r.km) + ' كم. لو غلط عدّله تحت.' } });
-      }, function () { self.setState({ vis: { busy: false, note: '' } }); });
+      }, fail);
     }
     if (this.state.vis.carDone) return;               // the first clear car photo is enough
     this.setState({ vis: { busy: true, note: '' } });
@@ -298,7 +306,7 @@ class Component extends React.Component {
       c.trim = tr.item && tr.score >= 0.8 ? tr.item : (inf.trims.indexOf(c.trim) >= 0 ? c.trim : inf.trims[0]);
       self.setState({ car: c, body: inf.body, bodyAuto: true, vis: { busy: false, carDone: true,
         note: 'من الصورة: ' + mk.item + ' ' + md.item + (r.years ? ' (' + r.years[0] + '–' + r.years[1] + ')' : '') + (tr.item && tr.score >= 0.8 ? '، فئة ' + tr.item : '') + '. ' + (r.note ? r.note + '. ' : '') + 'اتأكد من السنة والفئة تحت.' } });
-    }, function () { self.setState({ vis: { busy: false, note: '' } }); });
+    }, fail);
   }
   flashMsg(m) {
     var self = this;
@@ -1137,8 +1145,8 @@ class Component extends React.Component {
       doSave: doSave, savePressed: isSaved ? 'true' : 'false', saveFill: isSaved ? t.ink : 'none',
       saveAria: isSaved ? 'اتحفظت في تسعيراتك' : S.saving ? 'بتتحفظ' : 'احفظ التسعيرة',
       login: !!S.login, loginOff: A.ready && A.enabled === false, loginAsk: !S.loginSent && A.enabled !== false, loginSent: S.loginSent,
-      loginTitle: { save: 'احفظ التسعيرة دي', alerts: 'شغّل التنبيهات' }[S.login] || 'ادخل حسابك',
-      loginWhy: { save: 'ادخل مرة واحدة، وكل تسعيرة تحفظها هتلاقيها على أي موبايل أو كمبيوتر.', alerts: 'هنقولك أول ما سعر الزيرو يتغير أو تنزل عربية أرخص من السوق.' }[S.login] || 'تسعيراتك وتنبيهاتك تفضل معاك على أي جهاز. التسعير نفسه شغال من غير حساب.',
+      loginTitle: { save: 'احفظ التسعيرة دي', alerts: 'شغّل التنبيهات', photos: 'خلّينا نقرا الصور' }[S.login] || 'ادخل حسابك',
+      loginWhy: { save: 'ادخل مرة واحدة، وكل تسعيرة تحفظها هتلاقيها على أي موبايل أو كمبيوتر.', alerts: 'هنقولك أول ما سعر الزيرو يتغير أو تنزل عربية أرخص من السوق.', photos: 'بعد ما تدخل، صوّر العربية وإحنا نعرف الماركة والموديل، ونقرا العداد لوحدنا.' }[S.login] || 'تسعيراتك وتنبيهاتك تفضل معاك على أي جهاز. التسعير نفسه شغال من غير حساب.',
       loginEmail: S.loginEmail, onLoginEmail: function (e) { self.setState({ loginEmail: e.target.value, loginErr: '' }); },
       emailBtn: S.loginBusy ? 'بيتبعت…' : 'ابعتلي لينك الدخول', emailDisabled: S.loginBusy || !mailOk, emailOp: S.loginBusy || !mailOk ? 0.45 : 1,
       sendLink: sendLink, loginErr: S.loginErr, hasLoginErr: !!S.loginErr,
