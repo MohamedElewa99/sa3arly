@@ -174,6 +174,7 @@ def main(argv=None):
     tn = sub.add_parser("train", help="train the AI price model on recent ads and store it in the database")
     tn.add_argument("--days", type=int, default=180)
     tn.add_argument("--min-rows", type=int, default=500)
+    tn.add_argument("--experiment", action="store_true", help="compare model setups on the same split, save nothing")
     dl = sub.add_parser("daily")
     dl.add_argument("--max-pages", type=int, default=60)
     a = ap.parse_args(argv)
@@ -190,6 +191,10 @@ def main(argv=None):
             print(f"[train] {len(rows):,} ads from the last {a.days} days")
             if len(rows) < a.min_rows:
                 print("[train] too few ads, keeping the current model")
+                return 0
+            if a.experiment:
+                for name, m in ml.experiment(rows).items():
+                    print(f"[train] {name:24s} {m}")
                 return 0
             model, metrics = ml.train(rows)
             mid = ml.save(cx, model)

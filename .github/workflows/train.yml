@@ -3,6 +3,8 @@ name: train
 # retrain the AI price model on demand (it also runs after every scrape)
 on:
   workflow_dispatch:
+    inputs:
+      experiment: { description: "compare setups only, save nothing", type: boolean, default: false }
 
 jobs:
   train:
@@ -16,4 +18,4 @@ jobs:
       - name: train
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
-        run: python -m sa3arly train
+        run: python -m sa3arly train ${{ inputs.experiment && '--experiment' || '' }}

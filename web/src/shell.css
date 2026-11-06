@@ -2,8 +2,12 @@
 html, body { margin: 0; background: #000; height: 100%; }
 body { font-family: 'Alexandria', sans-serif; -webkit-font-smoothing: antialiased; }
 #root { min-height: 100dvh; }
-@supports (padding: env(safe-area-inset-top)) {
-  #root > div { padding-top: env(safe-area-inset-top); box-sizing: border-box; }
+/* iPhone: keep the app below the status bar / notch (the page itself runs under it, in the app's colour) */
+@media (max-width: 1023px) {
+  .app-col {
+    margin-top: env(safe-area-inset-top, 0px) !important;
+    height: calc(100dvh - env(safe-area-inset-top, 0px)) !important;
+  }
 }
 
 /* website layout on wide screens: a normal scrolling site with a nav; the pricing flow sits in a centred panel */

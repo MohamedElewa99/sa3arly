@@ -9,8 +9,27 @@ import './shell.css';
 // first theme: what the user picked before, else the phone's dark / light mode
 let saved = null;
 try { saved = localStorage.getItem('sa3.theme'); } catch (e) { /* private mode */ }
-const night = saved ? saved === 'dark' : !window.matchMedia('(prefers-color-scheme: light)').matches;
-Component.saveTheme = (dark) => { try { localStorage.setItem('sa3.theme', dark ? 'dark' : 'light'); } catch (e) { /* private mode */ } };
+const systemDark = window.matchMedia('(prefers-color-scheme: dark)');
+const night = saved ? saved === 'dark' : systemDark.matches;
+// page and browser-bar colour follow the app's theme (shows under the iPhone status bar)
+const paint = (dark) => {
+  const bg = dark ? '#000000' : '#F5F6F7';
+  document.documentElement.style.background = bg;
+  document.body.style.background = bg;
+  document.querySelectorAll('meta[name="theme-color"]').forEach((m) => m.setAttribute('content', bg));
+};
+paint(night);
+Component.saveTheme = (dark) => {
+  try { localStorage.setItem('sa3.theme', dark ? 'dark' : 'light'); } catch (e) { /* private mode */ }
+  paint(dark);
+};
+// the phone switches dark mode -> the app switches right away (and forgets an older manual pick)
+const onSystem = (e) => {
+  try { localStorage.removeItem('sa3.theme'); } catch (err) { /* private mode */ }
+  paint(e.matches);
+  if (appRef) appRef.setState({ dark: e.matches });
+};
+if (systemDark.addEventListener) systemDark.addEventListener('change', onSystem); else systemDark.addListener(onSystem);
 
 function Root() {
   return <Component night={night} ref={(r) => { if (r) { appRef = r; bindApp(r); bindAuth(r); } }} />;
