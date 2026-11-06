@@ -171,12 +171,30 @@ def main(argv=None):
     bm.add_argument("--limit", type=int, default=200)
     im = sub.add_parser("import", help="import pages saved with the Sa3arly browser button")
     im.add_argument("--folder", default=str(Path.home() / "Downloads"))
+    tn = sub.add_parser("train", help="train the AI price model on recent ads and store it in the database")
+    tn.add_argument("--days", type=int, default=180)
+    tn.add_argument("--min-rows", type=int, default=500)
     dl = sub.add_parser("daily")
     dl.add_argument("--max-pages", type=int, default=60)
     a = ap.parse_args(argv)
 
     if a.cmd == "probe":
         return probe(headless=not a.show)
+
+    if a.cmd == "train":
+        import os
+        import psycopg
+        from . import ml
+        with psycopg.connect(os.environ["DATABASE_URL"], autocommit=True) as cx:
+            rows = ml.load_rows(cx, a.days)
+            print(f"[train] {len(rows):,} ads from the last {a.days} days")
+            if len(rows) < a.min_rows:
+                print("[train] too few ads, keeping the current model")
+                return 0
+            model, metrics = ml.train(rows)
+            mid = ml.save(cx, model)
+            print(f"[train] saved model #{mid}: {metrics}")
+        return 0
 
     if a.cmd in ("price", "benchmark"):
         import os

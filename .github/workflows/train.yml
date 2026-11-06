@@ -1,0 +1,19 @@
+name: train
+
+# retrain the AI price model on demand (it also runs after every scrape)
+on:
+  workflow_dispatch:
+
+jobs:
+  train:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12", cache: pip }
+      - run: pip install -r requirements-train.txt
+      - name: train
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: python -m sa3arly train

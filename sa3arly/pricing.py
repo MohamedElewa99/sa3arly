@@ -57,6 +57,7 @@ class Quote:
     zero_price: Optional[int] = None
     zero_year: Optional[int] = None
     lines: list = field(default_factory=list)      # Arabic explanation, one step per line
+    ai: Optional[dict] = None                      # what the learned model said, and how much it counted
 
     def text(self) -> str:
         head = (f"الرينج: {self.low:,} – {self.high:,} جنيه  (الثقة: {self.confidence})"
@@ -142,9 +143,32 @@ def _paint_weight(part: str) -> float:
     return 0.015
 
 
+def _ai_weight(n: int, known_model: bool, has_zero: bool) -> float:
+    """How much the learned model counts next to n close comparables (checked on held-out cars, see tests)."""
+    if n == 0:
+        return 1.0
+    w = 0.6 if n < 8 else 0.45 if n < 20 else 0.3
+    if not known_model and not has_zero:
+        w *= 0.4                     # the model never saw this car and has no zero price to anchor on
+    return w
+
+
 class Pricer:
-    def __init__(self, cx):
+    def __init__(self, cx, use_ai: bool = True):
         self.cx = cx
+        self.use_ai = use_ai
+
+    def _ai(self, make, model, year, km, trim, zero):
+        if not self.use_ai:
+            return None, None
+        from . import ml
+        m = ml.latest(self.cx)
+        if m is None:
+            return None, None
+        f = ml.row_features(make, model, year, km, trim, "hatla2ee", zero=zero)
+        p = m.predict(f)
+        disc = 1 - DEAL_DISCOUNT["default"]           # predicted as a Hatla2ee ask -> a deal price
+        return {k: v * disc for k, v in p.items()}, {"metrics": m.metrics, "known": m.known(f)}
 
     # ---------------------------------------------------------------- data
     def _make_id(self, make: str) -> Optional[int]:
@@ -244,11 +268,37 @@ class Pricer:
             mid = statistics.median(c.adjusted for c in comps)
             low, high = mid * 0.93, mid * 1.07
         else:
+            low = high = mid = None
+
+        # the learned model: blends in by how few close ads there are, and prices cars with none
+        ai, info = self._ai(make, model, year, km, trim, zero)
+        ai_out = None
+        if ai and (mid is not None or info["known"]["model"] or zero):
+            w = _ai_weight(n, info["known"]["model"], bool(zero))
+            met = info["metrics"]
+            ai_out = {"mid": _round(ai["mid"]), "low": _round(ai["lo"]), "high": _round(ai["hi"]), "weight": round(w, 2),
+                      "n_train": met.get("n_all", met.get("n_train")), "error": met.get("median_ape"), "comps_mid": _round(mid) if mid else None}
+            if mid is None:
+                low, mid, high = ai["lo"], ai["mid"], ai["hi"]
+                conf = "متوسطة" if info["known"]["model"] and zero else "منخفضة"
+                lines.append("مفيش عربيات شبهها كفاية، فالسعر جاي من نموذج الذكاء الاصطناعي اللي اتعلّم من كل الإعلانات")
+            else:
+                gap = (ai["mid"] - mid) / mid
+                low = w * ai["lo"] + (1 - w) * low
+                high = w * ai["hi"] + (1 - w) * high
+                mid = w * ai["mid"] + (1 - w) * mid
+                low, high = min(low, mid), max(high, mid)
+                if abs(gap) >= 0.12:
+                    lines.append(f"الإعلانات القريبة {'أرخص' if gap > 0 else 'أغلى'} بـ {abs(gap):.0%} من اللي متوقع لعربية زيها، "
+                                 "بص على العربيات اللي اتقارنت قبل ما تقرر")
+            lines.append(f"الذكاء الاصطناعي: اتعلّم من {met.get('n_all', met.get('n_train', 0)):,} إعلان (غلطه المعتاد {met.get('median_ape', 0):.0%})، "
+                         f"توقّع {_round(ai['mid']):,} جنيه، ووزنه في السعر {w:.0%}")
+        if mid is None:
             return Quote(None, None, None, "منخفضة", [], zero, zero_year,
                          lines + ["مفيش عربيات شبهها في القاعدة لسه"])
 
         # few comparables -> the quartiles are too tight to be honest: enforce a minimum width
-        min_width = 0.10 if n < 8 else 0.07 if n < 20 else 0.0
+        min_width = 0.12 if n == 0 else 0.10 if n < 8 else 0.07 if n < 20 else 0.0
         if min_width and (high - low) < min_width * mid:
             low, high = mid * (1 - min_width / 2), mid * (1 + min_width / 2)
 
@@ -273,4 +323,4 @@ class Pricer:
         if zero:
             lines.append(f"سعر الزيرو النهارده (موديل {zero_year}): {zero:,} جنيه")
         return Quote(_round(low), _round(high), _round(mid), conf,
-                     sorted(comps, key=lambda c: abs(c.adjusted - mid))[:10], zero, zero_year, lines)
+                     sorted(comps, key=lambda c: abs(c.adjusted - mid))[:10], zero, zero_year, lines, ai_out)

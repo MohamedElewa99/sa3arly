@@ -112,7 +112,7 @@ def quote(cx, make: str, model: str, year: int, km: int, trim: Optional[str] = N
     return {
         "low": q.low, "high": q.high, "mid": q.mid, "confidence": q.confidence,
         "n": len(q.comparables) if q.low is None else _count(q), "zero": q.zero_price, "zero_year": q.zero_year,
-        "lines": q.lines, "comparables": comps,
+        "lines": q.lines, "comparables": comps, "ai": q.ai,
     }
 
 

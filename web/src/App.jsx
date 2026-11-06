@@ -840,7 +840,8 @@ class Component extends React.Component {
     var live = Component.remoteQuote ? Component.remoteQuote(car, S.km) : null;
     if (live && live.low) { baseLo = live.low; baseHi = live.high; mid = (baseLo + baseHi) / 2; nComps = live.n; if (live.zero) info = Object.assign({}, info, { zero: live.zero }); }
     var liveComps = live && live.comparables ? live.comparables : null;
-    var conf = nComps >= 20 ? 'عالية' : nComps >= 8 ? 'متوسطة' : 'منخفضة';
+    var conf = live && live.confidence ? live.confidence : nComps >= 20 ? 'عالية' : nComps >= 8 ? 'متوسطة' : 'منخفضة';
+    var aiQ = live && live.ai ? live.ai : null;
     var r5 = function (n) { return Math.round(n / 5000) * 5000; };
     var agencyShare = S.km ? Math.min(1, S.agencyKm / S.km) : 0;
     var agencyAdd = r5(0.02 * mid * agencyShare);
@@ -1331,8 +1332,13 @@ class Component extends React.Component {
       },
       waHref: 'https://wa.me/?text=' + encodeURIComponent('تسعير سعرلي: ' + carName + '، ' + fmt(S.km) + ' كم\nالسعر العادل: ' + fmt(finalLo) + ' – ' + fmt(finalHi) + ' جنيه' + (S.hideBuy ? '' : '\nأقصى سعر شرا: ' + fmt(r5((finalLo + finalHi) / 2 - S.margin))) + ((P.showroom || P.name) ? '\n— ' + (P.showroom || P.name) + (P.phone ? '، ' + P.phone : '') : '') + '\n' + siteUrl),
       carName: carName, carShort: carShort, nComps: nComps, compsBtn: 'شوف الـ ' + nComps + ' عربية',
-      confTxt: 'ثقة ' + conf + '. قارنّا بـ ' + nComps + ' عربية من نفس الفئة وعدادها قريب، آخر 60 يوم.' + (known ? ' وشلنا الإعلانات اللي أسعارها شاذة.' : ' الموديل ده مش عندنا كفاية، فالرينج أعرض.'),
+      confTxt: nComps === 0 ? 'ثقة ' + conf + '. مفيش إعلانات قريبة للعربية دي دلوقتي.' : 'ثقة ' + conf + '. قارنّا بـ ' + nComps + ' عربية من نفس الفئة وعدادها قريب، آخر 60 يوم.' + (known ? ' وشلنا الإعلانات اللي أسعارها شاذة.' : ' الموديل ده مش عندنا كفاية، فالرينج أعرض.'),
       axisLo: fmt(lo), axisHi: fmt(hi),
+      hasAi: !!aiQ, aiMid: aiQ ? fmt(aiQ.mid) : '',
+      aiSub: !aiQ ? '' : 'اتعلّم من ' + fmt(aiQ.n_train || 0) + ' إعلان إزاي السعر بيتغيّر مع الموديل والسنة والعداد والفئة. '
+        + (aiQ.weight >= 1 ? 'مفيش إعلانات قريبة كفاية، فالسعر كله منه.' : 'وزنه في السعر ' + Math.round(aiQ.weight * 100) + '٪، والباقي من العربيات اللي شبهها.')
+        + (aiQ.error ? ' غلطه المعتاد حوالي ' + Math.round(aiQ.error * 100) + '٪.' : ''),
+      aiWarn: !live || !live.lines ? '' : (live.lines.filter(function (l) { return l.indexOf('الإعلانات القريبة') === 0; })[0] || ''),
       detectTxt: S.vis.busy ? 'بنبص على الصورة…' : S.vis.note ? S.vis.note : (S.shotsDone.front || S.shotsDone.back || S.shotsDone.side) ? 'الصور معاك في التسعيرة دي. اتأكد من الماركة والموديل والفئة تحت.' : 'صوّر قدام وورا والعداد، دوس على أي مربع وافتح الكاميرا أو اختار من الصور.',
       fields: [['make', 'الماركة', car.make], ['model', 'الموديل', car.model], ['year', 'السنة', String(car.year)], ['trim', 'الفئة', car.trim]].map(function (f) {
         return { label: f[1], value: f[2], aria: f[1] + ': ' + f[2] + '، غيّر', open: function () { self.setState({ picker: f[0], pickOther: '', sheet: 'picker' }); } };
@@ -1815,6 +1821,18 @@ class Component extends React.Component {
 <span style={css(`position: absolute; top: 33px; right: 0; font-size: 11px; color: ${v.t.mute}`)}>{v.axisHi}</span>
 </div>
 <p style={css(`margin: 8px 0 0; font-size: 12px; color: ${v.t.mute}; text-align: center; line-height: 1.7`)}>{v.confTxt}</p>
+{(v.hasAi) && (<>
+<div className="fu" style={css(`margin-top: 14px; padding: 12px 14px; border-radius: 14px; border: 1px solid ${v.t.line2}; display: flex; gap: 12px; align-items: flex-start`)}>
+<svg width="20" height="20" viewBox="0 0 20 20" aria-hidden="true" style={css("flex: none; margin-top: 2px")}><path d="M10 1.5l1.9 5.1 5.1 1.9-5.1 1.9L10 15.5l-1.9-5.1L3 8.5l5.1-1.9z" fill="#F2A93B"></path><path d="M16 13.5l.8 2 2 .8-2 .8-.8 2-.8-2-2-.8 2-.8z" fill="#F2A93B"></path></svg>
+<div style={css("display: flex; flex-direction: column; gap: 3px; min-width: 0")}>
+<span style={css("font-size: 14px; font-weight: 500")}>الذكاء الاصطناعي توقّع <span className="num">{v.aiMid}</span> جنيه</span>
+<span style={css(`font-size: 12px; line-height: 1.7; color: ${v.t.mute}`)}>{v.aiSub}</span>
+{(v.aiWarn) && (<>
+<span role="note" style={css(`font-size: 12px; line-height: 1.7; color: ${v.t.warn}`)}>{v.aiWarn}</span>
+</>)}
+</div>
+</div>
+</>)}
 <dl style={css("margin: 20px 0 0; display: flex; flex-direction: column")}>
 {(v.rows || []).map((rw, i16) => (<React.Fragment key={i16}>
 <div className="fu" style={css(`display: flex; justify-content: space-between; align-items: baseline; gap: 12px; padding: 11px 0; border-top: 1px solid ${v.t.line}; animation-delay: ${rw.delay}s`)}>

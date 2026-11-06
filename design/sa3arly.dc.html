@@ -464,6 +464,18 @@ button:disabled{cursor:not-allowed}
         <span style="position: absolute; top: 33px; right: 0; font-size: 11px; color: {{ t.mute }}">{{ axisHi }}</span>
       </div>
       <p style="margin: 8px 0 0; font-size: 12px; color: {{ t.mute }}; text-align: center; line-height: 1.7">{{ confTxt }}</p>
+      <sc-if value="{{ hasAi }}" hint-placeholder-val="{{ false }}">
+        <div class="fu" style="margin-top: 14px; padding: 12px 14px; border-radius: 14px; border: 1px solid {{ t.line2 }}; display: flex; gap: 12px; align-items: flex-start">
+          <svg width="20" height="20" viewBox="0 0 20 20" aria-hidden="true" style="flex: none; margin-top: 2px"><path d="M10 1.5l1.9 5.1 5.1 1.9-5.1 1.9L10 15.5l-1.9-5.1L3 8.5l5.1-1.9z" fill="#F2A93B"></path><path d="M16 13.5l.8 2 2 .8-2 .8-.8 2-.8-2-2-.8 2-.8z" fill="#F2A93B"></path></svg>
+          <div style="display: flex; flex-direction: column; gap: 3px; min-width: 0">
+            <span style="font-size: 14px; font-weight: 500">الذكاء الاصطناعي توقّع <span class="num">{{ aiMid }}</span> جنيه</span>
+            <span style="font-size: 12px; line-height: 1.7; color: {{ t.mute }}">{{ aiSub }}</span>
+            <sc-if value="{{ aiWarn }}" hint-placeholder-val="{{ false }}">
+              <span role="note" style="font-size: 12px; line-height: 1.7; color: {{ t.warn }}">{{ aiWarn }}</span>
+            </sc-if>
+          </div>
+        </div>
+      </sc-if>
 
       <dl style="margin: 20px 0 0; display: flex; flex-direction: column">
         <sc-for list="{{ rows }}" as="rw" hint-placeholder-count="5">
@@ -1859,7 +1871,8 @@ class Component extends DCLogic {
     var live = Component.remoteQuote ? Component.remoteQuote(car, S.km) : null;
     if (live && live.low) { baseLo = live.low; baseHi = live.high; mid = (baseLo + baseHi) / 2; nComps = live.n; if (live.zero) info = Object.assign({}, info, { zero: live.zero }); }
     var liveComps = live && live.comparables ? live.comparables : null;
-    var conf = nComps >= 20 ? 'عالية' : nComps >= 8 ? 'متوسطة' : 'منخفضة';
+    var conf = live && live.confidence ? live.confidence : nComps >= 20 ? 'عالية' : nComps >= 8 ? 'متوسطة' : 'منخفضة';
+    var aiQ = live && live.ai ? live.ai : null;
     var r5 = function (n) { return Math.round(n / 5000) * 5000; };
     var agencyShare = S.km ? Math.min(1, S.agencyKm / S.km) : 0;
     var agencyAdd = r5(0.02 * mid * agencyShare);
@@ -2350,8 +2363,13 @@ class Component extends DCLogic {
       },
       waHref: 'https://wa.me/?text=' + encodeURIComponent('تسعير سعرلي: ' + carName + '، ' + fmt(S.km) + ' كم\nالسعر العادل: ' + fmt(finalLo) + ' – ' + fmt(finalHi) + ' جنيه' + (S.hideBuy ? '' : '\nأقصى سعر شرا: ' + fmt(r5((finalLo + finalHi) / 2 - S.margin))) + ((P.showroom || P.name) ? '\n— ' + (P.showroom || P.name) + (P.phone ? '، ' + P.phone : '') : '') + '\n' + siteUrl),
       carName: carName, carShort: carShort, nComps: nComps, compsBtn: 'شوف الـ ' + nComps + ' عربية',
-      confTxt: 'ثقة ' + conf + '. قارنّا بـ ' + nComps + ' عربية من نفس الفئة وعدادها قريب، آخر 60 يوم.' + (known ? ' وشلنا الإعلانات اللي أسعارها شاذة.' : ' الموديل ده مش عندنا كفاية، فالرينج أعرض.'),
+      confTxt: nComps === 0 ? 'ثقة ' + conf + '. مفيش إعلانات قريبة للعربية دي دلوقتي.' : 'ثقة ' + conf + '. قارنّا بـ ' + nComps + ' عربية من نفس الفئة وعدادها قريب، آخر 60 يوم.' + (known ? ' وشلنا الإعلانات اللي أسعارها شاذة.' : ' الموديل ده مش عندنا كفاية، فالرينج أعرض.'),
       axisLo: fmt(lo), axisHi: fmt(hi),
+      hasAi: !!aiQ, aiMid: aiQ ? fmt(aiQ.mid) : '',
+      aiSub: !aiQ ? '' : 'اتعلّم من ' + fmt(aiQ.n_train || 0) + ' إعلان إزاي السعر بيتغيّر مع الموديل والسنة والعداد والفئة. '
+        + (aiQ.weight >= 1 ? 'مفيش إعلانات قريبة كفاية، فالسعر كله منه.' : 'وزنه في السعر ' + Math.round(aiQ.weight * 100) + '٪، والباقي من العربيات اللي شبهها.')
+        + (aiQ.error ? ' غلطه المعتاد حوالي ' + Math.round(aiQ.error * 100) + '٪.' : ''),
+      aiWarn: !live || !live.lines ? '' : (live.lines.filter(function (l) { return l.indexOf('الإعلانات القريبة') === 0; })[0] || ''),
       detectTxt: S.vis.busy ? 'بنبص على الصورة…' : S.vis.note ? S.vis.note : (S.shotsDone.front || S.shotsDone.back || S.shotsDone.side) ? 'الصور معاك في التسعيرة دي. اتأكد من الماركة والموديل والفئة تحت.' : 'صوّر قدام وورا والعداد، دوس على أي مربع وافتح الكاميرا أو اختار من الصور.',
       fields: [['make', 'الماركة', car.make], ['model', 'الموديل', car.model], ['year', 'السنة', String(car.year)], ['trim', 'الفئة', car.trim]].map(function (f) {
         return { label: f[1], value: f[2], aria: f[1] + ': ' + f[2] + '، غيّر', open: function () { self.setState({ picker: f[0], pickOther: '', sheet: 'picker' }); } };
