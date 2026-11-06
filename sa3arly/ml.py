@@ -121,7 +121,7 @@ select mk.name_en, mo.name_en, l.year, l.km, l.price_egp, l.trim_raw, l.source, 
        extract(epoch from (l.last_seen - l.first_seen)) / 86400.0,
        case when p.top > 0 then (p.top - l.price_egp)::float / p.top end,
        nullif(((l.raw->>'hatla2ee_market_min')::numeric + (l.raw->>'hatla2ee_market_max')::numeric) / 2, 0),
-       (l.raw ? 'installment_egp')
+       (l.raw ? 'installment_egp'), l.url, l.trim_raw
 from listings l
 join makes mk on mk.id = l.make_id join models mo on mo.id = l.model_id
 left join z on z.model_id = l.model_id
@@ -136,7 +136,7 @@ def load_rows(cx, days: int = 180) -> list[tuple[dict, float]]:
     today = date.today().year
     out = []
     for (mk, mo, y, km, price, trim, src, gear, body, city, seller, zero, badges, text, photos, dom, drop, hm,
-         installment) in cx.execute(TRAIN_SQL, (today + 1, days)):
+         installment, url, trim_raw) in cx.execute(TRAIN_SQL, (today + 1, days)):
         if set(badges or []) & EXCLUDE_BADGES:
             continue
         if installment and zero and price < 0.5 * zero:
@@ -147,6 +147,7 @@ def load_rows(cx, days: int = 180) -> list[tuple[dict, float]]:
             continue
         f = row_features(mk, mo, y, km, trim, src, _gearbox(gear) or "", body or "", city or "", seller or "", zero, today,
                          text, photos, dom, drop, int(hm) if hm else None)
+        f["_ad"] = (mk, mo, y, km, trim_raw, url)        # not a feature: lets a test ad be priced by the comparables too
         out.append((f, math.log(price)))           # target is made relative to the zero price in train()
     return out
 
@@ -227,7 +228,7 @@ def oof_te(rows: list[tuple[dict, float]], folds: int = 5, seed: int = 3) -> lis
 
 def train(rows: list[tuple[dict, float]], seed: int = 7, rounds: int = 3000, features: Optional[list] = None,
           clean: bool = False, lr: float = 0.03, leaves: int = 15, min_leaf: int = 25, l2: float = 5.0,
-          mad_k: float = 5.0) -> tuple[dict, dict]:
+          mad_k: float = 5.0, refit: bool = True) -> tuple[dict, dict]:
     """Fit the three quantile models; returns (model_json, metrics).
 
     70 % train / 15 % valid (early stopping) / 15 % test. With clean=True a first model flags the ads whose
@@ -312,6 +313,12 @@ def train(rows: list[tuple[dict, float]], seed: int = 7, rounds: int = 3000, fea
                  clean_within_10pct=round(float(np.mean(c <= 0.10)), 4), clean_share=round(float(np.mean(keep_te)), 3))
 
     # final: everything clean (train + valid + test), each quantile with the rounds early stopping chose
+    if not refit:                                   # keep the split model: for measuring blends on the test ads
+        model = {"version": 4, "te": te_maps(tr) if use_te else None, "features": features,
+                 "categorical": [c for c in CATEGORICAL if c in features], "maps": maps,
+                 "trees": {k: _compact(bst.dump_model(num_iteration=best[k])) for k, bst in boosters.items()}, "metrics": m}
+        m["_test"] = te
+        return model, m
     allrows = tr + va + ([r for r, k in zip(te, keep_te) if k] if clean else te)
     te_full = None
     if use_te:
@@ -365,6 +372,35 @@ def comps_error(cx, n: int = 300, seed: int = 5) -> dict:
             "within_10pct": round(sum(e <= 0.10 for e in errs) / len(errs), 4), "priced_share": round(priced / min(n, len(ads)), 3)}
 
 
+def blend_eval(cx, rows, n: int = 400, **kw) -> dict:
+    """On ads the model never saw: comparables alone vs model alone vs blends, by how many close ads there were."""
+    import statistics
+    from .pricing import DEAL_DISCOUNT, Pricer
+    model, m = train(rows, refit=False, **kw)
+    M = Model(model)
+    pr = Pricer(cx, use_ai=False)
+    disc = 1 - DEAL_DISCOUNT["default"]
+    res: dict[str, dict[str, list]] = {}
+    for f, y in m["_test"][:n]:
+        mk, mo, yr, km, trim, url = f["_ad"]
+        price = math.exp(y)
+        pr.exclude_url = url
+        q = pr.quote(mk, mo, yr, km, trim=trim)
+        ml_ask = M.predict(f | {"source": "hatla2ee", "dom": 0.0, "drops": 0.0})["mid"]
+        nq = next((int(l.split()[0]) for l in q.lines if "عربية شبهها" in l and l.split()[0].isdigit()), 0) if q.mid else 0
+        bucket = "no ads" if not q.mid else "<8 ads" if nq < 8 else "8-19 ads" if nq < 20 else "20+ ads"
+        comps_ask = q.mid / disc if q.mid else None
+        for w in (0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.7, 1.0):
+            est = ml_ask if comps_ask is None else w * ml_ask + (1 - w) * comps_ask
+            if comps_ask is None and w != 1.0:
+                continue
+            res.setdefault(bucket, {}).setdefault(f"w={w}", []).append(abs(est - price) / price)
+    out = {}
+    for b, ws in res.items():
+        out[b] = {w: (round(statistics.median(e), 4), len(e)) for w, e in ws.items()}
+    return out
+
+
 def experiment(rows, cx=None) -> dict:
     """Train every variant on the same split and return their test metrics (for choosing the setup)."""
     out = {}
@@ -373,6 +409,9 @@ def experiment(rows, cx=None) -> dict:
     for name, kw in VARIANTS.items():
         _, m = train(rows, **kw)
         out[name] = {k: m.get(k) for k in ("median_ape", "mape", "within_10pct", "clean_median_ape", "clean_within_10pct", "range_hit", "dropped_outliers")}
+    if cx is not None:
+        for b, ws in blend_eval(cx, rows, **VARIANTS["B small trees"]).items():
+            out[f"blend {b}"] = ws
     return out
 
 
