@@ -100,6 +100,9 @@ button:disabled{cursor:not-allowed}
     </div>
     <sc-if value="{{ hasResults }}" hint-placeholder-val="{{ false }}">
       <div class="fade" style="display: flex; flex-direction: column; margin-top: 4px">
+        <sc-if value="{{ didYouMean }}" hint-placeholder-val="{{ false }}">
+          <p aria-live="polite" style="margin: 8px 4px 0; font-size: 13px; color: {{ t.mute }}">قصدك <span style="color: {{ t.ink }}">{{ didYouMean }}</span>؟</p>
+        </sc-if>
         <sc-for list="{{ results }}" as="r" hint-placeholder-count="3">
           <div style="min-height: 60px; padding: 8px 0; display: flex; align-items: center; justify-content: space-between; gap: 12px; border-bottom: 1px solid {{ t.line }}">
             <div style="display: flex; flex-direction: column; gap: 2px; min-width: 0">
@@ -496,7 +499,7 @@ button:disabled{cursor:not-allowed}
           <div style="grid-column: span 2; display: flex; flex-direction: column; gap: 2px"><span style="font-size: 11px; color: {{ t.mute }}">المستعمل</span><span style="font-size: 16px; direction: ltr; text-align: right">{{ cc.used }}</span></div>
         </div>
         <div style="display: flex; flex-direction: column; gap: 6px">
-          <div style="display: flex; justify-content: space-between; font-size: 12px"><span style="color: {{ t.mute }}">بتحتفظ بقيمتها</span><span>{{ cc.ret }}%</span></div>
+          <div style="display: flex; justify-content: space-between; font-size: 12px"><span style="color: {{ t.mute }}">بتحتفظ بقيمتها</span><span>{{ cc.retTxt }}</span></div>
           <div style="height: 6px; border-radius: 3px; background: {{ t.line }}; overflow: hidden"><div class="grow" style="height: 100%; width: {{ cc.ret }}%; background: {{ t.ink }}; border-radius: 3px"></div></div>
         </div>
       </div>
@@ -516,14 +519,46 @@ button:disabled{cursor:not-allowed}
       <span style="font-size: 12px; color: {{ t.mute }}">{{ sheetNote }}</span>
     </div>
     <sc-if value="{{ isPicker }}" hint-placeholder-val="{{ false }}">
+      <div style="display: flex; gap: 8px; align-items: center">
+        <input value="{{ pickOther }}" onChange="{{ onPickOther }}" onKeyDown="{{ pickOtherKey }}" name="other_value" autocomplete="off" aria-label="{{ pickOtherAria }}" placeholder="{{ pickOtherPh }}" style="flex: 1; min-width: 0; height: 48px; background: {{ t.soft }}; color: {{ t.ink }}; border: none; border-radius: 12px; padding: 0 12px; font-family: 'Alexandria', sans-serif; font-size: 15px">
+        <button class="press" onClick="{{ usePickOther }}" disabled="{{ pickOtherEmpty }}" style="flex: none; height: 48px; padding: 0 18px; border-radius: 12px; border: none; background: {{ t.ink }}; color: {{ t.bg }}; font-size: 14px; font-weight: 600; opacity: {{ pickOtherOp }}">استخدمها</button>
+      </div>
+      <sc-if value="{{ pickNone }}" hint-placeholder-val="{{ false }}">
+        <p aria-live="polite" style="margin: 0 4px; font-size: 13px; color: {{ t.mute }}">مش لاقيها في القايمة. دوس "استخدمها" وهنسعّر بالاسم ده.</p>
+      </sc-if>
       <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px">
         <sc-for list="{{ pickOpts }}" as="po" hint-placeholder-count="4">
           <button class="press" onClick="{{ po.pick }}" aria-pressed="{{ po.sel }}" style="min-height: 52px; padding: 6px 12px; border-radius: 12px; border: 1px solid {{ po.bd }}; background: {{ po.bg }}; color: {{ po.fg }}; font-size: 15px; text-align: right; overflow: hidden; text-overflow: ellipsis; white-space: nowrap">{{ po.label }}</button>
         </sc-for>
       </div>
-      <div style="display: flex; gap: 8px; align-items: center">
-        <input value="{{ pickOther }}" onChange="{{ onPickOther }}" name="other_value" autocomplete="off" aria-label="{{ pickOtherAria }}" placeholder="{{ pickOtherPh }}" style="flex: 1; min-width: 0; height: 48px; background: {{ t.soft }}; color: {{ t.ink }}; border: none; border-radius: 12px; padding: 0 12px; font-family: 'Alexandria', sans-serif; font-size: 15px">
-        <button class="press" onClick="{{ usePickOther }}" disabled="{{ pickOtherEmpty }}" style="flex: none; height: 48px; padding: 0 18px; border-radius: 12px; border: none; background: {{ t.ink }}; color: {{ t.bg }}; font-size: 14px; font-weight: 600; opacity: {{ pickOtherOp }}">استخدمها</button>
+    </sc-if>
+    <sc-if value="{{ isItem }}" hint-placeholder-val="{{ false }}">
+      <div class="fu" style="display: flex; flex-direction: column; gap: 14px">
+        <div style="display: flex; align-items: flex-end; justify-content: space-between; gap: 12px">
+          <div style="display: flex; flex-direction: column; gap: 2px">
+            <span style="font-size: 12px; color: {{ t.mute }}">{{ it.priceLabel }}</span>
+            <span class="num" style="font-size: 34px; font-weight: 300; direction: ltr; text-align: right">{{ it.price }}</span>
+          </div>
+          <span class="num" style="flex: none; display: flex; align-items: center; gap: 6px; padding: 6px 12px; border-radius: 999px; background: {{ it.chipBg }}; color: #000000; font-size: 14px; font-weight: 600; direction: ltr">
+            <svg width="9" height="9" viewBox="0 0 9 9" aria-hidden="true" style="transform: rotate({{ it.rot }}deg)"><path d="M4.5 1L8 7H1z" fill="currentColor"></path></svg>{{ it.delta }}
+          </span>
+        </div>
+        <p style="margin: 0; font-size: 14px; line-height: 1.7">{{ it.story }}</p>
+        <dl style="margin: 0; display: flex; flex-direction: column">
+          <sc-for list="{{ it.rows }}" as="ir" hint-placeholder-count="5">
+            <div style="display: flex; justify-content: space-between; gap: 12px; padding: 11px 0; border-top: 1px solid {{ t.line }}">
+              <dt style="font-size: 13px; color: {{ t.mute }}">{{ ir.k }}</dt>
+              <dd class="num" style="margin: 0; font-size: 13px; text-align: left">{{ ir.v }}</dd>
+            </div>
+          </sc-for>
+        </dl>
+        <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px">
+          <sc-if value="{{ it.hasLink }}" hint-placeholder-val="{{ false }}">
+            <a href="{{ it.url }}" target="_blank" rel="noopener" class="press" style="height: 50px; border-radius: 999px; background: {{ t.ink }}; color: {{ t.bg }}; display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: 600; text-decoration: none">افتح الإعلان</a>
+          </sc-if>
+          <button class="press" onClick="{{ it.price2 }}" style="height: 50px; border-radius: 999px; border: 1px solid {{ t.ink }}; background: {{ it.priceBtnBg }}; color: {{ it.priceBtnFg }}; font-size: 14px; font-weight: 600">{{ it.priceBtnLabel }}</button>
+          <button class="press" onClick="{{ it.compare }}" style="height: 50px; border-radius: 999px; border: 1px solid {{ t.line2 }}; background: none; color: {{ t.ink }}; font-size: 14px">ضيفها للمقارنة</button>
+        </div>
       </div>
     </sc-if>
     <sc-if value="{{ isList }}" hint-placeholder-val="{{ false }}">
@@ -664,13 +699,151 @@ class Component extends DCLogic {
             ['susp', 'العفشة', 'امشي على مطب بالراحة واسمع أي خبط أو زيقة.'],
             ['ac', 'التكييف', 'شغّله على أقل درجة 10 دقايق واتأكد إنه ثابت.']];
   }
+  // ---------- fuzzy search: Arabic or English, typos, spacing ----------
+  // returns [{ item, score, exact }] best first; key(item) gives the text to search
+  static fuzzy(q, items, key) {
+    var F = Component._fz || (Component._fz = Component.fzInit());
+    var qn = F.norm(q);
+    if (!qn) return [];
+    var qt = qn.split(' ').filter(function (w) { return !/^\d+$/.test(w); });
+    var qy = (qn.match(/\b(19|20)\d\d\b/) || [])[0];
+    var qAll = qt.join(''), qRaw = F.norm(String(q).replace(/[^\w\u0600-\u06FF ]+/g, '')).split(' ').filter(function (w) { return !/^\d+$/.test(w); });
+    return items.map(function (it) {
+      var raw = key(it), n = F.norm(raw), toks = F.tokens(raw);
+      var exact = n.indexOf(qn) >= 0;
+      var s = 0;
+      if (qt.length) {
+        var per = qt.map(function (w) {
+          var b = 0;
+          toks.forEach(function (t) { b = Math.max(b, F.sim(w, t)); });
+          return b;
+        });
+        var min = Math.min.apply(null, per), avg = per.reduce(function (a, b) { return a + b; }, 0) / per.length;
+        s = Math.max(min * 0.6 + avg * 0.4, F.joined(qAll, toks));
+        toks.forEach(function (t) { s = Math.max(s, F.sim(qAll, t) * 0.95); qRaw.forEach(function (w) { if (w.length >= 4) s = Math.max(s, F.sim(w, t) * 0.92); }); });
+      } else s = 0.7;                                    // only a year typed
+      var yr = (String(raw).match(/\b(19|20)\d\d\b/) || [])[0];
+      if (qy && yr) s *= qy === yr ? 1 : 0.85;
+      if (exact) s = Math.max(s, 1);
+      return { item: it, score: s, exact: exact };
+    }).filter(function (r) { return r.score >= 0.62; })
+      .sort(function (a, b) { return b.score - a.score; });
+  }
+  static fzInit() {
+    // common Egyptian spellings for brands and models, English <-> Arabic
+    var AL = {
+      toyota: 'تويوتا', corolla: 'كورولا', camry: 'كامري', yaris: 'ياريس', fortuner: 'فورتشنر', hilux: 'هايلكس', hiace: 'هايس', rav4: 'راف فور', 'land cruiser': 'لاند كروزر', 'c-hr': 'سي اتش ار', belta: 'بيلتا', rush: 'راش',
+      hyundai: 'هيونداي', elantra: 'النترا', tucson: 'توسان', accent: 'اكسنت', verna: 'فيرنا', creta: 'كريتا', i10: 'اي تن', i20: 'اي عشرين', i30: 'اي تلاتين', 'santa fe': 'سانتافي', matrix: 'ماتريكس', avante: 'افانتي', bayon: 'بايون',
+      kia: 'كيا', cerato: 'سيراتو', sportage: 'سبورتاج', picanto: 'بيكانتو', rio: 'ريو', sorento: 'سورينتو', pegas: 'بيجاس', seltos: 'سيلتوس', sonet: 'سونيت', soul: 'سول', xceed: 'اكسيد', carens: 'كارينز',
+      nissan: 'نيسان', sunny: 'صني', sentra: 'سنترا', qashqai: 'قشقاي', juke: 'جوك', 'x-trail': 'اكس تريل', patrol: 'باترول',
+      chevrolet: 'شيفروليه', aveo: 'افيو', optra: 'اوبترا', lanos: 'لانوس', cruze: 'كروز', captiva: 'كابتيفا', spark: 'سبارك', 'n300': 'ان تلاتمية',
+      mitsubishi: 'ميتسوبيشي', lancer: 'لانسر', pajero: 'باجيرو', eclipse: 'اكليبس', attrage: 'اتراج', xpander: 'اكسباندر', mirage: 'ميراج',
+      renault: 'رينو', logan: 'لوجان', sandero: 'سانديرو', duster: 'داستر', megane: 'ميجان', fluence: 'فلوانس', kadjar: 'كادجار', austral: 'اوسترال', taliant: 'تاليانت',
+      peugeot: 'بيجو', skoda: 'سكودا', octavia: 'اوكتافيا', fabia: 'فابيا', kodiaq: 'كودياك', karoq: 'كاروك', kamiq: 'كاميك', superb: 'سوبيرب', rapid: 'رابيد', scala: 'سكالا',
+      volkswagen: 'فولكس', vw: 'فولكس', golf: 'جولف', passat: 'باسات', polo: 'بولو', tiguan: 'تيجوان', jetta: 'جيتا', touareg: 'طوارق',
+      mercedes: 'مرسيدس', 'mercedes-benz': 'مرسيدس', bmw: 'بي ام دبليو', audi: 'اودي', opel: 'اوبل', astra: 'استرا', corsa: 'كورسا', insignia: 'انسجنيا', mokka: 'موكا', grandland: 'جراندلاند', crossland: 'كروسلاند',
+      fiat: 'فيات', tipo: 'تيبو', '500': 'خمسمية', seat: 'سيات', ibiza: 'ابيزا', leon: 'ليون', arona: 'ارونا', ateca: 'اتيكا', cupra: 'كوبرا', formentor: 'فورمينتور',
+      honda: 'هوندا', civic: 'سيفيك', accord: 'اكورد', city: 'سيتي', 'cr-v': 'سي ار في', suzuki: 'سوزوكي', swift: 'سويفت', ciaz: 'سياز', dzire: 'ديزاير', alto: 'التو', ertiga: 'ارتيجا', vitara: 'فيتارا', celerio: 'سيليريو',
+      mg: 'ام جي', zs: 'زد اس', mg5: 'ام جي فايف', rx5: 'ار اكس فايف', hs: 'اتش اس', chery: 'شيري', tiggo: 'تيجو', arrizo: 'اريزو', geely: 'جيلي', emgrand: 'امجراند', coolray: 'كولراي', byd: 'بي واي دي', jetour: 'جيتور', haval: 'هافال', jeep: 'جيب', 'grand cherokee': 'جراند شيروكي', wrangler: 'رانجلر',
+      mazda: 'مازدا', subaru: 'سوبارو', ford: 'فورد', focus: 'فوكس', fiesta: 'فييستا', kuga: 'كوجا', proton: 'بروتون', saga: 'ساجا', citroen: 'ستروين', 'c4': 'سي فور', 'c-elysee': 'سي اليزيه', speranza: 'سبرانزا', daewoo: 'دايو', lada: 'لادا', granta: 'جرانتا', changan: 'شانجان', bestune: 'بيستون', dongfeng: 'دونج فينج', baic: 'بايك', 'land rover': 'لاند روفر', 'range rover': 'رينج روفر', volvo: 'فولفو', lexus: 'لكزس', porsche: 'بورش', ssangyong: 'سانج يونج'
+    };
+    var rev = {};
+    Object.keys(AL).forEach(function (en) { var a = norm(AL[en]); (rev[a] = rev[a] || []).push(en); (rev[a.replace(/ /g, '')] = rev[a.replace(/ /g, '')] || []).push(en); });
+    function norm(s) {
+      return String(s == null ? '' : s).toLowerCase()
+        .replace(/[ً-ٰٟـ]/g, '')                  // tashkeel, tatweel
+        .replace(/[أإآٱ]/g, 'ا').replace(/ى/g, 'ي').replace(/ة/g, 'ه').replace(/ؤ/g, 'و').replace(/ئ/g, 'ي')
+        .replace(/[٠-٩]/g, function (d) { return String(d.charCodeAt(0) - 0x660); })
+        .replace(/[۰-۹]/g, function (d) { return String(d.charCodeAt(0) - 0x6F0); })
+        .replace(/([a-zء-ي])(\d)/g, '$1 $2').replace(/(\d)([a-zء-ي])/g, '$1 $2')
+        .replace(/[^a-z0-9ء-ي]+/g, ' ').trim();
+    }
+    // sound skeleton shared by both scripts: consonants only, close sounds merged
+    function key(w) {
+      var ar = /[ء-ي]/.test(w);
+      if (ar) {
+        w = w.replace(/^ال(?=..)/, '').replace(/ه$/, '');
+        var m = { 'ب': 'b', 'ت': 't', 'ط': 't', 'ث': 's', 'ج': 'g', 'ح': 'h', 'خ': 'k', 'د': 'd', 'ض': 'd', 'ذ': 'z', 'ر': 'r', 'ز': 'z', 'ظ': 'z', 'س': 's', 'ص': 's', 'ش': 's', 'غ': 'g', 'ف': 'f', 'ق': 'k', 'ك': 'k', 'ل': 'l', 'م': 'm', 'ن': 'n', 'ه': 'h' };
+        return w.split('').map(function (c) { return m[c] || (/\d/.test(c) ? c : ''); }).join('').replace(/(.)\1+/g, '$1');
+      }
+      w = w.replace(/ph/g, 'f').replace(/ch|sh/g, 's').replace(/th/g, 't').replace(/kh/g, 'k').replace(/gh/g, 'g')
+        .replace(/c(?=[eiy])/g, 's').replace(/[cq]/g, 'k').replace(/x/g, 'ks').replace(/v/g, 'f').replace(/p/g, 'b').replace(/j/g, 'g')
+        .replace(/h(?![aeiouy])/g, '').replace(/[aeiouyw]/g, '');
+      return w.replace(/(.)\1+/g, '$1');
+    }
+    function lev(a, b, cap) {
+      if (Math.abs(a.length - b.length) > cap) return cap + 1;
+      var p = [], i, j;
+      for (j = 0; j <= b.length; j++) p[j] = j;
+      for (i = 1; i <= a.length; i++) {
+        var c = [i], lo = i;
+        for (j = 1; j <= b.length; j++) {
+          c[j] = Math.min(p[j] + 1, c[j - 1] + 1, p[j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1));
+          lo = Math.min(lo, c[j]);
+        }
+        if (lo > cap) return cap + 1;
+        p = c;
+      }
+      return p[b.length];
+    }
+    // every spelling a catalog word can be found by
+    var cache = {};
+    function forms(t) {
+      if (cache[t]) return cache[t];
+      var f = [t];
+      if (AL[t]) f.push(norm(AL[t]), norm(AL[t]).replace(/ /g, ''));
+      if (rev[t]) f.push.apply(f, rev[t]);
+      return (cache[t] = f);
+    }
+    function sim1(q, t) {
+      if (q === t) return 1;
+      if (t.indexOf(q) === 0 && q.length >= 2) return 0.97 - 0.02 * Math.min(5, t.length - q.length) / 5;
+      if (q.length >= 3 && t.indexOf(q) > 0) return 0.85;
+      var L = Math.max(q.length, t.length), cap = L <= 3 ? 0 : L <= 5 ? 1 : 2;
+      var d = lev(q, t, cap);
+      var best = d <= cap ? 0.9 - 0.08 * d : 0;
+      var kq = key(q), kt = key(t);
+      if (kq.length >= 2 && kt.length >= 2) {
+        if (kq === kt) best = Math.max(best, 0.88);
+        else if (kt.indexOf(kq) === 0 && kq.length >= 2 && q.length >= 3) best = Math.max(best, 0.8);
+        else {
+          var kc = Math.max(kq.length, kt.length) <= 3 ? 0 : 1;
+          if (kc && lev(kq, kt, kc) <= kc) best = Math.max(best, 0.74);
+        }
+      }
+      return best;
+    }
+    function sim(q, t) {
+      var b = 0;
+      forms(t).forEach(function (f) { b = Math.max(b, sim1(q, f)); });
+      return b;
+    }
+    function tokens(s) {
+      var n = norm(s).split(' ').filter(function (w) { return w && !/^\d+$/.test(w); });
+      var out = n.slice();
+      for (var i = 0; i + 1 < n.length; i++) out.push(n[i] + ' ' + n[i + 1]);  // two-word names: land rover
+      return out;
+    }
+    // the whole typed text against the catalog name with spaces removed ("لاندروفر", "landcruiser")
+    function joined(qAll, toks) {
+      var b = 0;
+      toks.forEach(function (t) { if (t.indexOf(' ') > 0) b = Math.max(b, sim(qAll, t.replace(/ /g, '')), sim1(qAll, norm(AL[t] || '').replace(/ /g, ''))); });
+      return b;
+    }
+    return { norm: norm, key: key, sim: sim, tokens: tokens, joined: joined };
+  }
   static get MARKET() {
     return [
-      { t: 'zero', name: 'تويوتا كورولا 2026', kind: 'سعر الزيرو', when: 'النهارده', price: 1485000, delta: 35000, up: true, car: { make: 'تويوتا', model: 'كورولا', year: 2026, trim: 'Standard' }, km: 0 },
-      { t: 'deal', name: 'كيا سبورتاج 2021، 78,000 كم', kind: 'لقطة على هتلاقي', when: 'من 3 ساعات', price: 1190000, delta: -7, pct: true, up: false, car: { make: 'كيا', model: 'سبورتاج', year: 2021, trim: 'EX' }, km: 78000 },
-      { t: 'zero', name: 'هيونداي إلنترا 2026', kind: 'سعر الزيرو', when: 'امبارح', price: 1230000, delta: -20000, up: false, car: { make: 'هيونداي', model: 'إلنترا', year: 2026, trim: 'Standard' }, km: 0 },
-      { t: 'used', name: 'كوبرا فورمينتور 2022', kind: 'رينج المستعمل', when: 'الأسبوع ده', price: 1520000, delta: -1.5, pct: true, up: false, car: { make: 'كوبرا', model: 'فورمينتور', year: 2022, trim: 'VZ' }, km: 100000 },
-      { t: 'deal', name: 'نيسان صني 2019، 96,000 كم', kind: 'لقطة على السوق المفتوح', when: 'من 5 ساعات', price: 495000, delta: -9, pct: true, up: false, car: { make: 'نيسان', model: 'صني', year: 2019, trim: 'Baseline' }, km: 96000 }
+      { t: 'zero', name: 'تويوتا كورولا 2026، فئة Elite', kind: 'سعر الزيرو', when: 'النهارده', price: 1485000, old: 1450000, delta: 35000, up: true, source: 'هتلاقي',
+        car: { make: 'تويوتا', model: 'كورولا', year: 2026, trim: 'Elite' }, km: 0 },
+      { t: 'deal', name: 'كيا سبورتاج 2021، 78,000 كم', kind: 'لقطة على هتلاقي', when: 'من 3 ساعات', price: 1190000, median: 1280000, delta: -7, pct: true, up: false, source: 'هتلاقي', city: 'القاهرة', url: '',
+        car: { make: 'كيا', model: 'سبورتاج', year: 2021, trim: 'EX' }, km: 78000 },
+      { t: 'zero', name: 'هيونداي إلنترا 2026، فئة Smart', kind: 'سعر الزيرو', when: 'امبارح', price: 1230000, old: 1250000, delta: -20000, up: false, source: 'هتلاقي',
+        car: { make: 'هيونداي', model: 'إلنترا', year: 2026, trim: 'Smart' }, km: 0 },
+      { t: 'used', name: 'كوبرا فورمينتور 2022', kind: 'رينج المستعمل', when: 'الأسبوع ده', price: 1520000, old: 1545000, delta: -1.5, pct: true, up: false, source: '14 إعلان',
+        car: { make: 'كوبرا', model: 'فورمينتور', year: 2022, trim: 'VZ' }, km: 100000 },
+      { t: 'deal', name: 'نيسان صني 2019، 96,000 كم', kind: 'لقطة على السوق المفتوح', when: 'من 5 ساعات', price: 495000, median: 545000, delta: -9, pct: true, up: false, source: 'السوق المفتوح', city: 'الجيزة', url: '',
+        car: { make: 'نيسان', model: 'صني', year: 2019, trim: 'Baseline' }, km: 96000 }
     ];
   }
   constructor(props) {
@@ -680,7 +853,7 @@ class Component extends DCLogic {
       q: '', tray: [], km: 100000, agencyKm: 60000,
       paint: { bumperF: 2, doorRL: 1, fenderRR: 1 }, ex: {}, spin: true, angle: -35, dragging: false, last: '',
       mech: { shocksF: true, arms: true }, open: 'susp', k: 1,
-      gl: true, oth: {}, exOther: false, mo: {}, body: 'crossover', bodyAuto: true, heroOn: true, partsOpen: false, mf: 'all', paintReady: false, more: false, wm: 0, margin: 30000, receipt: false, hideBuy: false, copied: false, checked: {}, car: { make: 'كوبرا', model: 'فورمينتور', year: 2022, trim: 'VZ' }, picker: null, pickOther: '', sheet: null, shotsDone: { front: true, back: true }, extraShots: 0
+      gl: true, oth: {}, exOther: false, mo: {}, body: 'crossover', bodyAuto: true, heroOn: true, partsOpen: false, mf: 'all', paintReady: false, more: false, wm: 0, margin: 30000, receipt: false, hideBuy: false, copied: false, checked: {}, car: { make: 'كوبرا', model: 'فورمينتور', year: 2022, trim: 'VZ' }, picker: null, pickOther: '', sheet: null, item: null, shotsDone: { front: true, back: true }, extraShots: 0
     };
     this._raf = null; this._paint = null; this._hero = null;
     var self = this;
@@ -722,18 +895,18 @@ class Component extends DCLogic {
     this._heroRef = mk('_hero', true);
   }
   pickField(k, v) {
-    var CAT = Component.CAT, c = Object.assign({}, this.state.car), patch = {};
+    var CAT = Component.remoteCat || Component.CAT, c = Object.assign({}, this.state.car), patch = {};
     c[k] = v;
     if (k === 'make') { var models = Object.keys(CAT[v] || {}); c.model = models[0] || c.model; }
     if (k === 'make' || k === 'model') {
       var inf = (CAT[c.make] || {})[c.model];
       if (inf) { if (inf.years.indexOf(c.year) < 0) c.year = inf.years[inf.years.length - 2] || inf.years[0]; c.trim = inf.trims[0]; patch.body = inf.body; patch.bodyAuto = true; }
     }
-    patch.car = c; patch.sheet = null; patch.picker = null; patch.checked = this.state.checked;
+    patch.car = c; patch.sheet = null; patch.picker = null; patch.pickOther = ""; patch.checked = this.state.checked;
     this.setState(patch);
   }
   setCar(c, km, screen) {
-    var inf = (Component.CAT[c.make] || {})[c.model];
+    var inf = ((Component.remoteCat || Component.CAT)[c.make] || {})[c.model];
     var patch = { car: Object.assign({}, c), paint: {}, ex: {}, mech: {}, mo: {}, menu: false };
     if (inf) { patch.body = inf.body; patch.bodyAuto = true; }
     if (km !== undefined) { patch.km = km; patch.agencyKm = Math.min(this.state.agencyKm, Math.floor(km / 10000) * 10000); }
@@ -1310,7 +1483,17 @@ class Component extends DCLogic {
       });
     });
     var q = S.q.trim();
-    var results = q ? CARS.filter(function (c) { return c.name.indexOf(q) >= 0; }).slice(0, 4).map(function (c) {
+    // the year typed wins when the model was sold that year
+    var qYear = parseInt((Component._fz || (Component._fz = Component.fzInit())).norm(q).match(/\b(19|20)\d\d\b/) || 0, 10);
+    var hits = q ? Component.fuzzy(q, CARS.map(function (c) {
+      var cc = CAT[c.make][c.model];
+      if (!qYear || cc.years.indexOf(qYear) < 0) return c;
+      var m = Math.min(cc.ref * Math.pow(1.07, qYear - 2022), cc.zero ? cc.zero * 0.95 : Infinity);
+      return Object.assign({}, c, { id: c.make + '|' + c.model + '|' + qYear, year: qYear, name: c.make + ' ' + c.model + ' ' + qYear, lo: r5(m * 0.955), hi: r5(m * 1.045) });
+    }), function (c) { return c.name; }) : [];
+    var sameMake = hits.length > 1 && hits[1].score === hits[0].score && hits[1].item.make === hits[0].item.make;
+    var didYouMean = hits.length && !hits[0].exact && hits[0].score < 0.97 ? hits[0].item.make + (sameMake ? '' : ' ' + hits[0].item.model) : '';
+    var results = hits.slice(0, 4).map(function (h) { return h.item; }).map(function (c) {
       var inTray = S.tray.indexOf(c.id) >= 0;
       return {
         name: c.name, used: fmt(c.lo) + ' – ' + fmt(c.hi), pressed: inTray ? 'true' : 'false',
@@ -1321,12 +1504,20 @@ class Component extends DCLogic {
           self.setState({ tray: tr });
         }
       };
-    }) : [];
+   });
+    var findCar = function (id) {
+      var hit = CARS.filter(function (x) { return x.id === id; })[0];
+      if (hit) return hit;
+      var p = id.split('|'), cc = (CAT[p[0]] || {})[p[1]], y = parseInt(p[2], 10) || 2022;
+      if (!cc) return CARS[0];
+      var mm = Math.min(cc.ref * Math.pow(1.07, y - 2022), cc.zero ? cc.zero * 0.95 : Infinity);
+      return { id: id, make: p[0], model: p[1], year: y, name: p[0] + ' ' + p[1] + ' ' + y, zero: cc.zero, lo: r5(mm * 0.955), hi: r5(mm * 1.045), n: cc.n };
+    };
     var cmpIds = S.tray.length >= 2 ? S.tray : [CARS[0].id, CARS[CARS.length - 1].id];
-    var cmpCars = cmpIds.map(function (id) { return CARS.filter(function (x) { return x.id === id; })[0]; });
+    var cmpCars = cmpIds.map(findCar);
     var cmp = cmpIds.map(function (id, i) {
-      var c = CARS.filter(function (x) { return x.id === id; })[0];
-      return { name: c.name, zero: c.zero ? fmt(c.zero) : 'مش متاح', used: fmt(c.lo) + ' – ' + fmt(c.hi), n: c.n, ret: c.zero ? Math.round((c.lo + c.hi) / 2 / c.zero * 100) : 0, delay: (0.1 + i * 0.12).toFixed(2) };
+      var c = findCar(id);
+      return { name: c.name, zero: c.zero ? fmt(c.zero) : 'مش متاح', used: fmt(c.lo) + ' – ' + fmt(c.hi), n: c.n, ret: c.zero ? Math.round((c.lo + c.hi) / 2 / c.zero * 100) : 0, retTxt: c.zero ? Math.round((c.lo + c.hi) / 2 / c.zero * 100) + '%' : 'مفيش سعر زيرو', delay: (0.1 + i * 0.12).toFixed(2) };
     });
 
     var carName = car.make + ' ' + car.model + ' ' + car.trim + ' ' + car.year;
@@ -1338,17 +1529,33 @@ class Component extends DCLogic {
         : S.picker === 'model' ? Object.keys(CAT[car.make] || {}).sort()
         : S.picker === 'year' ? (known ? info.years.slice().reverse() : [2026, 2025, 2024, 2023, 2022, 2021, 2020, 2019, 2018])
         : info.trims;
+      var pq = S.pickOther.trim();
+      if (pq) list = Component.fuzzy(pq, list, String).map(function (h) { return h.item; });
       pickOpts = list.map(function (v) {
         var on = String(car[S.picker]) === String(v);
         return { label: String(v), sel: on ? 'true' : 'false', bg: on ? t.ink : 'transparent', fg: on ? t.bg : t.ink, bd: on ? t.ink : t.line2,
           pick: function () { self.pickField(S.picker, v); } };
       });
     }
+    // typed in the picker: take the closest catalog name when it's clearly the same, else use the text as written
+    var useOther = function () {
+      var v = self.state.pickOther.trim(); if (!v) return;
+      var k = self.state.picker;
+      if (k === 'year') { var F = Component._fz || (Component._fz = Component.fzInit()); v = String(parseInt(F.norm(v), 10) || self.state.car.year); }
+      if (pickOpts.length && k !== 'year') {
+        var top = Component.fuzzy(v, pickOpts.map(function (o) { return o.label; }), String)[0];
+        if (top && top.score >= 0.8) return pickOpts.filter(function (o) { return o.label === top.item; })[0].pick();
+      }
+      if (k === 'make' || k === 'model') return self.pickField(k, v);
+      var c = Object.assign({}, self.state.car);
+      c[k] = k === 'year' ? parseInt(v, 10) : v;
+      self.setState({ car: c, sheet: null, picker: null, pickOther: '' });
+    };
     var sheetRows = [];
     if (S.sheet === 'alerts') {
       sheetRows = MARKET.map(function (m) {
         return { name: m.name, sub: m.kind + '، ' + m.when, val: fmt(m.price), tag: m.pct ? (m.delta > 0 ? '+' : '−') + Math.abs(m.delta) + '%' : (m.delta > 0 ? '+' : '−') + fmt(Math.abs(m.delta)),
-          tagFg: m.up ? t.warn : '#5B9CF5', go: function () { self.setState({ sheet: null }); self.setCar(m.car, m.km); } };
+          tagFg: m.up ? t.warn : '#5B9CF5', go: function () { self.setState({ sheet: 'item', item: m }); } };
       });
     } else if (S.sheet === 'zero') {
       Object.keys(CAT).forEach(function (mk) {
@@ -1375,6 +1582,40 @@ class Component extends DCLogic {
         return { name: car.make + ' ' + car.model + ' ' + y + '، ' + fmt(kmc) + ' كم', sub: srcs[i % srcs.length] + '، من ' + (2 + i * 3) + ' يوم', val: fmt(p),
           tag: inRange ? 'في الرينج' : (p < finalLo ? 'أرخص' : 'أغلى'), tagFg: inRange ? t.ink : t.mute, go: function () {} };
       });
+    }
+    var itemView = null;
+    if (S.sheet === 'item' && S.item) {
+      var m = S.item, c = m.car || {}, carTxt = (c.make || '') + ' ' + (c.model || '');
+      var dAbs = m.pct ? Math.abs(m.delta) + '%' : fmt(Math.abs(m.delta));
+      var dTxt = (m.delta > 0 ? '+' : '−') + dAbs;
+      var rowsI = [], story = '', priceLabel = 'السعر';
+      if (m.t === 'zero') {
+        priceLabel = 'سعر الزيرو الجديد';
+        story = 'الوكيل ' + (m.up ? 'زوّد' : 'نزّل') + ' سعر ' + carTxt + ' فئة ' + (c.trim || '—') + ' موديل ' + c.year + ' ' + fmt(Math.abs(m.delta)) + ' جنيه.';
+        rowsI = [{ k: 'الفئة', v: c.trim || '—' }, { k: 'السعر القديم', v: m.old ? fmt(m.old) : '—' }, { k: 'السعر الجديد', v: fmt(m.price) },
+          { k: 'الفرق', v: dTxt + (m.old ? ' (' + ((m.price / m.old - 1) * 100).toFixed(1) + '%)' : '') }, { k: 'اتغيّر', v: m.when }, { k: 'المصدر', v: m.source || 'هتلاقي' }];
+      } else if (m.t === 'deal') {
+        priceLabel = 'سعر الإعلان';
+        story = 'الإعلان ده أرخص من نص السوق لنفس الموديل والسنة بـ ' + Math.abs(m.delta) + '%. اتأكد من الحالة قبل ما تتحرك: الفرق الكبير ساعات بيبقى حادثة أو ورق.';
+        rowsI = [{ k: 'الفئة', v: c.trim || '—' }, { k: 'السنة', v: String(c.year) }, { k: 'العداد', v: m.km ? fmt(m.km) + ' كم' : '—' },
+          { k: 'نص السوق', v: m.median ? fmt(m.median) : '—' }, { k: 'أرخص بـ', v: m.median ? fmt(m.median - m.price) + ' جنيه' : dAbs }, { k: 'المصدر', v: m.source || '' }, { k: 'المكان', v: m.city || '—' }, { k: 'نزل', v: m.when }];
+      } else {
+        priceLabel = 'نص الرينج دلوقتي';
+        story = 'رينج المستعمل لـ ' + carTxt + ' ' + c.year + ' ' + (m.up ? 'طلع' : 'نزل') + ' ' + dAbs + ' ' + m.when + '، محسوب من ' + (m.source || 'الإعلانات') + '.';
+        rowsI = [{ k: 'قبلها', v: m.old ? fmt(m.old) : '—' }, { k: 'دلوقتي', v: fmt(m.price) }, { k: 'التغيير', v: dTxt }, { k: 'الفترة', v: m.when }];
+      }
+      itemView = {
+        price: fmt(m.price), priceLabel: priceLabel, delta: dTxt, rot: m.up ? 0 : 180, chipBg: m.up ? '#F2A93B' : '#5B9CF5',
+        story: story, rows: rowsI, url: m.url || '', hasLink: !!m.url,
+        priceBtnLabel: m.t === 'zero' ? 'سعّر مستعملة منها' : 'سعّرها بالتفصيل',
+        priceBtnBg: m.url ? 'transparent' : t.ink, priceBtnFg: m.url ? t.ink : t.bg,
+        price2: function () { self.setState({ sheet: null, item: null }); self.setCar(c, m.t === 'zero' ? 60000 : m.km); },
+        compare: function () {
+          var id = c.make + '|' + c.model + '|' + c.year, tr = self.state.tray.slice();
+          if (tr.indexOf(id) < 0 && tr.length < 3) tr.push(id);
+          self.setState({ tray: tr, sheet: null, item: null });
+        }
+      };
     }
     var order = ['car', 'paint', 'mech', 'result'];
     var idx = order.indexOf(S.screen);
@@ -1406,7 +1647,7 @@ class Component extends DCLogic {
       back: function () { self.go(idx > 0 ? order[idx - 1] : 'home', 'b'); },
       steps: steps,
       q: S.q, onQ: function (e) { self.setState({ q: e.target.value }); },
-      results: results, hasResults: results.length > 0, canCompare: S.tray.length >= 2, trayCount: S.tray.length,
+      results: results, hasResults: results.length > 0, didYouMean: didYouMean, canCompare: S.tray.length >= 2, trayCount: S.tray.length,
       cmp: cmp,
       firstCmpName: cmpCars[0].name,
       priceFirstCmp: function () { var c = cmpCars[0]; self.setCar({ make: c.make, model: c.model, year: c.year, trim: CAT[c.make][c.model].trims[0] }, 60000); },
@@ -1441,8 +1682,8 @@ class Component extends DCLogic {
         var dtxt = m.pct ? (d > 0 ? '+' : '−') + Math.abs(d).toFixed(1).replace('.0', '') + '%' : (d > 0 ? '+' : '−') + fmt(Math.abs(Math.round(d / 1000) * 1000));
         if (!m.pct && d < 0) dtxt = '−' + fmt(Math.abs(Math.round(d / 1000) * 1000));
         return { name: m.name, kind: m.kind, when: m.when, price: fmt(m.price), delta: dtxt,
-          dc: m.up ? t.warn : '#5B9CF5', rot: m.up ? 0 : 180, aria: m.name + '، ' + m.kind + '، سعّرها',
-          go: function () { self.setCar(m.car, m.km); } };
+          dc: m.up ? t.warn : '#5B9CF5', rot: m.up ? 0 : 180, aria: m.name + '، ' + m.kind + '، التفاصيل',
+          go: function () { self.setState({ sheet: 'item', item: m }); } };
       }),
       recent: [
         { name: carShort + '، ' + fmt(S.km) + ' كم', range: fmt(finalLo) + ' – ' + fmt(finalHi), note: 'آخر تسعير ليك، السوق نزل 1.5% من وقتها', noteFg: '#5B9CF5', go: function () { self.go('result', 'f'); } },
@@ -1528,22 +1769,20 @@ class Component extends DCLogic {
       extraShotsLabel: S.extraShots ? ('+ صور تانية (' + S.extraShots + ' اتضافت)') : '+ صور تانية (الدواخل، الشاسيه، أي عيب)',
       openAlerts: function () { self.setState({ sheet: 'alerts' }); },
       openComps: function () { self.setState({ sheet: 'comps' }); },
-      closeSheet: function () { self.setState({ sheet: null, picker: null }); },
+      closeSheet: function () { self.setState({ sheet: null, picker: null, item: null }); },
       sheetKey: function (e) { if (e.key === 'Escape') self.setState({ sheet: null, picker: null }); },
       sheetOpen: !!S.sheet,
+      isItem: S.sheet === 'item' && !!S.item, it: itemView,
       isPicker: S.sheet === 'picker', isList: S.sheet === 'alerts' || S.sheet === 'zero' || S.sheet === 'comps',
-      sheetTitle: S.sheet === 'picker' ? ({ make: 'اختار الماركة', model: 'اختار الموديل', year: 'اختار السنة', trim: 'اختار الفئة' }[S.picker]) : S.sheet === 'alerts' ? 'التنبيهات' : S.sheet === 'zero' ? 'أسعار الزيرو النهارده' : S.sheet === 'comps' ? ('العربيات اللي اتقارنت (' + nComps + ')') : '',
-      sheetNote: S.sheet === 'comps' ? 'مقارنة بالرينج لعربية فابريكا' : S.sheet === 'zero' ? 'من هتلاقي' : '',
+      sheetTitle: S.sheet === 'item' && S.item ? S.item.name : S.sheet === 'picker' ? ({ make: 'اختار الماركة', model: 'اختار الموديل', year: 'اختار السنة', trim: 'اختار الفئة' }[S.picker]) : S.sheet === 'alerts' ? 'التنبيهات' : S.sheet === 'zero' ? 'أسعار الزيرو النهارده' : S.sheet === 'comps' ? ('العربيات اللي اتقارنت (' + nComps + ')') : '',
+      sheetNote: S.sheet === 'item' && S.item ? S.item.kind + '، ' + S.item.when : S.sheet === 'comps' ? 'مقارنة بالرينج لعربية فابريكا' : S.sheet === 'zero' ? 'من هتلاقي' : '',
       pickOpts: pickOpts,
       pickOther: S.pickOther, onPickOther: function (e) { self.setState({ pickOther: e.target.value }); },
       pickOtherEmpty: !S.pickOther.trim(), pickOtherOp: S.pickOther.trim() ? 1 : 0.4,
       pickOtherAria: 'حاجة تانية مش في القايمة', pickOtherPh: 'مش في القايمة؟ اكتبها…',
-      usePickOther: function () {
-        var v = self.state.pickOther.trim(); if (!v) return;
-        var k = self.state.picker, c = Object.assign({}, self.state.car);
-        c[k] = k === 'year' ? (parseInt(v, 10) || c.year) : v;
-        self.setState({ car: c, sheet: null, picker: null, pickOther: '' });
-      },
+      pickNone: !!S.pickOther.trim() && pickOpts.length === 0,
+      pickOtherKey: function (e) { if (e.key === 'Enter') { e.preventDefault(); useOther(); } },
+      usePickOther: function () { useOther(); },
       sheetRows: sheetRows,
       paintLoading: !S.paintReady,
       wmKey: 'w' + S.wm, penKey: 'p' + S.wm,
