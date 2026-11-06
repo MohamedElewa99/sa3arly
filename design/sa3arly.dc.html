@@ -256,20 +256,31 @@ button:disabled{cursor:not-allowed}
     <main style="flex: 1; min-height: 0; overflow-y: auto; padding: 20px 20px 8px; display: flex; flex-direction: column; gap: 20px">
       <h1 style="margin: 0; font-family: 'Aref Ruqaa', serif; font-weight: 700; font-size: 40px; line-height: 1.1">العربية</h1>
       <div style="display: flex; flex-direction: column; gap: 10px">
-        <span style="font-size: 13px; color: {{ t.mute }}">صوّر العربية، وإحنا نعرف الفئة ونشوف البرّا</span>
+        <span style="font-size: 13px; color: {{ t.mute }}">صوّر العربية من كل ناحية والعداد</span>
         <div style="display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px">
           <sc-for list="{{ shots }}" as="sh" hint-placeholder-count="4">
-            <button class="press" onClick="{{ sh.toggle }}" aria-pressed="{{ sh.pressed }}" aria-label="{{ sh.aria }}" style="height: 74px; border: 1px {{ sh.line }} {{ sh.bd }}; border-radius: 12px; background: {{ sh.bg }}; color: {{ sh.fg }}; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; font-size: 11px; padding: 0">
+            <button class="press" onClick="{{ sh.toggle }}" aria-pressed="{{ sh.pressed }}" aria-label="{{ sh.aria }}" style="position: relative; overflow: hidden; height: 74px; border: 1px {{ sh.line }} {{ sh.bd }}; border-radius: 12px; background: {{ sh.bg }}; color: {{ sh.fg }}; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; font-size: 11px; padding: 0">
               <sc-if value="{{ sh.done }}" hint-placeholder-val="{{ true }}">
-                <svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true"><path d="M3 9.5l3.5 3.5L15 4.5" stroke="currentColor" stroke-width="1.6" fill="none"></path></svg>
+                <img src="{{ sh.src }}" alt="" style="position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover">
+                <span style="position: absolute; left: 0; right: 0; bottom: 0; padding: 3px 0; background: rgba(0,0,0,0.55); color: #FFFFFF; font-size: 11px">{{ sh.label }}</span>
               </sc-if>
               <sc-if value="{{ sh.todo }}" hint-placeholder-val="{{ false }}">
                 <svg width="20" height="16" viewBox="0 0 20 16" aria-hidden="true"><path d="M1 4h4l2-3h6l2 3h4v11H1z" stroke="currentColor" stroke-width="1.2" fill="none"></path><circle cx="10" cy="9" r="3.4" stroke="currentColor" stroke-width="1.2" fill="none"></circle></svg>
+                {{ sh.label }}
               </sc-if>
-              {{ sh.label }}
             </button>
           </sc-for>
         </div>
+        <sc-if value="{{ hasExtras }}" hint-placeholder-val="{{ false }}">
+          <div style="display: flex; gap: 6px; overflow-x: auto">
+            <sc-for list="{{ extras }}" as="ex2" hint-placeholder-count="2">
+              <button class="press" onClick="{{ ex2.remove }}" aria-label="امسح الصورة دي" style="flex: none; position: relative; width: 56px; height: 56px; border-radius: 10px; overflow: hidden; border: 1px solid {{ t.line2 }}; padding: 0; background: none">
+                <img src="{{ ex2.src }}" alt="" style="width: 100%; height: 100%; object-fit: cover">
+                <span aria-hidden="true" style="position: absolute; top: 2px; left: 2px; width: 18px; height: 18px; border-radius: 50%; background: rgba(0,0,0,0.6); color: #FFFFFF; font-size: 12px; line-height: 18px">×</span>
+              </button>
+            </sc-for>
+          </div>
+        </sc-if>
         <button class="press" onClick="{{ addShot }}" style="align-self: flex-start; min-height: 36px; padding: 0 14px; border-radius: 999px; border: 1px dashed {{ t.edge }}; background: none; color: {{ t.ink }}; font-size: 12px">{{ extraShotsLabel }}</button>
         <p style="margin: 0; font-size: 12px; color: {{ t.mute }}; line-height: 1.7">{{ detectTxt }}</p>
       </div>
@@ -680,6 +691,33 @@ button:disabled{cursor:not-allowed}
       ابعته واتساب
     </a>
     <button class="press" onClick="{{ closeReceipt }}" style="height: 40px; background: none; border: none; color: {{ t.mute }}; font-size: 14px">اقفل</button>
+  </section>
+</div>
+</sc-if>
+
+<sc-if value="{{ shotOpen }}" hint-placeholder-val="{{ false }}">
+<div style="position: absolute; inset: 0; z-index: 12">
+  <button class="fade" onClick="{{ closeShot }}" aria-label="اقفل" style="position: absolute; inset: 0; border: none; background: rgba(0,0,0,0.6); padding: 0"></button>
+  <section class="rise" role="dialog" aria-modal="true" aria-labelledby="sh-t" onKeyDown="{{ shotKey }}" style="position: absolute; left: 0; right: 0; bottom: 0; background: {{ t.bg }}; border-radius: 22px 22px 0 0; padding: 10px 20px 24px; box-sizing: border-box; display: flex; flex-direction: column; gap: 10px">
+    <span aria-hidden="true" style="align-self: center; width: 36px; height: 4px; border-radius: 2px; background: {{ t.line2 }}"></span>
+    <h2 id="sh-t" style="margin: 4px 0 2px; font-size: 18px; font-weight: 600">{{ shotTitle }}</h2>
+    <sc-if value="{{ shotHasPhoto }}" hint-placeholder-val="{{ false }}">
+      <img src="{{ shotSrc }}" alt="{{ shotTitle }}" style="width: 100%; max-height: 220px; object-fit: cover; border-radius: 14px">
+    </sc-if>
+    <label class="press" style="position: relative; height: 54px; border-radius: 999px; background: {{ t.ink }}; color: {{ t.bg }}; font-size: 16px; font-weight: 600; display: flex; align-items: center; justify-content: center; gap: 10px; cursor: pointer">
+      <svg width="20" height="16" viewBox="0 0 20 16" aria-hidden="true"><path d="M1 4h4l2-3h6l2 3h4v11H1z" stroke="currentColor" stroke-width="1.5" fill="none"></path><circle cx="10" cy="9" r="3.4" stroke="currentColor" stroke-width="1.5" fill="none"></circle></svg>
+      افتح الكاميرا
+      <input type="file" accept="image/*" capture="environment" onChange="{{ onShotFile }}" aria-label="صوّر بالكاميرا" style="position: absolute; inset: 0; opacity: 0; cursor: pointer">
+    </label>
+    <label class="press" style="position: relative; height: 54px; border-radius: 999px; border: 1px solid {{ t.ink }}; color: {{ t.ink }}; font-size: 16px; font-weight: 500; display: flex; align-items: center; justify-content: center; gap: 10px; cursor: pointer">
+      <svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true"><rect x="1" y="1" width="16" height="16" rx="3" stroke="currentColor" stroke-width="1.4" fill="none"></rect><circle cx="6" cy="6.5" r="1.6" fill="currentColor"></circle><path d="M1.5 14l4.5-4.5 3.5 3.5 2.5-2.5 4.5 4.5" stroke="currentColor" stroke-width="1.4" fill="none"></path></svg>
+      اختار من الصور
+      <input type="file" accept="image/*" multiple="{{ shotMulti }}" onChange="{{ onShotFile }}" aria-label="اختار من الصور" style="position: absolute; inset: 0; opacity: 0; cursor: pointer">
+    </label>
+    <sc-if value="{{ shotHasPhoto }}" hint-placeholder-val="{{ false }}">
+      <button class="press" onClick="{{ removeShot }}" style="min-height: 44px; background: none; border: none; color: {{ t.warn }}; font-size: 14px">امسح الصورة</button>
+    </sc-if>
+    <button class="press" onClick="{{ closeShot }}" style="min-height: 44px; background: none; border: none; color: {{ t.mute }}; font-size: 14px">إلغاء</button>
   </section>
 </div>
 </sc-if>
@@ -1110,7 +1148,7 @@ class Component extends DCLogic {
       q: '', tray: [], km: 100000, agencyKm: 60000,
       paint: { bumperF: 2, doorRL: 1, fenderRR: 1 }, ex: {}, spin: true, angle: -35, dragging: false, last: '',
       mech: { shocksF: true, arms: true }, open: 'susp', k: 1,
-      gl: true, oth: {}, exOther: false, mo: {}, body: 'crossover', bodyAuto: true, heroOn: true, partsOpen: false, mf: 'all', paintReady: false, more: false, wm: 0, margin: 30000, receipt: false, hideBuy: false, copied: false, checked: {}, car: { make: 'كوبرا', model: 'فورمينتور', year: 2022, trim: 'VZ' }, picker: null, pickOther: '', sheet: null, login: null, loginSent: false, loginEmail: '', loginErr: '', loginBusy: false, saving: false, flash: '', profile: false, pf: null, pfBusy: false, pfErr: '', photoBusy: false, item: null, shotsDone: { front: true, back: true }, extraShots: 0
+      gl: true, oth: {}, exOther: false, mo: {}, body: 'crossover', bodyAuto: true, heroOn: true, partsOpen: false, mf: 'all', paintReady: false, more: false, wm: 0, margin: 30000, receipt: false, hideBuy: false, copied: false, checked: {}, car: { make: 'كوبرا', model: 'فورمينتور', year: 2022, trim: 'VZ' }, picker: null, pickOther: '', sheet: null, login: null, loginSent: false, loginEmail: '', loginErr: '', loginBusy: false, saving: false, flash: '', profile: false, pf: null, pfBusy: false, pfErr: '', photoBusy: false, item: null, shotsDone: {}, extraShots: 0, shotPick: null, extras: []
     };
     this._raf = null; this._paint = null; this._hero = null;
     var self = this;
@@ -2184,7 +2222,7 @@ class Component extends DCLogic {
       carName: carName, carShort: carShort, nComps: nComps, compsBtn: 'شوف الـ ' + nComps + ' عربية',
       confTxt: 'ثقة ' + conf + '. قارنّا بـ ' + nComps + ' عربية من نفس الفئة وعدادها قريب، آخر 60 يوم.' + (known ? ' وشلنا الإعلانات اللي أسعارها شاذة.' : ' الموديل ده مش عندنا كفاية، فالرينج أعرض.'),
       axisLo: fmt(lo), axisHi: fmt(hi),
-      detectTxt: (S.shotsDone.front || S.shotsDone.back || S.shotsDone.side) ? ('من الصور: ' + car.make + ' ' + car.model + '، فئة ' + car.trim + '. لو غلط غيّرها تحت.') : 'صوّر قدام أو ورا علشان نعرف الفئة لوحدنا.',
+      detectTxt: (S.shotsDone.front || S.shotsDone.back || S.shotsDone.side) ? 'الصور معاك في التسعيرة دي. اتأكد من الماركة والموديل والفئة تحت.' : 'صوّر قدام وورا والعداد، دوس على أي مربع وافتح الكاميرا أو اختار من الصور.',
       fields: [['make', 'الماركة', car.make], ['model', 'الموديل', car.model], ['year', 'السنة', String(car.year)], ['trim', 'الفئة', car.trim]].map(function (f) {
         return { label: f[1], value: f[2], aria: f[1] + ': ' + f[2] + '، غيّر', open: function () { self.setState({ picker: f[0], pickOther: '', sheet: 'picker' }); } };
       }),
@@ -2192,10 +2230,29 @@ class Component extends DCLogic {
         var d2 = !!S.shotsDone[s2[0]];
         return { label: s2[1], done: d2, todo: !d2, pressed: d2 ? 'true' : 'false', aria: (d2 ? 'اتصورت: ' : 'صوّر: ') + s2[1],
           line: d2 ? 'solid' : 'dashed', bd: d2 ? t.ink : t.edge, bg: d2 ? t.soft : 'transparent', fg: d2 ? t.ink : t.mute,
-          toggle: function () { var o = Object.assign({}, self.state.shotsDone); o[s2[0]] = !o[s2[0]]; self.setState({ shotsDone: o }); } };
+          src: S.shotsDone[s2[0]] || '',
+          toggle: function () { self.setState({ shotPick: s2[0] }); } };
       }),
-      addShot: function () { self.setState({ extraShots: self.state.extraShots + 1 }); },
-      extraShotsLabel: S.extraShots ? ('+ صور تانية (' + S.extraShots + ' اتضافت)') : '+ صور تانية (الدواخل، الشاسيه، أي عيب)',
+      addShot: function () { self.setState({ shotPick: 'extra' }); },
+      extraShotsLabel: S.extras.length ? ('+ صور تانية (' + S.extras.length + ' اتضافت)') : '+ صور تانية (الدواخل، الشاسيه، أي عيب)',
+      hasExtras: S.extras.length > 0,
+      extras: S.extras.map(function (u, i) { return { src: u, remove: function () { var a = self.state.extras.slice(); a.splice(i, 1); self.setState({ extras: a }); } }; }),
+      shotOpen: !!S.shotPick,
+      shotTitle: { front: 'صورة قدام', back: 'صورة ورا', side: 'صورة الجنب', odo: 'صورة العداد', extra: 'صور تانية' }[S.shotPick] || '',
+      shotHasPhoto: !!(S.shotPick && S.shotPick !== 'extra' && S.shotsDone[S.shotPick]), shotSrc: (S.shotPick && S.shotsDone[S.shotPick]) || '',
+      shotMulti: S.shotPick === 'extra',
+      onShotFile: function (e) {
+        var files = [].slice.call(e.target.files || []).filter(function (f) { return /^image\//.test(f.type); });
+        e.target.value = '';
+        if (!files.length) return;
+        var urls = files.map(function (f) { return URL.createObjectURL(f); });
+        var k = self.state.shotPick;
+        if (k === 'extra') self.setState({ extras: self.state.extras.concat(urls).slice(0, 12), shotPick: null });
+        else { var o = Object.assign({}, self.state.shotsDone); o[k] = urls[0]; self.setState({ shotsDone: o, shotPick: null }); }
+      },
+      removeShot: function () { var o = Object.assign({}, self.state.shotsDone); delete o[self.state.shotPick]; self.setState({ shotsDone: o, shotPick: null }); },
+      closeShot: function () { self.setState({ shotPick: null }); },
+      shotKey: function (e) { if (e.key === 'Escape') self.setState({ shotPick: null }); },
       openAlerts: function () { self.setState({ sheet: 'alerts' }); },
       openComps: function () { self.setState({ sheet: 'comps' }); },
       closeSheet: function () { self.setState({ sheet: null, picker: null, item: null }); },

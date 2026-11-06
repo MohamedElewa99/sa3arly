@@ -195,7 +195,7 @@ class Component extends React.Component {
       q: '', tray: [], km: 100000, agencyKm: 60000,
       paint: { bumperF: 2, doorRL: 1, fenderRR: 1 }, ex: {}, spin: true, angle: -35, dragging: false, last: '',
       mech: { shocksF: true, arms: true }, open: 'susp', k: 1,
-      gl: true, oth: {}, exOther: false, mo: {}, body: 'crossover', bodyAuto: true, heroOn: true, partsOpen: false, mf: 'all', paintReady: false, more: false, wm: 0, margin: 30000, receipt: false, hideBuy: false, copied: false, checked: {}, car: { make: 'كوبرا', model: 'فورمينتور', year: 2022, trim: 'VZ' }, picker: null, pickOther: '', sheet: null, login: null, loginSent: false, loginEmail: '', loginErr: '', loginBusy: false, saving: false, flash: '', profile: false, pf: null, pfBusy: false, pfErr: '', photoBusy: false, item: null, shotsDone: { front: true, back: true }, extraShots: 0
+      gl: true, oth: {}, exOther: false, mo: {}, body: 'crossover', bodyAuto: true, heroOn: true, partsOpen: false, mf: 'all', paintReady: false, more: false, wm: 0, margin: 30000, receipt: false, hideBuy: false, copied: false, checked: {}, car: { make: 'كوبرا', model: 'فورمينتور', year: 2022, trim: 'VZ' }, picker: null, pickOther: '', sheet: null, login: null, loginSent: false, loginEmail: '', loginErr: '', loginBusy: false, saving: false, flash: '', profile: false, pf: null, pfBusy: false, pfErr: '', photoBusy: false, item: null, shotsDone: {}, extraShots: 0, shotPick: null, extras: []
     };
     this._raf = null; this._paint = null; this._hero = null;
     var self = this;
@@ -1269,7 +1269,7 @@ class Component extends React.Component {
       carName: carName, carShort: carShort, nComps: nComps, compsBtn: 'شوف الـ ' + nComps + ' عربية',
       confTxt: 'ثقة ' + conf + '. قارنّا بـ ' + nComps + ' عربية من نفس الفئة وعدادها قريب، آخر 60 يوم.' + (known ? ' وشلنا الإعلانات اللي أسعارها شاذة.' : ' الموديل ده مش عندنا كفاية، فالرينج أعرض.'),
       axisLo: fmt(lo), axisHi: fmt(hi),
-      detectTxt: (S.shotsDone.front || S.shotsDone.back || S.shotsDone.side) ? ('من الصور: ' + car.make + ' ' + car.model + '، فئة ' + car.trim + '. لو غلط غيّرها تحت.') : 'صوّر قدام أو ورا علشان نعرف الفئة لوحدنا.',
+      detectTxt: (S.shotsDone.front || S.shotsDone.back || S.shotsDone.side) ? 'الصور معاك في التسعيرة دي. اتأكد من الماركة والموديل والفئة تحت.' : 'صوّر قدام وورا والعداد، دوس على أي مربع وافتح الكاميرا أو اختار من الصور.',
       fields: [['make', 'الماركة', car.make], ['model', 'الموديل', car.model], ['year', 'السنة', String(car.year)], ['trim', 'الفئة', car.trim]].map(function (f) {
         return { label: f[1], value: f[2], aria: f[1] + ': ' + f[2] + '، غيّر', open: function () { self.setState({ picker: f[0], pickOther: '', sheet: 'picker' }); } };
       }),
@@ -1277,10 +1277,29 @@ class Component extends React.Component {
         var d2 = !!S.shotsDone[s2[0]];
         return { label: s2[1], done: d2, todo: !d2, pressed: d2 ? 'true' : 'false', aria: (d2 ? 'اتصورت: ' : 'صوّر: ') + s2[1],
           line: d2 ? 'solid' : 'dashed', bd: d2 ? t.ink : t.edge, bg: d2 ? t.soft : 'transparent', fg: d2 ? t.ink : t.mute,
-          toggle: function () { var o = Object.assign({}, self.state.shotsDone); o[s2[0]] = !o[s2[0]]; self.setState({ shotsDone: o }); } };
+          src: S.shotsDone[s2[0]] || '',
+          toggle: function () { self.setState({ shotPick: s2[0] }); } };
       }),
-      addShot: function () { self.setState({ extraShots: self.state.extraShots + 1 }); },
-      extraShotsLabel: S.extraShots ? ('+ صور تانية (' + S.extraShots + ' اتضافت)') : '+ صور تانية (الدواخل، الشاسيه، أي عيب)',
+      addShot: function () { self.setState({ shotPick: 'extra' }); },
+      extraShotsLabel: S.extras.length ? ('+ صور تانية (' + S.extras.length + ' اتضافت)') : '+ صور تانية (الدواخل، الشاسيه، أي عيب)',
+      hasExtras: S.extras.length > 0,
+      extras: S.extras.map(function (u, i) { return { src: u, remove: function () { var a = self.state.extras.slice(); a.splice(i, 1); self.setState({ extras: a }); } }; }),
+      shotOpen: !!S.shotPick,
+      shotTitle: { front: 'صورة قدام', back: 'صورة ورا', side: 'صورة الجنب', odo: 'صورة العداد', extra: 'صور تانية' }[S.shotPick] || '',
+      shotHasPhoto: !!(S.shotPick && S.shotPick !== 'extra' && S.shotsDone[S.shotPick]), shotSrc: (S.shotPick && S.shotsDone[S.shotPick]) || '',
+      shotMulti: S.shotPick === 'extra',
+      onShotFile: function (e) {
+        var files = [].slice.call(e.target.files || []).filter(function (f) { return /^image\//.test(f.type); });
+        e.target.value = '';
+        if (!files.length) return;
+        var urls = files.map(function (f) { return URL.createObjectURL(f); });
+        var k = self.state.shotPick;
+        if (k === 'extra') self.setState({ extras: self.state.extras.concat(urls).slice(0, 12), shotPick: null });
+        else { var o = Object.assign({}, self.state.shotsDone); o[k] = urls[0]; self.setState({ shotsDone: o, shotPick: null }); }
+      },
+      removeShot: function () { var o = Object.assign({}, self.state.shotsDone); delete o[self.state.shotPick]; self.setState({ shotsDone: o, shotPick: null }); },
+      closeShot: function () { self.setState({ shotPick: null }); },
+      shotKey: function (e) { if (e.key === 'Escape') self.setState({ shotPick: null }); },
       openAlerts: function () { self.setState({ sheet: 'alerts' }); },
       openComps: function () { self.setState({ sheet: 'comps' }); },
       closeSheet: function () { self.setState({ sheet: null, picker: null, item: null }); },
@@ -1534,25 +1553,36 @@ class Component extends React.Component {
 <main style={css("flex: 1; min-height: 0; overflow-y: auto; padding: 20px 20px 8px; display: flex; flex-direction: column; gap: 20px")}>
 <h1 style={css("margin: 0; font-family: 'Aref Ruqaa', serif; font-weight: 700; font-size: 40px; line-height: 1.1")}>العربية</h1>
 <div style={css("display: flex; flex-direction: column; gap: 10px")}>
-<span style={css(`font-size: 13px; color: ${v.t.mute}`)}>صوّر العربية، وإحنا نعرف الفئة ونشوف البرّا</span>
+<span style={css(`font-size: 13px; color: ${v.t.mute}`)}>صوّر العربية من كل ناحية والعداد</span>
 <div style={css("display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px")}>
 {(v.shots || []).map((sh, i7) => (<React.Fragment key={i7}>
-<button className="press" onClick={sh.toggle} aria-pressed={sh.pressed} aria-label={sh.aria} style={css(`height: 74px; border: 1px ${sh.line} ${sh.bd}; border-radius: 12px; background: ${sh.bg}; color: ${sh.fg}; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; font-size: 11px; padding: 0`)}>
+<button className="press" onClick={sh.toggle} aria-pressed={sh.pressed} aria-label={sh.aria} style={css(`position: relative; overflow: hidden; height: 74px; border: 1px ${sh.line} ${sh.bd}; border-radius: 12px; background: ${sh.bg}; color: ${sh.fg}; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; font-size: 11px; padding: 0`)}>
 {(sh.done) && (<>
-<svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true"><path d="M3 9.5l3.5 3.5L15 4.5" stroke="currentColor" strokeWidth="1.6" fill="none"></path></svg>
+<img src={sh.src} alt="" style={css("position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover")} />
+<span style={css("position: absolute; left: 0; right: 0; bottom: 0; padding: 3px 0; background: rgba(0,0,0,0.55); color: #FFFFFF; font-size: 11px")}>{sh.label}</span>
 </>)}
 {(sh.todo) && (<>
 <svg width="20" height="16" viewBox="0 0 20 16" aria-hidden="true"><path d="M1 4h4l2-3h6l2 3h4v11H1z" stroke="currentColor" strokeWidth="1.2" fill="none"></path><circle cx="10" cy="9" r="3.4" stroke="currentColor" strokeWidth="1.2" fill="none"></circle></svg>
-</>)}
-              {sh.label}
-            </button>
+                {sh.label}
+              </>)}
+</button>
 </React.Fragment>))}
 </div>
+{(v.hasExtras) && (<>
+<div style={css("display: flex; gap: 6px; overflow-x: auto")}>
+{(v.extras || []).map((ex2, i8) => (<React.Fragment key={i8}>
+<button className="press" onClick={ex2.remove} aria-label="امسح الصورة دي" style={css(`flex: none; position: relative; width: 56px; height: 56px; border-radius: 10px; overflow: hidden; border: 1px solid ${v.t.line2}; padding: 0; background: none`)}>
+<img src={ex2.src} alt="" style={css("width: 100%; height: 100%; object-fit: cover")} />
+<span aria-hidden="true" style={css("position: absolute; top: 2px; left: 2px; width: 18px; height: 18px; border-radius: 50%; background: rgba(0,0,0,0.6); color: #FFFFFF; font-size: 12px; line-height: 18px")}>×</span>
+</button>
+</React.Fragment>))}
+</div>
+</>)}
 <button className="press" onClick={v.addShot} style={css(`align-self: flex-start; min-height: 36px; padding: 0 14px; border-radius: 999px; border: 1px dashed ${v.t.edge}; background: none; color: ${v.t.ink}; font-size: 12px`)}>{v.extraShotsLabel}</button>
 <p style={css(`margin: 0; font-size: 12px; color: ${v.t.mute}; line-height: 1.7`)}>{v.detectTxt}</p>
 </div>
 <div style={css("display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px 12px")}>
-{(v.fields || []).map((fd, i8) => (<React.Fragment key={i8}>
+{(v.fields || []).map((fd, i9) => (<React.Fragment key={i9}>
 <div style={css("display: flex; flex-direction: column; gap: 6px; min-width: 0")}>
 <span style={css(`font-size: 12px; color: ${v.t.mute}`)}>{fd.label}</span>
 <button className="press" onClick={fd.open} aria-haspopup="dialog" aria-label={fd.aria} style={css(`height: 46px; display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 0; border: none; border-bottom: 1px solid ${v.t.edge}; background: none; color: ${v.t.ink}; font-size: 16px; text-align: right; min-width: 0`)}>
@@ -1608,7 +1638,7 @@ class Component extends React.Component {
 </div>
 <p aria-live="polite" style={css("margin: 0; min-height: 20px; text-align: center; font-size: 13px")}>{v.lastTxt}</p>
 <div role="group" aria-label="اختيارات سريعة" style={css("display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px")}>
-{(v.presets || []).map((ps, i9) => (<React.Fragment key={i9}>
+{(v.presets || []).map((ps, i10) => (<React.Fragment key={i10}>
 <button className="press" onClick={ps.pick} aria-pressed={ps.pressed} style={css(`min-height: 52px; padding: 6px 8px; border-radius: 12px; border: 1px solid ${ps.bd}; background: ${ps.bg}; color: ${ps.fg}; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px`)}>
 <span style={css("font-size: 13px; font-weight: 500")}>{ps.label}</span>
 <span style={css("font-size: 11px; opacity: .75")}>{ps.sub}</span>
@@ -1631,7 +1661,7 @@ class Component extends React.Component {
 </div>
 </div>
 <div style={css("display: flex; gap: 8px; flex-wrap: wrap")}>
-{(v.extras || []).map((x, i10) => (<React.Fragment key={i10}>
+{(v.extras || []).map((x, i11) => (<React.Fragment key={i11}>
 <button className="press" onClick={x.toggle} aria-pressed={x.on} style={css(`min-height: 40px; padding: 0 16px; border-radius: 999px; border: 1px solid ${x.bd}; background: ${x.bg}; color: ${x.fg}; font-size: 13px`)}>{x.label}</button>
 </React.Fragment>))}
 <button className="press" onClick={v.toggleExOther} aria-pressed={v.exOtherStr} style={css(`min-height: 40px; padding: 0 16px; border-radius: 999px; border: 1px dashed ${v.t.edge}; background: ${v.exOtherBg}; color: ${v.exOtherFg}; font-size: 13px`)}>حاجة تانية</button>
@@ -1645,7 +1675,7 @@ class Component extends React.Component {
 </button>
 {(v.partsOpen) && (<>
 <div className="fu" style={css("display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px")}>
-{(v.faces || []).map((f, i11) => (<React.Fragment key={i11}>
+{(v.faces || []).map((f, i12) => (<React.Fragment key={i12}>
 <button className="press" onClick={f.cycle} aria-label={f.aria} style={css(`min-height: 44px; padding: 4px 6px; border-radius: 10px; border: 1px solid ${f.bd}; background: ${f.bg}; color: ${f.fg}; font-size: 12px; line-height: 1.3; transition: background .3s ease`)}>{f.full}</button>
 </React.Fragment>))}
 </div>
@@ -1661,7 +1691,7 @@ class Component extends React.Component {
 <main style={css("flex: 1; min-height: 0; overflow-y: auto; padding: 18px 20px 8px; display: flex; flex-direction: column")}>
 <h1 style={css("margin: 0 0 4px; font-family: 'Aref Ruqaa', serif; font-weight: 700; font-size: 40px; line-height: 1.1")}>الميكانيكا</h1>
 <p style={css(`margin: 0 0 12px; font-size: 13px; color: ${v.t.mute}`)}>افتح أي بند وعلّم على الحاجة اللي محتاجة تتغير بس.</p>
-{(v.cats || []).map((c, i12) => (<React.Fragment key={i12}>
+{(v.cats || []).map((c, i13) => (<React.Fragment key={i13}>
 <div style={css(`border-top: 1px solid ${v.t.line}; padding-top: 4px`)}>
 <button className="press" onClick={c.toggle} aria-expanded={c.expanded} style={css(`width: 100%; min-height: 54px; display: flex; align-items: center; justify-content: space-between; background: none; border: none; color: ${v.t.ink}; padding: 0`)}>
 <span style={css("font-size: 15px")}>{c.name}</span>
@@ -1672,7 +1702,7 @@ class Component extends React.Component {
 </button>
 {(c.open) && (<>
 <div className="fu" style={css("display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; padding: 0 0 14px")}>
-{(c.parts || []).map((pt, i13) => (<React.Fragment key={i13}>
+{(c.parts || []).map((pt, i14) => (<React.Fragment key={i14}>
 <button className="press" onClick={pt.toggle} aria-pressed={pt.on} style={css(`min-height: 56px; padding: 8px 12px; border-radius: 12px; border: 1px solid ${pt.bd}; background: ${pt.bg}; color: ${pt.fg}; display: flex; flex-direction: column; align-items: flex-start; justify-content: center; gap: 3px; text-align: right; transition: background .25s ease`)}>
 <span style={css("font-size: 13px; font-weight: 500")}>{pt.name}</span>
 <span style={css("font-size: 11px; opacity: .8")}>{pt.cost}</span>
@@ -1714,7 +1744,7 @@ class Component extends React.Component {
 <div dir="ltr" role="img" aria-label={v.stripAria} style={css("margin-top: 22px; position: relative; height: 44px; flex: none")}>
 <div className="grow" style={css(`position: absolute; top: 21px; left: 0; right: 0; height: 1px; background: ${v.t.line2}`)}></div>
 <div className="fade d4" style={css(`position: absolute; top: 12px; height: 19px; left: ${v.bandL}px; width: ${v.bandW}px; border: 1px solid ${v.t.ink}; border-radius: 10px; box-sizing: border-box`)}></div>
-{(v.dots || []).map((d, i14) => (<React.Fragment key={i14}>
+{(v.dots || []).map((d, i15) => (<React.Fragment key={i15}>
 <span className="pop" style={css(`position: absolute; top: 18px; left: ${d.x}px; width: 7px; height: 7px; border-radius: 50%; background: ${d.c}; animation-delay: ${d.delay}s`)}></span>
 </React.Fragment>))}
 <span style={css(`position: absolute; top: 33px; left: 0; font-size: 11px; color: ${v.t.mute}`)}>{v.axisLo}</span>
@@ -1722,7 +1752,7 @@ class Component extends React.Component {
 </div>
 <p style={css(`margin: 8px 0 0; font-size: 12px; color: ${v.t.mute}; text-align: center; line-height: 1.7`)}>{v.confTxt}</p>
 <dl style={css("margin: 20px 0 0; display: flex; flex-direction: column")}>
-{(v.rows || []).map((rw, i15) => (<React.Fragment key={i15}>
+{(v.rows || []).map((rw, i16) => (<React.Fragment key={i16}>
 <div className="fu" style={css(`display: flex; justify-content: space-between; align-items: baseline; gap: 12px; padding: 11px 0; border-top: 1px solid ${v.t.line}; animation-delay: ${rw.delay}s`)}>
 <dt style={css(`font-size: 13px; color: ${rw.fg}; display: flex; align-items: center; gap: 8px`)}><span style={css(`width: 8px; height: 8px; border-radius: 2px; flex: none; background: ${rw.sw}`)}></span>{rw.label}</dt>
 <dd className="num" style={css(`margin: 0; font-size: 13px; color: ${rw.fg}; direction: ltr; white-space: nowrap`)}>{rw.val}</dd>
@@ -1759,7 +1789,7 @@ class Component extends React.Component {
 <path d={v.histArea} fill={v.t.soft}></path>
 <path className="draw" d={v.histLine} stroke={v.t.ink} strokeWidth="1.8" fill="none" strokeLinecap="round" strokeLinejoin="round"></path>
 <circle cx={v.histX} cy={v.histY} r="4.5" fill="#F2A93B"></circle>
-{(v.histLabels || []).map((hl, i16) => (<React.Fragment key={i16}>
+{(v.histLabels || []).map((hl, i17) => (<React.Fragment key={i17}>
 <text x={hl.x} y="142" fill={v.t.mute} fontSize="11" textAnchor="middle" fontFamily="Alexandria, sans-serif">{hl.m}</text>
 </React.Fragment>))}
 <text x="350" y={v.histTopY} fill={v.t.mute} fontSize="11" textAnchor="end" fontFamily="Alexandria, sans-serif" className="num">{v.histTop}</text>
@@ -1769,7 +1799,7 @@ class Component extends React.Component {
 <section aria-labelledby="issues" style={css("margin-top: 30px; display: flex; flex-direction: column")}>
 <h2 id="issues" style={css("margin: 0 0 4px; font-size: 17px; font-weight: 600")}>اتأكد من دول في الموديل ده</h2>
 <p style={css(`margin: 0 0 8px; font-size: 12px; color: ${v.t.mute}`)}>أشهر حاجات الملاك بيشتكوا منها. علّم على اللي فحصته.</p>
-{(v.issues || []).map((is, i17) => (<React.Fragment key={i17}>
+{(v.issues || []).map((is, i18) => (<React.Fragment key={i18}>
 <label style={css(`display: flex; align-items: flex-start; gap: 12px; padding: 12px 0; border-top: 1px solid ${v.t.line}; cursor: pointer`)}>
 <input type="checkbox" checked={is.done} onChange={is.toggle} style={css("flex: none; width: 20px; height: 20px; margin: 2px 0 0; accent-color: #F2A93B")} />
 <span style={css("display: flex; flex-direction: column; gap: 3px")}>
@@ -1805,7 +1835,7 @@ class Component extends React.Component {
 </header>
 <main style={css("flex: 1; min-height: 0; overflow-y: auto; padding: 14px 20px 24px; display: flex; flex-direction: column; gap: 18px")}>
 <h1 style={css("margin: 0; font-family: 'Aref Ruqaa', serif; font-weight: 700; font-size: 40px; line-height: 1.1")}>مقارنة</h1>
-{(v.cmp || []).map((cc, i18) => (<React.Fragment key={i18}>
+{(v.cmp || []).map((cc, i19) => (<React.Fragment key={i19}>
 <div className="fu" style={css(`display: flex; flex-direction: column; gap: 10px; padding: 16px; border-radius: 16px; background: ${v.t.soft}; animation-delay: ${cc.delay}s`)}>
 <span style={css("font-size: 16px; font-weight: 500")}>{cc.name}</span>
 <div style={css("display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px")}>
@@ -1841,7 +1871,7 @@ class Component extends React.Component {
 <p aria-live="polite" style={css(`margin: 0 4px; font-size: 13px; color: ${v.t.mute}`)}>مش لاقيها في القايمة. دوس "استخدمها" وهنسعّر بالاسم ده.</p>
 </>)}
 <div style={css("display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px")}>
-{(v.pickOpts || []).map((po, i19) => (<React.Fragment key={i19}>
+{(v.pickOpts || []).map((po, i20) => (<React.Fragment key={i20}>
 <button className="press" onClick={po.pick} aria-pressed={po.sel} style={css(`min-height: 52px; padding: 6px 12px; border-radius: 12px; border: 1px solid ${po.bd}; background: ${po.bg}; color: ${po.fg}; font-size: 15px; text-align: right; overflow: hidden; text-overflow: ellipsis; white-space: nowrap`)}>{po.label}</button>
 </React.Fragment>))}
 </div>
@@ -1859,7 +1889,7 @@ class Component extends React.Component {
 </div>
 <p style={css("margin: 0; font-size: 14px; line-height: 1.7")}>{v.it.story}</p>
 <dl style={css("margin: 0; display: flex; flex-direction: column")}>
-{(v.it.rows || []).map((ir, i20) => (<React.Fragment key={i20}>
+{(v.it.rows || []).map((ir, i21) => (<React.Fragment key={i21}>
 <div style={css(`display: flex; justify-content: space-between; gap: 12px; padding: 11px 0; border-top: 1px solid ${v.t.line}`)}>
 <dt style={css(`font-size: 13px; color: ${v.t.mute}`)}>{ir.k}</dt>
 <dd className="num" style={css("margin: 0; font-size: 13px; text-align: left")}>{ir.v}</dd>
@@ -1877,7 +1907,7 @@ class Component extends React.Component {
 </>)}
 {(v.isList) && (<>
 <ul style={css("list-style: none; margin: 0; padding: 0")}>
-{(v.sheetRows || []).map((sr, i21) => (<React.Fragment key={i21}>
+{(v.sheetRows || []).map((sr, i22) => (<React.Fragment key={i22}>
 <li style={css(`border-top: 1px solid ${v.t.line}`)}>
 <button className="press" onClick={sr.go} style={css(`width: 100%; min-height: 62px; padding: 10px 0; display: flex; align-items: center; justify-content: space-between; gap: 12px; background: none; border: none; color: ${v.t.ink}; text-align: right`)}>
 <span style={css("display: flex; flex-direction: column; gap: 3px; min-width: 0")}>
@@ -1941,6 +1971,32 @@ class Component extends React.Component {
       ابعته واتساب
     </a>
 <button className="press" onClick={v.closeReceipt} style={css(`height: 40px; background: none; border: none; color: ${v.t.mute}; font-size: 14px`)}>اقفل</button>
+</section>
+</div>
+</>)}
+{(v.shotOpen) && (<>
+<div style={css("position: absolute; inset: 0; z-index: 12")}>
+<button className="fade" onClick={v.closeShot} aria-label="اقفل" style={css("position: absolute; inset: 0; border: none; background: rgba(0,0,0,0.6); padding: 0")}></button>
+<section className="rise" role="dialog" aria-modal="true" aria-labelledby="sh-t" onKeyDown={v.shotKey} style={css(`position: absolute; left: 0; right: 0; bottom: 0; background: ${v.t.bg}; border-radius: 22px 22px 0 0; padding: 10px 20px 24px; box-sizing: border-box; display: flex; flex-direction: column; gap: 10px`)}>
+<span aria-hidden="true" style={css(`align-self: center; width: 36px; height: 4px; border-radius: 2px; background: ${v.t.line2}`)}></span>
+<h2 id="sh-t" style={css("margin: 4px 0 2px; font-size: 18px; font-weight: 600")}>{v.shotTitle}</h2>
+{(v.shotHasPhoto) && (<>
+<img src={v.shotSrc} alt={v.shotTitle} style={css("width: 100%; max-height: 220px; object-fit: cover; border-radius: 14px")} />
+</>)}
+<label className="press" style={css(`position: relative; height: 54px; border-radius: 999px; background: ${v.t.ink}; color: ${v.t.bg}; font-size: 16px; font-weight: 600; display: flex; align-items: center; justify-content: center; gap: 10px; cursor: pointer`)}>
+<svg width="20" height="16" viewBox="0 0 20 16" aria-hidden="true"><path d="M1 4h4l2-3h6l2 3h4v11H1z" stroke="currentColor" strokeWidth="1.5" fill="none"></path><circle cx="10" cy="9" r="3.4" stroke="currentColor" strokeWidth="1.5" fill="none"></circle></svg>
+      افتح الكاميرا
+      <input type="file" accept="image/*" capture="environment" onChange={v.onShotFile} aria-label="صوّر بالكاميرا" style={css("position: absolute; inset: 0; opacity: 0; cursor: pointer")} />
+</label>
+<label className="press" style={css(`position: relative; height: 54px; border-radius: 999px; border: 1px solid ${v.t.ink}; color: ${v.t.ink}; font-size: 16px; font-weight: 500; display: flex; align-items: center; justify-content: center; gap: 10px; cursor: pointer`)}>
+<svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true"><rect x="1" y="1" width="16" height="16" rx="3" stroke="currentColor" strokeWidth="1.4" fill="none"></rect><circle cx="6" cy="6.5" r="1.6" fill="currentColor"></circle><path d="M1.5 14l4.5-4.5 3.5 3.5 2.5-2.5 4.5 4.5" stroke="currentColor" strokeWidth="1.4" fill="none"></path></svg>
+      اختار من الصور
+      <input type="file" accept="image/*" multiple={v.shotMulti} onChange={v.onShotFile} aria-label="اختار من الصور" style={css("position: absolute; inset: 0; opacity: 0; cursor: pointer")} />
+</label>
+{(v.shotHasPhoto) && (<>
+<button className="press" onClick={v.removeShot} style={css(`min-height: 44px; background: none; border: none; color: ${v.t.warn}; font-size: 14px`)}>امسح الصورة</button>
+</>)}
+<button className="press" onClick={v.closeShot} style={css(`min-height: 44px; background: none; border: none; color: ${v.t.mute}; font-size: 14px`)}>إلغاء</button>
 </section>
 </div>
 </>)}
@@ -2024,7 +2080,7 @@ class Component extends React.Component {
 <label style={css(`display: flex; flex-direction: column; gap: 6px; font-size: 13px; color: ${v.t.mute}`)}>المدينة
         <select name="city" value={v.pfCity} onChange={v.onPfCity} style={css(`height: 50px; border-radius: 12px; border: 1px solid ${v.t.line2}; background: ${v.t.soft}; color: ${v.t.ink}; padding: 0 12px; font-family: 'Alexandria', sans-serif; font-size: 16px`)}>
 <option value="">اختار مدينتك</option>
-{(v.cities || []).map((ct, i22) => (<React.Fragment key={i22}>
+{(v.cities || []).map((ct, i23) => (<React.Fragment key={i23}>
 <option value={ct}>{ct}</option>
 </React.Fragment>))}
 </select>
@@ -2057,7 +2113,7 @@ class Component extends React.Component {
 </button>
 </div>
 <div style={css("margin-top: 18px; display: flex; flex-direction: column")}>
-{(v.menuItems || []).map((m, i23) => (<React.Fragment key={i23}>
+{(v.menuItems || []).map((m, i24) => (<React.Fragment key={i24}>
 <button className="press fu" onClick={m.go} disabled={m.soon} style={css(`min-height: 64px; display: flex; align-items: center; justify-content: space-between; gap: 10px; background: none; border: none; border-bottom: 1px solid ${v.t.line}; color: ${v.t.ink}; text-align: right; padding: 0; animation-delay: ${m.delay}s; opacity: ${m.op}`)}>
 <span style={css("display: flex; flex-direction: column; gap: 3px")}>
 <span style={css("font-size: 16px; font-weight: 500")}>{m.label}</span>
@@ -2084,7 +2140,7 @@ class Component extends React.Component {
 <h2 style={css("margin: 0; font-size: 44px; line-height: 1.25; font-weight: 600; max-width: 640px")}>اعرف تمن أي عربية مستعملة في مصر، قبل ما تدفع.</h2>
 <p style={css(`margin: 0; font-size: 16px; line-height: 1.8; color: ${v.t.mute}; max-width: 560px`)}>بنقارن عربيتك بإعلانات حقيقية شبهها من هتلاقي والسوق المفتوح وSylndr، ونخصم الرش والمتغير والميكانيكا، ونطلعلك رينج عادل وأقصى سعر تشتري بيه.</p>
 <div style={css("display: flex; gap: 40px; margin-top: 10px")}>
-{(v.deskStats || []).map((ds, i24) => (<React.Fragment key={i24}>
+{(v.deskStats || []).map((ds, i25) => (<React.Fragment key={i25}>
 <div style={css("display: flex; flex-direction: column; gap: 2px")}>
 <span className="num" style={css("font-size: 34px; font-weight: 300")}>{ds.n}</span>
 <span style={css(`font-size: 13px; color: ${v.t.mute}`)}>{ds.label}</span>
@@ -2098,7 +2154,7 @@ class Component extends React.Component {
 <span style={css(`font-size: 13px; color: ${v.t.mute}`)}>تغييرات الزيرو ولقطات نزلت أرخص من السوق</span>
 </div>
 <div style={css("display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 12px")}>
-{(v.deskMarket || []).map((dm, i25) => (<React.Fragment key={i25}>
+{(v.deskMarket || []).map((dm, i26) => (<React.Fragment key={i26}>
 <button className="press" onClick={dm.go} style={css(`min-height: 112px; padding: 16px; border-radius: 16px; border: 1px solid ${v.t.line}; background: ${v.t.soft}; color: ${v.t.ink}; text-align: right; display: flex; flex-direction: column; justify-content: space-between; gap: 12px`)}>
 <span style={css("display: flex; flex-direction: column; gap: 4px")}>
 <span style={css("font-size: 15px; font-weight: 500; line-height: 1.5")}>{dm.name}</span>
@@ -2118,7 +2174,7 @@ class Component extends React.Component {
 <button className="press" onClick={v.openZero} style={css(`background: none; border: none; color: ${v.t.mute}; font-size: 13px; padding: 0; min-height: 36px`)}>كل الأسعار</button>
 </div>
 <div style={css("display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: 32px")}>
-{(v.deskZero || []).map((dz, i26) => (<React.Fragment key={i26}>
+{(v.deskZero || []).map((dz, i27) => (<React.Fragment key={i27}>
 <button className="press" onClick={dz.go} style={css(`min-height: 52px; display: flex; align-items: center; justify-content: space-between; gap: 12px; background: none; border: none; border-bottom: 1px solid ${v.t.line}; color: ${v.t.ink}; padding: 0; text-align: right`)}>
 <span style={css("font-size: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap")}>{dz.name}</span>
 <span className="num" style={css("flex: none; font-size: 14px; direction: ltr")}>{dz.price}</span>
@@ -2144,7 +2200,7 @@ class Component extends React.Component {
 <span style={css(`font-size: 13px; color: ${v.t.mute}`)}>مقارنة بالرينج لعربية فابريكا</span>
 </div>
 <div role="table" aria-labelledby="dk-cmp" style={css("display: flex; flex-direction: column")}>
-{(v.deskComps || []).map((dc, i27) => (<React.Fragment key={i27}>
+{(v.deskComps || []).map((dc, i28) => (<React.Fragment key={i28}>
 <button className="press" role="row" onClick={dc.go} style={css(`min-height: 56px; display: grid; grid-template-columns: minmax(0, 1fr) 140px 110px 90px; align-items: center; gap: 16px; background: none; border: none; border-bottom: 1px solid ${v.t.line}; color: ${v.t.ink}; padding: 0; text-align: right`)}>
 <span role="cell" style={css("font-size: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap")}>{dc.name}</span>
 <span role="cell" style={css(`font-size: 13px; color: ${v.t.mute}; overflow: hidden; text-overflow: ellipsis; white-space: nowrap`)}>{dc.sub}</span>
@@ -2158,7 +2214,7 @@ class Component extends React.Component {
 {(v.deskSaved) && (<>
 <section aria-labelledby="dk-mine" style={css("display: flex; flex-direction: column")}>
 <h2 id="dk-mine" style={css("margin: 0 0 6px; font-size: 20px; font-weight: 600")}>تسعيراتك</h2>
-{(v.recent || []).map((rc, i28) => (<React.Fragment key={i28}>
+{(v.recent || []).map((rc, i29) => (<React.Fragment key={i29}>
 <button className="press" onClick={rc.go} style={css(`min-height: 56px; display: flex; align-items: center; justify-content: space-between; gap: 16px; background: none; border: none; border-bottom: 1px solid ${v.t.line}; color: ${v.t.ink}; padding: 0; text-align: right`)}>
 <span style={css("font-size: 14px")}>{rc.name} <span style={css(`color: ${rc.noteFg}; font-size: 12px; margin-right: 8px`)}>{rc.note}</span></span>
 <span className="num" style={css("font-size: 14px; direction: ltr")}>{rc.range}</span>
