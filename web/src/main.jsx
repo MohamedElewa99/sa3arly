@@ -6,8 +6,14 @@ import { bindAuth, initAuth } from './auth.js';
 import './app.css';
 import './shell.css';
 
+// first theme: what the user picked before, else the phone's dark / light mode
+let saved = null;
+try { saved = localStorage.getItem('sa3.theme'); } catch (e) { /* private mode */ }
+const night = saved ? saved === 'dark' : !window.matchMedia('(prefers-color-scheme: light)').matches;
+Component.saveTheme = (dark) => { try { localStorage.setItem('sa3.theme', dark ? 'dark' : 'light'); } catch (e) { /* private mode */ } };
+
 function Root() {
-  return <Component ref={(r) => { if (r) { appRef = r; bindApp(r); bindAuth(r); } }} />;
+  return <Component night={night} ref={(r) => { if (r) { appRef = r; bindApp(r); bindAuth(r); } }} />;
 }
 
 // wide screens get the website layout (top nav + the app beside a data panel); phones get the app
@@ -41,9 +47,17 @@ window.addEventListener('beforeinstallprompt', (e) => { e.preventDefault(); defe
 window.addEventListener('appinstalled', () => { deferred = null; if (appRef) appRef.forceUpdate(); });
 
 createRoot(document.getElementById('root')).render(<Root />);
-loadCatalog();
-loadMarket();
-initAuth();
+// keep the splash up until the first real data is in (no jumping content), at least 1.6s, at most 4s
+const started = Date.now();
+const firstData = Promise.allSettled([loadCatalog(), loadMarket(), initAuth()]);
+const hideSplash = () => {
+  const el = document.getElementById('splash');
+  if (!el || el.classList.contains('out')) return;
+  el.classList.add('out');
+  setTimeout(() => el.remove(), 600);
+};
+Promise.race([firstData, new Promise((r) => setTimeout(r, 4000))])
+  .then(() => setTimeout(hideSplash, Math.max(0, 1600 - (Date.now() - started))));
 
 if ('serviceWorker' in navigator && import.meta.env.PROD) {
   window.addEventListener('load', () => { navigator.serviceWorker.register('/sw.js').catch(() => {}); });

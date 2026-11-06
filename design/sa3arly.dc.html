@@ -2103,7 +2103,7 @@ class Component extends DCLogic {
       t: t, dark: S.dark, light: !S.dark, darkStr: S.dark ? 'true' : 'false',
       themeLabel: S.dark ? 'الوضع النهاري' : 'الوضع الليلي',
       swBg: S.dark ? t.ink : 'transparent', swKnob: S.dark ? t.bg : t.ink, knob: S.dark ? 3 : 25,
-      toggleTheme: function () { self.setState({ dark: !self.state.dark }); },
+      toggleTheme: function () { var d = !self.state.dark; self.setState({ dark: d }); if (Component.saveTheme) Component.saveTheme(d); },
       enterCls: S.dir === 'b' ? 'enter-b' : 'enter-f',
       isHome: S.screen === 'home', isCompare: S.screen === 'compare', isFlow: idx >= 0,
       isCar: S.screen === 'car', isPaint: S.screen === 'paint', isMech: S.screen === 'mech', isResult: S.screen === 'result',
