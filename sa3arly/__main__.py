@@ -202,8 +202,8 @@ def main(argv=None):
             if not q.mid or not mn or not mx:
                 continue
             n += 1
-            # Hatla2ee's band is built from asking prices; compare ours on the same (asking) basis
-            mid_a, low_a, high_a = q.mid / 0.95, q.low / 0.95, q.high / 0.95
+            # Hatla2ee's own band sits below asking prices (checked: deal basis fits it better), so compare as is
+            mid_a, low_a, high_a = q.mid, q.low, q.high
             ref = (mn + mx) / 2
             errs.append(abs(mid_a - ref) / ref)
             inside += mn <= mid_a <= mx
