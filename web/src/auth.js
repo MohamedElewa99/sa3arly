@@ -10,6 +10,7 @@ let sb = null;
 const auth = {
   ready: false,       // config loaded
   enabled: false,     // Supabase keys configured on the server
+  googleOn: false,    // Google provider switched on in Supabase
   user: null,         // { id, email, name }
   items: [],          // saved pricings, newest first
   google, email, signOut, save, remove, pending, takePending,
@@ -25,6 +26,8 @@ export async function initAuth() {
     const cfg = await fetch(API + '/api/config').then((r) => r.json());
     auth.enabled = !!cfg.auth;
     if (auth.enabled) {
+      fetch(cfg.supabaseUrl + '/auth/v1/settings', { headers: { apikey: cfg.anonKey } })
+        .then((r) => r.json()).then((st) => { auth.googleOn = !!(st.external && st.external.google); refresh(); }).catch(() => {});
       const { createClient } = await import('@supabase/supabase-js');
       sb = createClient(cfg.supabaseUrl, cfg.anonKey, { auth: { persistSession: true, detectSessionInUrl: true, flowType: 'pkce' } });
       sb.auth.onAuthStateChange((_ev, session) => { setUser(session); });

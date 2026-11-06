@@ -1102,6 +1102,8 @@ class Component extends React.Component {
         self.setState({ loginErr: '' });
         A.google().catch(function () { self.setState({ loginErr: 'الدخول بجوجل مش متاح دلوقتي. ادخل بالإيميل.' }); });
       },
+      googleOn: A.googleOn !== false,
+      mailBg: A.googleOn === false ? t.ink : 'transparent', mailFg: A.googleOn === false ? t.bg : t.ink,
       closeLogin: function () { if (A.pending) A.pending(null); self.setState({ login: null }); },
       editEmail: function () { self.setState({ loginSent: false }); },
       hasFlash: !!S.flash, flash: S.flash,
@@ -1809,16 +1811,18 @@ class Component extends React.Component {
 </>)}
 {(v.loginAsk) && (<>
 <div className="fu" style={css("display: flex; flex-direction: column; gap: 10px; animation-delay: .1s")}>
+{(v.googleOn) && (<>
 <button className="press" onClick={v.goGoogle} style={css(`height: 54px; border-radius: 999px; border: none; background: ${v.t.ink}; color: ${v.t.bg}; font-size: 16px; font-weight: 600; display: flex; align-items: center; justify-content: center; gap: 10px`)}>
 <svg width="20" height="20" viewBox="0 0 48 48" aria-hidden="true"><path fill="#EA4335" d="M24 9.5c3.5 0 6.6 1.2 9.1 3.6l6.8-6.8C35.8 2.4 30.3 0 24 0 14.6 0 6.6 5.4 2.6 13.3l7.9 6.2C12.4 13.6 17.7 9.5 24 9.5z"></path><path fill="#4285F4" d="M46.1 24.5c0-1.6-.1-3.1-.4-4.5H24v9h12.4c-.5 2.9-2.2 5.3-4.6 6.9l7.4 5.7c4.3-4 6.9-9.9 6.9-17.1z"></path><path fill="#FBBC05" d="M10.5 28.6c-.5-1.4-.8-3-.8-4.6s.3-3.2.8-4.6l-7.9-6.2C1 16.5 0 20.1 0 24s1 7.5 2.6 10.8l7.9-6.2z"></path><path fill="#34A853" d="M24 48c6.5 0 11.9-2.1 15.9-5.8l-7.4-5.7c-2.1 1.4-4.8 2.2-8.5 2.2-6.3 0-11.6-4.1-13.5-9.9l-7.9 6.2C6.6 42.6 14.6 48 24 48z"></path></svg>
-          كمّل بجوجل
-        </button>
+            كمّل بجوجل
+          </button>
 <div aria-hidden="true" style={css(`display: flex; align-items: center; gap: 12px; color: ${v.t.mute}; font-size: 12px; margin: 4px 0`)}>
 <span style={css(`flex: 1; height: 1px; background: ${v.t.line}`)}></span>أو بالإيميل<span style={css(`flex: 1; height: 1px; background: ${v.t.line}`)}></span>
 </div>
+</>)}
 <label htmlFor="lg-mail" style={css("position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0)")}>الإيميل</label>
 <input id="lg-mail" type="email" name="email" autoComplete="email" inputMode="email" dir="ltr" value={v.loginEmail} onChange={v.onLoginEmail} placeholder="name@gmail.com" style={css(`height: 52px; border-radius: 14px; border: 1px solid ${v.t.line2}; background: ${v.t.soft}; color: ${v.t.ink}; caret-color: #F2A93B; padding: 0 16px; font-family: 'Alexandria', sans-serif; font-size: 16px; text-align: left`)} />
-<button className="press" onClick={v.sendLink} disabled={v.emailDisabled} style={css(`height: 52px; border-radius: 999px; background: none; border: 1px solid ${v.t.ink}; color: ${v.t.ink}; font-size: 15px; font-weight: 500; opacity: ${v.emailOp}`)}>{v.emailBtn}</button>
+<button className="press" onClick={v.sendLink} disabled={v.emailDisabled} style={css(`height: 52px; border-radius: 999px; background: ${v.mailBg}; border: 1px solid ${v.t.ink}; color: ${v.mailFg}; font-size: 15px; font-weight: 600; opacity: ${v.emailOp}`)}>{v.emailBtn}</button>
 {(v.hasLoginErr) && (<>
 <p role="alert" style={css(`margin: 0; font-size: 13px; line-height: 1.6; color: ${v.t.warn}`)}>{v.loginErr}</p>
 </>)}
