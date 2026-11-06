@@ -164,6 +164,9 @@ button:disabled{cursor:not-allowed}
           <span class="num" style="flex: none; font-size: 13px; direction: ltr">{{ rc.range }}</span>
         </button>
       </sc-for>
+      <sc-if value="{{ recentLogin }}" hint-placeholder-val="{{ true }}">
+        <button class="press" onClick="{{ openLogin }}" style="min-height: 48px; padding: 0; background: none; border: none; color: {{ t.mute }}; font-size: 13px; text-align: right">ادخل حسابك عشان تسعيراتك تتحفظ وتلاقيها على أي موبايل ←</button>
+      </sc-if>
     </section>
   </main>
 
@@ -468,9 +471,12 @@ button:disabled{cursor:not-allowed}
       </section>
     </main>
     <footer style="flex: none; padding: 10px 20px 22px; display: flex; flex-direction: column; gap: 6px; border-top: 1px solid {{ t.line }}">
-      <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px">
+      <div style="display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) 52px; gap: 8px">
         <button class="press" onClick="{{ openReceipt }}" style="height: 52px; border-radius: 999px; border: none; background: {{ t.ink }}; color: {{ t.bg }}; font-size: 15px; font-weight: 600">إيصال التسعير</button>
         <button class="press" onClick="{{ openComps }}" style="height: 52px; border-radius: 999px; background: none; border: 1px solid {{ t.ink }}; color: {{ t.ink }}; font-size: 15px; font-weight: 500">{{ compsBtn }}</button>
+        <button class="press" onClick="{{ doSave }}" aria-label="{{ saveAria }}" aria-pressed="{{ savePressed }}" style="height: 52px; border-radius: 999px; background: none; border: 1px solid {{ t.ink }}; color: {{ t.ink }}; padding: 0; display: flex; align-items: center; justify-content: center">
+          <svg width="16" height="20" viewBox="0 0 16 20" aria-hidden="true"><path d="M2 1.5h12v17l-6-4.2-6 4.2z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round" fill="{{ saveFill }}"></path></svg>
+        </button>
       </div>
       <button class="press" onClick="{{ goCar }}" style="height: 40px; background: none; border: none; font-size: 14px; color: {{ t.mute }}">سعّر عربية تانية</button>
     </footer>
@@ -624,6 +630,54 @@ button:disabled{cursor:not-allowed}
     <button class="press" onClick="{{ closeReceipt }}" style="height: 40px; background: none; border: none; color: {{ t.mute }}; font-size: 14px">اقفل</button>
   </section>
 </div>
+</sc-if>
+
+<sc-if value="{{ login }}" hint-placeholder-val="{{ false }}">
+<div style="position: absolute; inset: 0; z-index: 12">
+  <button class="fade" onClick="{{ closeLogin }}" aria-label="اقفل" style="position: absolute; inset: 0; border: none; background: rgba(0,0,0,0.6); padding: 0"></button>
+  <section class="rise" role="dialog" aria-modal="true" aria-labelledby="lg-t" onKeyDown="{{ loginKey }}" style="position: absolute; left: 0; right: 0; bottom: 0; max-height: 94%; overflow-y: auto; overscroll-behavior: contain; background: {{ t.bg }}; border-radius: 22px 22px 0 0; padding: 10px 22px 26px; box-sizing: border-box; display: flex; flex-direction: column; gap: 14px">
+    <span aria-hidden="true" style="align-self: center; width: 36px; height: 4px; border-radius: 2px; background: {{ t.line2 }}"></span>
+    <span class="fu" style="font-family: 'Aref Ruqaa', serif; font-size: 46px; font-weight: 700; line-height: 1.1; margin-top: 6px" translate="no">سعرلي</span>
+    <div class="fu" style="display: flex; flex-direction: column; gap: 6px; animation-delay: .05s">
+      <h2 id="lg-t" style="margin: 0; font-size: 21px; font-weight: 600">{{ loginTitle }}</h2>
+      <p style="margin: 0; font-size: 13px; line-height: 1.7; color: {{ t.mute }}">{{ loginWhy }}</p>
+    </div>
+    <sc-if value="{{ loginOff }}" hint-placeholder-val="{{ false }}">
+      <p role="status" style="margin: 0; padding: 12px 14px; border-radius: 12px; background: {{ t.soft }}; font-size: 13px; line-height: 1.7">الدخول لسه بيتجهّز. تقدر تكمّل تسعير عادي، وهنفتحه قريب.</p>
+    </sc-if>
+    <sc-if value="{{ loginAsk }}" hint-placeholder-val="{{ true }}">
+      <div class="fu" style="display: flex; flex-direction: column; gap: 10px; animation-delay: .1s">
+        <button class="press" onClick="{{ goGoogle }}" style="height: 54px; border-radius: 999px; border: none; background: {{ t.ink }}; color: {{ t.bg }}; font-size: 16px; font-weight: 600; display: flex; align-items: center; justify-content: center; gap: 10px">
+          <svg width="20" height="20" viewBox="0 0 48 48" aria-hidden="true"><path fill="#EA4335" d="M24 9.5c3.5 0 6.6 1.2 9.1 3.6l6.8-6.8C35.8 2.4 30.3 0 24 0 14.6 0 6.6 5.4 2.6 13.3l7.9 6.2C12.4 13.6 17.7 9.5 24 9.5z"></path><path fill="#4285F4" d="M46.1 24.5c0-1.6-.1-3.1-.4-4.5H24v9h12.4c-.5 2.9-2.2 5.3-4.6 6.9l7.4 5.7c4.3-4 6.9-9.9 6.9-17.1z"></path><path fill="#FBBC05" d="M10.5 28.6c-.5-1.4-.8-3-.8-4.6s.3-3.2.8-4.6l-7.9-6.2C1 16.5 0 20.1 0 24s1 7.5 2.6 10.8l7.9-6.2z"></path><path fill="#34A853" d="M24 48c6.5 0 11.9-2.1 15.9-5.8l-7.4-5.7c-2.1 1.4-4.8 2.2-8.5 2.2-6.3 0-11.6-4.1-13.5-9.9l-7.9 6.2C6.6 42.6 14.6 48 24 48z"></path></svg>
+          كمّل بجوجل
+        </button>
+        <div aria-hidden="true" style="display: flex; align-items: center; gap: 12px; color: {{ t.mute }}; font-size: 12px; margin: 4px 0">
+          <span style="flex: 1; height: 1px; background: {{ t.line }}"></span>أو بالإيميل<span style="flex: 1; height: 1px; background: {{ t.line }}"></span>
+        </div>
+        <label for="lg-mail" style="position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0)">الإيميل</label>
+        <input id="lg-mail" type="email" name="email" autocomplete="email" inputmode="email" dir="ltr" value="{{ loginEmail }}" onChange="{{ onLoginEmail }}" placeholder="name@gmail.com" style="height: 52px; border-radius: 14px; border: 1px solid {{ t.line2 }}; background: {{ t.soft }}; color: {{ t.ink }}; caret-color: #F2A93B; padding: 0 16px; font-family: 'Alexandria', sans-serif; font-size: 16px; text-align: left">
+        <button class="press" onClick="{{ sendLink }}" disabled="{{ emailDisabled }}" style="height: 52px; border-radius: 999px; background: none; border: 1px solid {{ t.ink }}; color: {{ t.ink }}; font-size: 15px; font-weight: 500; opacity: {{ emailOp }}">{{ emailBtn }}</button>
+        <sc-if value="{{ hasLoginErr }}" hint-placeholder-val="{{ false }}">
+          <p role="alert" style="margin: 0; font-size: 13px; line-height: 1.6; color: {{ t.warn }}">{{ loginErr }}</p>
+        </sc-if>
+      </div>
+    </sc-if>
+    <sc-if value="{{ loginSent }}" hint-placeholder-val="{{ false }}">
+      <div class="fu" role="status" style="display: flex; flex-direction: column; gap: 12px; padding: 18px; border-radius: 16px; border: 1px solid {{ t.line2 }}">
+        <svg width="34" height="26" viewBox="0 0 34 26" aria-hidden="true"><rect x="1" y="1" width="32" height="24" rx="3" stroke="{{ t.ink }}" stroke-width="1.4" fill="none"></rect><path d="M2 3l15 11L32 3" stroke="#F2A93B" stroke-width="1.6" fill="none"></path></svg>
+        <span style="font-size: 16px; font-weight: 600">بصّ على الإيميل</span>
+        <span style="font-size: 13px; line-height: 1.8; color: {{ t.mute }}">بعتنالك لينك دخول على <span dir="ltr" style="color: {{ t.ink }}">{{ loginEmail }}</span>. افتحه من الموبايل ده وهتدخل على طول. لو مش لاقيه، بصّ في الـ Spam.</span>
+        <button class="press" onClick="{{ editEmail }}" style="align-self: flex-start; min-height: 40px; padding: 0; background: none; border: none; color: {{ t.ink }}; font-size: 13px; text-decoration: underline">غيّر الإيميل</button>
+      </div>
+    </sc-if>
+    <button class="press" onClick="{{ closeLogin }}" style="min-height: 44px; background: none; border: none; color: {{ t.mute }}; font-size: 14px">مش دلوقتي، كمّل من غير حساب</button>
+    <p style="margin: 0; font-size: 11px; line-height: 1.7; color: {{ t.mute }}; text-align: center">بنستخدم الإيميل للدخول بس. مش هنبعتلك إعلانات.</p>
+  </section>
+</div>
+</sc-if>
+
+<sc-if value="{{ hasFlash }}" hint-placeholder-val="{{ false }}">
+  <div class="fu" role="status" aria-live="polite" style="position: absolute; left: 50%; top: 72px; transform: translateX(-50%); z-index: 14; padding: 12px 18px; border-radius: 999px; background: {{ t.ink }}; color: {{ t.bg }}; font-size: 14px; white-space: nowrap; box-shadow: 0 8px 24px rgba(0,0,0,0.25)">{{ flash }}</div>
 </sc-if>
 
 <sc-if value="{{ menu }}" hint-placeholder-val="{{ false }}">
@@ -853,7 +907,7 @@ class Component extends DCLogic {
       q: '', tray: [], km: 100000, agencyKm: 60000,
       paint: { bumperF: 2, doorRL: 1, fenderRR: 1 }, ex: {}, spin: true, angle: -35, dragging: false, last: '',
       mech: { shocksF: true, arms: true }, open: 'susp', k: 1,
-      gl: true, oth: {}, exOther: false, mo: {}, body: 'crossover', bodyAuto: true, heroOn: true, partsOpen: false, mf: 'all', paintReady: false, more: false, wm: 0, margin: 30000, receipt: false, hideBuy: false, copied: false, checked: {}, car: { make: 'كوبرا', model: 'فورمينتور', year: 2022, trim: 'VZ' }, picker: null, pickOther: '', sheet: null, item: null, shotsDone: { front: true, back: true }, extraShots: 0
+      gl: true, oth: {}, exOther: false, mo: {}, body: 'crossover', bodyAuto: true, heroOn: true, partsOpen: false, mf: 'all', paintReady: false, more: false, wm: 0, margin: 30000, receipt: false, hideBuy: false, copied: false, checked: {}, car: { make: 'كوبرا', model: 'فورمينتور', year: 2022, trim: 'VZ' }, picker: null, pickOther: '', sheet: null, login: null, loginSent: false, loginEmail: '', loginErr: '', loginBusy: false, saving: false, flash: '', item: null, shotsDone: { front: true, back: true }, extraShots: 0
     };
     this._raf = null; this._paint = null; this._hero = null;
     var self = this;
@@ -912,6 +966,22 @@ class Component extends DCLogic {
     if (km !== undefined) { patch.km = km; patch.agencyKm = Math.min(this.state.agencyKm, Math.floor(km / 10000) * 10000); }
     this.setState(patch);
     this.go(screen || 'car', 'f');
+  }
+  // after Google / email-link sign-in: finish what the user asked for before the redirect
+  onSignedIn() {
+    var A = Component.auth, self = this;
+    if (!A) return;
+    var p = A.takePending ? A.takePending() : null, wasOpen = !!this.state.login;
+    this.setState({ login: null });
+    if (p && p.kind === 'save' && p.q) A.save(p.q).then(function () { self.flashMsg('دخلت، والتسعيرة اتحفظت'); }, function () { self.flashMsg('دخلت، بس التسعيرة ماتحفظتش'); });
+    else if (p && p.kind === 'alerts') { this.setState({ sheet: 'alerts' }); this.flashMsg('دخلت، التنبيهات شغّالة'); }
+    else if (p || wasOpen) this.flashMsg('أهلاً، دخلت');
+  }
+  flashMsg(m) {
+    var self = this;
+    clearTimeout(this._flashT);
+    this.setState({ flash: m });
+    this._flashT = setTimeout(function () { self.setState({ flash: '' }); }, 2800);
   }
   paintHex() { return this.state.dark ? '#000000' : '#F5F6F7'; }
   pick(k) {
@@ -1623,11 +1693,45 @@ class Component extends DCLogic {
     var steps = stepLabels.map(function (l, i) { return { label: l, bar: i <= idx ? t.ink : t.line2, fg: i === idx ? t.ink : t.mute }; });
     var services = Math.floor(S.km / 10000);
 
+    // ---------- account ----------
+    var A = Component.auth || { ready: true, enabled: true, user: null, items: [] };
+    var me = A.user;
+    var saveQ = { car: { make: car.make, model: car.model, year: car.year, trim: car.trim || '' }, km: S.km, low: finalLo, high: finalHi,
+      details: { paint: paintNames, repl: replNames, other: exNames, mech: mechNames, n: nComps } };
+    var qKey = function (c, km, lo, hi) { return [c.make, c.model, c.year, c.trim || '', km, lo, hi].join('|'); };
+    var isSaved = (A.items || []).some(function (x) { return qKey(x.car, x.km, x.low, x.high) === qKey(saveQ.car, S.km, finalLo, finalHi); });
+    var needLogin = function (why, action) {
+      if (A.pending) A.pending(action);
+      self.setState({ login: why, loginSent: false, loginErr: '', loginBusy: false, menu: false, sheet: null });
+    };
+    var doSave = function () {
+      if (!me) return needLogin('save', { kind: 'save', q: saveQ });
+      if (isSaved || self.state.saving) return;
+      self.setState({ saving: true });
+      A.save(saveQ).then(function () { self.setState({ saving: false }); self.flashMsg('اتحفظت في تسعيراتك'); },
+        function () { self.setState({ saving: false }); self.flashMsg('ماتحفظتش، جرّب تاني'); });
+    };
+    var mailOk = /^[^@\s]+@[^@\s]+\.[^@\s]{2,}$/.test(S.loginEmail.trim());
+    var sendLink = function () {
+      var m = self.state.loginEmail.trim();
+      if (!/^[^@\s]+@[^@\s]+\.[^@\s]{2,}$/.test(m)) return self.setState({ loginErr: 'اكتب إيميل صح، مثلاً name@gmail.com' });
+      if (!A.email) return self.setState({ loginSent: true, loginErr: '' });
+      self.setState({ loginBusy: true, loginErr: '' });
+      A.email(m).then(function () { self.setState({ loginBusy: false, loginSent: true }); },
+        function (e) { self.setState({ loginBusy: false, loginErr: /rate|seconds/i.test(String(e && e.message)) ? 'استنى دقيقة وجرّب تاني.' : 'ماقدرناش نبعت اللينك. اتأكد من الإيميل وجرّب تاني.' }); });
+    };
+    var ago = function (iso) {
+      var d = Math.floor((Date.now() - new Date(iso).getTime()) / 864e5);
+      return d <= 0 ? 'النهارده' : d === 1 ? 'امبارح' : d === 2 ? 'من يومين' : 'من ' + d + ' يوم';
+    };
+
     var menuItems = [
+      me ? { label: me.name || me.email, sub: 'دوس هنا عشان تخرج من الحساب', go: function () { self.setState({ menu: false }); A.signOut().then(function () { self.flashMsg('خرجت من الحساب'); }); }, soon: false }
+         : { label: 'ادخل حسابك', sub: 'احفظ تسعيراتك وشغّل التنبيهات', go: function () { needLogin('account', null); }, soon: false },
       { label: 'سعّر عربية', sub: 'من الصور والشيك ليست', go: function () { self.go('car'); }, soon: false },
       { label: 'قارن عربيات', sub: 'الزيرو والمستعمل جنب بعض', go: function () { self.go('compare'); }, soon: false },
       { label: 'أسعار الزيرو', sub: 'كل الماركات، بتتحدث كل يوم', go: function () { self.setState({ menu: false, sheet: 'zero' }); }, soon: false },
-      { label: 'تنبيهاتي', sub: 'لما الزيرو يتغير أو تنزل عربية رخيصة', go: function () { self.setState({ menu: false, sheet: 'alerts' }); }, soon: false },
+      { label: 'تنبيهاتي', sub: 'لما الزيرو يتغير أو تنزل عربية رخيصة', go: function () { if (!me) return needLogin('alerts', { kind: 'alerts' }); self.setState({ menu: false, sheet: 'alerts' }); }, soon: false },
       { label: 'تسعيراتي', sub: 'كل العربيات اللي سعّرتها', go: function () { self.setState({ menu: false, more: true }); self.go('home', 'b'); }, soon: false }
     ].map(function (m, i) { m.delay = (0.08 + i * 0.05).toFixed(2); m.op = m.soon ? 0.55 : 1; return m; });
 
@@ -1686,9 +1790,33 @@ class Component extends DCLogic {
           go: function () { self.setState({ sheet: 'item', item: m }); } };
       }),
       recent: [
-        { name: carShort + '، ' + fmt(S.km) + ' كم', range: fmt(finalLo) + ' – ' + fmt(finalHi), note: 'آخر تسعير ليك، السوق نزل 1.5% من وقتها', noteFg: '#5B9CF5', go: function () { self.go('result', 'f'); } },
-        { name: 'تويوتا كورولا 2019، 142,000 كم', range: 'افتحها وشوف', note: 'من 4 أيام', noteFg: t.mute, go: function () { self.setCar({ make: 'تويوتا', model: 'كورولا', year: 2019, trim: 'Comfort' }, 142000, 'result'); } }
-      ].slice(0, S.more ? 5 : 1),
+        { name: carShort + '، ' + fmt(S.km) + ' كم', range: fmt(finalLo) + ' – ' + fmt(finalHi), note: isSaved ? 'آخر تسعير ليك، محفوظة' : 'آخر تسعير ليك', noteFg: '#5B9CF5', go: function () { self.go('result', 'f'); } }
+      ].concat((me ? A.items || [] : []).filter(function (x) { return qKey(x.car, x.km, x.low, x.high) !== qKey(saveQ.car, S.km, finalLo, finalHi); }).map(function (x) {
+        return { name: x.car.make + ' ' + x.car.model + ' ' + x.car.year + '، ' + fmt(x.km) + ' كم', range: fmt(x.low) + ' – ' + fmt(x.high), note: 'محفوظة ' + ago(x.at), noteFg: t.mute,
+          go: function () { self.setCar({ make: x.car.make, model: x.car.model, year: x.car.year, trim: x.car.trim || '' }, x.km, 'result'); } };
+      })).slice(0, S.more ? 30 : 4),
+      recentLogin: !me && A.enabled !== false,
+      openLogin: function () { needLogin('account', null); },
+      doSave: doSave, savePressed: isSaved ? 'true' : 'false', saveFill: isSaved ? t.ink : 'none',
+      saveAria: isSaved ? 'اتحفظت في تسعيراتك' : S.saving ? 'بتتحفظ' : 'احفظ التسعيرة',
+      login: !!S.login, loginOff: A.ready && A.enabled === false, loginAsk: !S.loginSent && A.enabled !== false, loginSent: S.loginSent,
+      loginTitle: { save: 'احفظ التسعيرة دي', alerts: 'شغّل التنبيهات' }[S.login] || 'ادخل حسابك',
+      loginWhy: { save: 'ادخل مرة واحدة، وكل تسعيرة تحفظها هتلاقيها على أي موبايل أو كمبيوتر.', alerts: 'هنقولك أول ما سعر الزيرو يتغير أو تنزل عربية أرخص من السوق.' }[S.login] || 'تسعيراتك وتنبيهاتك تفضل معاك على أي جهاز. التسعير نفسه شغال من غير حساب.',
+      loginEmail: S.loginEmail, onLoginEmail: function (e) { self.setState({ loginEmail: e.target.value, loginErr: '' }); },
+      emailBtn: S.loginBusy ? 'بيتبعت…' : 'ابعتلي لينك الدخول', emailDisabled: S.loginBusy || !mailOk, emailOp: S.loginBusy || !mailOk ? 0.45 : 1,
+      sendLink: sendLink, loginErr: S.loginErr, hasLoginErr: !!S.loginErr,
+      loginKey: function (e) {
+        if (e.key === 'Escape') { if (A.pending) A.pending(null); self.setState({ login: null }); }
+        else if (e.key === 'Enter' && e.target && e.target.name === 'email') { e.preventDefault(); sendLink(); }
+      },
+      goGoogle: function () {
+        if (!A.google) return;
+        self.setState({ loginErr: '' });
+        A.google().catch(function () { self.setState({ loginErr: 'الدخول بجوجل مش متاح دلوقتي. ادخل بالإيميل.' }); });
+      },
+      closeLogin: function () { if (A.pending) A.pending(null); self.setState({ login: null }); },
+      editEmail: function () { self.setState({ loginSent: false }); },
+      hasFlash: !!S.flash, flash: S.flash,
       knobX: S.dark ? 0 : -22,
       noResults: !!q && results.length === 0,
       menuKey: function (e) { if (e.key === 'Escape') self.setState({ menu: false }); },

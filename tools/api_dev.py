@@ -23,6 +23,19 @@ class Router(BaseHTTPRequestHandler):
             return
         h.do_GET(self)
 
+    def _other(self, verb):
+        h = HANDLERS.get(urlparse(self.path).path)
+        if not h or not hasattr(h, verb):
+            self.send_error(404 if not h else 405)
+            return
+        getattr(h, verb)(self)
+
+    def do_POST(self):
+        self._other("do_POST")
+
+    def do_DELETE(self):
+        self._other("do_DELETE")
+
 
 if __name__ == "__main__":
     port = int(sys.argv[1]) if len(sys.argv) > 1 else 8787
