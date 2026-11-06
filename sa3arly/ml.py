@@ -20,8 +20,11 @@ import time
 from datetime import date
 from typing import Optional
 
-FEATURES = ["make", "model", "age", "km", "log_km", "km_year", "trim", "source", "gearbox", "body", "city", "seller", "log_zero",
-            "fabrika", "paint", "accident", "first_owner", "agency", "photos", "dom", "drops", "h_market"]
+BASE = ["make", "model", "age", "km", "log_km", "trim", "source", "gearbox", "body", "city", "seller", "log_zero"]
+TE = ["model_te", "make_te"]                      # what this model / make usually sells for, learned out-of-fold
+TEXT = ["fabrika", "paint", "accident", "first_owner", "agency"]
+AD = ["photos", "dom", "drops", "h_market", "km_year"]
+FEATURES = BASE + TE
 CATEGORICAL = ["make", "model", "trim", "source", "gearbox", "body", "city", "seller"]
 QUANTILES = {"lo": 0.25, "mid": 0.5, "hi": 0.75}
 MIN_CAT = 5            # a category value seen fewer times than this is folded into "other"
@@ -183,8 +186,48 @@ def _untarget(f: dict, t: float) -> float:
     return t + f["log_zero"] if f["log_zero"] is not None else t
 
 
+def _age_adjusted(f: dict, y: float) -> float:
+    """log price brought to a common age / km, so a model's average isn't just 'its ads are newer'."""
+    return _target(f, y) + 0.09 * f["age"] + 0.006 * ((f["km"] or 0) / 10_000)
+
+
+def te_maps(rows: list[tuple[dict, float]], k: float = 8.0) -> dict:
+    """Smoothed mean of the age/km-adjusted target per model and per make (toward the overall mean)."""
+    tot = [_age_adjusted(f, y) for f, y in rows]
+    g = sum(tot) / max(1, len(tot))
+    out = {}
+    for key in ("model", "make"):
+        acc: dict[str, list] = {}
+        for (f, _), v in zip(rows, tot):
+            acc.setdefault(f[key], []).append(v)
+        out[key] = {c: (sum(v) + k * g) / (len(v) + k) for c, v in acc.items()}
+    out["_global"] = g
+    return out
+
+
+def apply_te(rows: list[tuple[dict, float]], maps: dict) -> list[tuple[dict, float]]:
+    g = maps["_global"]
+    return [({**f, "model_te": maps["model"].get(f["model"], maps["make"].get(f["make"], g)),
+              "make_te": maps["make"].get(f["make"], g)}, y) for f, y in rows]
+
+
+def oof_te(rows: list[tuple[dict, float]], folds: int = 5, seed: int = 3) -> list[tuple[dict, float]]:
+    """Target encoding for training rows computed without the row's own fold (no leak)."""
+    import random
+    idx = list(range(len(rows)))
+    random.Random(seed).shuffle(idx)
+    out = [None] * len(rows)
+    for k in range(folds):
+        hold = set(idx[k::folds])
+        maps = te_maps([rows[i] for i in idx if i not in hold])
+        for i in hold:
+            out[i] = apply_te([rows[i]], maps)[0]
+    return out
+
+
 def train(rows: list[tuple[dict, float]], seed: int = 7, rounds: int = 3000, features: Optional[list] = None,
-          clean: bool = True, lr: float = 0.03, leaves: int = 31) -> tuple[dict, dict]:
+          clean: bool = False, lr: float = 0.03, leaves: int = 15, min_leaf: int = 25, l2: float = 5.0,
+          mad_k: float = 5.0) -> tuple[dict, dict]:
     """Fit the three quantile models; returns (model_json, metrics).
 
     70 % train / 15 % valid (early stopping) / 15 % test. With clean=True a first model flags the ads whose
@@ -202,6 +245,10 @@ def train(rows: list[tuple[dict, float]], seed: int = 7, rounds: int = 3000, fea
     rnd.shuffle(idx)
     a, b = int(len(idx) * 0.70), int(len(idx) * 0.85)
     tr, va, te = [rows[i] for i in idx[:a]], [rows[i] for i in idx[a:b]], [rows[i] for i in idx[b:]]
+    use_te = any(f in features for f in TE)
+    if use_te:
+        m_tr = te_maps(tr)
+        tr, va, te = oof_te(tr), apply_te(va, m_tr), apply_te(te, m_tr)
 
     def arr(part, maps):
         X, maps = _encode([r[0] for r in part], maps, features)
@@ -213,8 +260,8 @@ def train(rows: list[tuple[dict, float]], seed: int = 7, rounds: int = 3000, fea
         out, best = {}, {}
         for name, al in alphas.items():
             params = {"objective": "quantile", "alpha": al, "learning_rate": lr, "num_leaves": leaves,
-                      "min_data_in_leaf": 15, "feature_fraction": 0.85, "bagging_fraction": 0.85, "bagging_freq": 1,
-                      "lambda_l2": 1.0, "cat_smooth": 10, "min_data_per_group": 10, "max_cat_threshold": 64,
+                      "min_data_in_leaf": min_leaf, "feature_fraction": 0.85, "bagging_fraction": 0.85, "bagging_freq": 1,
+                      "lambda_l2": l2, "cat_smooth": 10, "min_data_per_group": 10, "max_cat_threshold": 64,
                       "verbose": -1, "seed": seed}
             ds = lgb.Dataset(X, y, categorical_feature=cats, free_raw_data=False)
             if Xv is not None:
@@ -235,7 +282,7 @@ def train(rows: list[tuple[dict, float]], seed: int = 7, rounds: int = 3000, fea
     def robust_keep(res):
         med = float(np.median(res))
         mad = float(np.median(np.abs(res - med))) * 1.4826 or 0.05
-        return np.abs(res - med) <= 3 * mad
+        return np.abs(res - med) <= mad_k * mad
 
     dropped = 0
     if clean:
@@ -266,31 +313,63 @@ def train(rows: list[tuple[dict, float]], seed: int = 7, rounds: int = 3000, fea
 
     # final: everything clean (train + valid + test), each quantile with the rounds early stopping chose
     allrows = tr + va + ([r for r, k in zip(te, keep_te) if k] if clean else te)
+    te_full = None
+    if use_te:
+        te_full = te_maps(allrows)
+        allrows = oof_te(allrows)
     final = {}
     X, y, maps = arr(allrows, None)
     for name, al in QUANTILES.items():
-        params = {"objective": "quantile", "alpha": al, "learning_rate": lr, "num_leaves": leaves, "min_data_in_leaf": 15,
-                  "feature_fraction": 0.85, "bagging_fraction": 0.85, "bagging_freq": 1, "lambda_l2": 1.0,
+        params = {"objective": "quantile", "alpha": al, "learning_rate": lr, "num_leaves": leaves, "min_data_in_leaf": min_leaf,
+                  "feature_fraction": 0.85, "bagging_fraction": 0.85, "bagging_freq": 1, "lambda_l2": l2,
                   "cat_smooth": 10, "min_data_per_group": 10, "max_cat_threshold": 64, "verbose": -1, "seed": seed}
         final[name] = lgb.train(params, lgb.Dataset(X, y, categorical_feature=cats), num_boost_round=max(50, int(best[name] * 1.1)))
     m["n_train"] = len(tr)
     m["n_all"] = len(allrows)
-    model = {"version": 3, "features": features, "categorical": [c for c in CATEGORICAL if c in features], "maps": maps,
+    model = {"version": 4, "te": te_full, "features": features, "categorical": [c for c in CATEGORICAL if c in features], "maps": maps,
              "trees": {k: _compact(bst.dump_model()) for k, bst in final.items()}, "metrics": m}
     return model, m
 
 
 VARIANTS = {
-    "v2 (before)":            {"features": FEATURES[:13], "clean": False, "lr": 0.05, "leaves": 31},
-    "+ clean":                {"features": FEATURES[:13], "clean": True},
-    "+ clean + ad text/site": {"features": FEATURES, "clean": True},
-    "+ all, bigger trees":    {"features": FEATURES, "clean": True, "leaves": 63},
+    "A v2 (live now)":         {"features": BASE, "lr": 0.05, "leaves": 31, "min_leaf": 15, "l2": 1.0},
+    "B small trees":           {"features": BASE},
+    "C B + model/make level":  {"features": BASE + TE},
+    "D C + gentle clean":      {"features": BASE + TE, "clean": True},
+    "E C + condition words":   {"features": BASE + TE + TEXT},
+    "F C + ad signals":        {"features": BASE + TE + TEXT + AD},
 }
 
 
-def experiment(rows) -> dict:
+def comps_error(cx, n: int = 300, seed: int = 5) -> dict:
+    """The comparables engine on its own, measured the same way: price random recent ads with that ad left out."""
+    import random
+    import statistics
+    from .pricing import DEAL_DISCOUNT, Pricer
+    ads = cx.execute("""select mk.name_en, mo.name_en, l.year, l.km, l.trim_raw, l.url, l.price_egp
+                        from listings l join makes mk on mk.id = l.make_id join models mo on mo.id = l.model_id
+                        where l.price_egp between 50000 and 50000000 and l.km is not null
+                          and l.last_seen > now() - interval '60 days'""").fetchall()
+    random.Random(seed).shuffle(ads)
+    pr = Pricer(cx, use_ai=False)
+    errs, priced = [], 0
+    for mk, mo, y, km, trim, url, price in ads[:n]:
+        pr.exclude_url = url
+        q = pr.quote(mk, mo, y, km, trim=trim)
+        if q.mid:
+            priced += 1
+            errs.append(abs(q.mid / (1 - DEAL_DISCOUNT["default"]) - price) / price)
+    if not errs:
+        return {}
+    return {"median_ape": round(statistics.median(errs), 4), "mape": round(statistics.mean(errs), 4),
+            "within_10pct": round(sum(e <= 0.10 for e in errs) / len(errs), 4), "priced_share": round(priced / min(n, len(ads)), 3)}
+
+
+def experiment(rows, cx=None) -> dict:
     """Train every variant on the same split and return their test metrics (for choosing the setup)."""
     out = {}
+    if cx is not None:
+        out["comps engine (no AI)"] = comps_error(cx)
     for name, kw in VARIANTS.items():
         _, m = train(rows, **kw)
         out[name] = {k: m.get(k) for k in ("median_ape", "mape", "within_10pct", "clean_median_ape", "clean_within_10pct", "range_hit", "dropped_outliers")}
@@ -350,6 +429,8 @@ class Model:
         self.metrics = data.get("metrics", {})
 
     def vector(self, f: dict) -> list[float]:
+        if self.d.get("te"):
+            f = apply_te([(f, 0.0)], self.d["te"])[0][0]
         X, _ = _encode([f], self.d["maps"], self.d.get("features"))
         return X[0]
 

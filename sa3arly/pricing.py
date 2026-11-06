@@ -160,6 +160,7 @@ class Pricer:
     def __init__(self, cx, use_ai: bool = True):
         self.cx = cx
         self.use_ai = use_ai
+        self.exclude_url = None          # leave one ad out (for measuring the error on that ad)
 
     def _ai(self, make, model, year, km, trim, zero):
         if not self.use_ai:
@@ -197,7 +198,7 @@ class Pricer:
         """, (mk, mk, ms, like, ms, year - spread, year + spread, days, days)).fetchall()
         out = []
         for src, y, km, price, url, trim, badges in rows:
-            if set(badges or []) & EXCLUDE_BADGES:
+            if set(badges or []) & EXCLUDE_BADGES or url == self.exclude_url:
                 continue
             if km is not None and km < 1000 and y >= date.today().year:
                 continue                                      # zero-km stock, not a used car

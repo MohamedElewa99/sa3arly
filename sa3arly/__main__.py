@@ -193,7 +193,7 @@ def main(argv=None):
                 print("[train] too few ads, keeping the current model")
                 return 0
             if a.experiment:
-                for name, m in ml.experiment(rows).items():
+                for name, m in ml.experiment(rows, cx).items():
                     print(f"[train] {name:24s} {m}")
                 return 0
             model, metrics = ml.train(rows)
