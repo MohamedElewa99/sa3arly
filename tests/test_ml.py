@@ -45,15 +45,20 @@ def test_quote_blends_ai_and_prices_unknown_cars(db):  # noqa: F811
     ml._cache.update(at=0.0, model=None)
     base = Pricer(db, use_ai=False).quote("Hyundai", "Elantra AD", 2020, 100_000)
     assert base.ai is None
-    # a model that thinks this car is worth ~20% more than the ads say
-    ai_mid = base.mid * 1.2 / 0.95
+    # a model that thinks this car is worth ~15% more than the ads say
+    ai_mid = base.mid * 1.15 / 0.95
     ml.save(db, _flat_model(math.log(ai_mid)))
     ml._cache.update(at=0.0, model=None)
     q = Pricer(db).quote("Hyundai", "Elantra AD", 2020, 100_000)
     assert q.ai and 0 < q.ai["weight"] < 1
-    assert base.mid < q.mid < base.mid * 1.2                                    # pulled toward the model, not replaced
+    assert base.mid < q.mid < base.mid * 1.15                                   # pulled toward the model, not replaced
     assert any("الذكاء الاصطناعي" in line for line in q.lines)
     assert any("أرخص بـ" in line for line in q.lines)                          # flags the disagreement
+    # a model far off (+60 %) is ignored when there are enough ads, and the app is told
+    ml.save(db, _flat_model(math.log(base.mid * 1.6 / 0.95)))
+    ml._cache.update(at=0.0, model=None)
+    far = Pricer(db).quote("Hyundai", "Elantra AD", 2020, 100_000)
+    assert far.ai["weight"] == 0 and abs(far.mid - base.mid) <= 5000 and any("فاعتمدنا على الإعلانات" in l for l in far.lines)
     # Cupra Formentor has 2 ads + a zero price: the model alone prices it now
     ml.save(db, _flat_model(math.log(0.8), models=("cupra|formentor",)))
     ml._cache.update(at=0.0, model=None)

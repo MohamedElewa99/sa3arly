@@ -282,18 +282,27 @@ class Pricer:
             ai_out = {"mid": _round(ai["mid"]), "low": _round(ai["lo"]), "high": _round(ai["hi"]), "weight": round(w, 2),
                       "n_train": met.get("n_all", met.get("n_train")), "error": met.get("median_ape"), "comps_mid": _round(mid) if mid else None}
             if mid is None:
-                low, mid, high = ai["lo"], ai["mid"], ai["hi"]
+                # no close ads: the model's own middle, with its range held to ±15 %
+                mid = ai["mid"]
+                low, high = max(ai["lo"], mid * 0.85), min(ai["hi"], mid * 1.15)
                 conf = "متوسطة" if info["known"]["model"] and zero else "منخفضة"
                 lines.append("مفيش عربيات شبهها كفاية، فالسعر جاي من نموذج الذكاء الاصطناعي اللي اتعلّم من كل الإعلانات")
             else:
                 gap = (ai["mid"] - mid) / mid
-                low = w * ai["lo"] + (1 - w) * low
-                high = w * ai["hi"] + (1 - w) * high
-                mid = w * ai["mid"] + (1 - w) * mid
-                low, high = min(low, mid), max(high, mid)
-                if abs(gap) >= 0.12:
-                    lines.append(f"الإعلانات القريبة {'أرخص' if gap > 0 else 'أغلى'} بـ {abs(gap):.0%} من اللي متوقع لعربية زيها، "
-                                 "بص على العربيات اللي اتقارنت قبل ما تقرر")
+                if abs(gap) > 0.20 and n >= 5:
+                    # too far from what the ads say: trust the ads, and say so
+                    w = 0.0
+                    ai_out["weight"] = 0.0
+                    lines.append(f"الذكاء الاصطناعي متوقّع سعر {'أعلى' if gap > 0 else 'أقل'} بـ {abs(gap):.0%} من الإعلانات القريبة، "
+                                 "فاعتمدنا على الإعلانات. بص على العربيات اللي اتقارنت قبل ما تقرر")
+                else:
+                    # move the ads' range by the blended middle; the ads keep deciding how wide it is
+                    new_mid = w * ai["mid"] + (1 - w) * mid
+                    low, high = low * new_mid / mid, high * new_mid / mid
+                    mid = new_mid
+                    if abs(gap) >= 0.12:
+                        lines.append(f"الإعلانات القريبة {'أرخص' if gap > 0 else 'أغلى'} بـ {abs(gap):.0%} من اللي متوقع لعربية زيها، "
+                                     "بص على العربيات اللي اتقارنت قبل ما تقرر")
             lines.append(f"الذكاء الاصطناعي: اتعلّم من {met.get('n_all', met.get('n_train', 0)):,} إعلان (غلطه المعتاد {met.get('median_ape', 0):.0%})، "
                          f"توقّع {_round(ai['mid']):,} جنيه، ووزنه في السعر {w:.0%}")
         if mid is None:
