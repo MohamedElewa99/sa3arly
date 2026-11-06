@@ -1,0 +1,45 @@
+body{margin:0}
+a{color:inherit}
+button{font-family:'Alexandria',sans-serif;cursor:pointer}
+button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid #5B9CF5;outline-offset:2px}
+.press{transition:transform .15s ease,opacity .15s ease;touch-action:manipulation;-webkit-tap-highlight-color:transparent}
+@media (hover:hover){.press:hover{opacity:.88}}
+button,a,input,select{touch-action:manipulation;-webkit-tap-highlight-color:transparent}
+h1,h2{text-wrap:balance}
+main,nav{overscroll-behavior:contain}
+.num{font-variant-numeric:tabular-nums}
+::selection{background:#F2A93B;color:#000}
+input,select{caret-color:#F2A93B}
+main{scrollbar-width:thin;scrollbar-color:rgba(127,127,127,.45) transparent}
+button:disabled{cursor:not-allowed}
+.press:active{transform:scale(.96)}
+@keyframes inFwd{from{opacity:0;transform:translateX(-24px)}to{opacity:1;transform:none}}
+@keyframes inBack{from{opacity:0;transform:translateX(24px)}to{opacity:1;transform:none}}
+@keyframes fadeUp{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
+@keyframes draw{from{stroke-dashoffset:1400}to{stroke-dashoffset:0}}
+@keyframes spinCar{from{transform:rotateX(-20deg) rotateY(-35deg)}to{transform:rotateX(-20deg) rotateY(-395deg)}}
+@keyframes pop{from{opacity:0;transform:scale(.3)}to{opacity:1;transform:scale(1)}}
+@keyframes sheetIn{from{transform:translateX(100%)}to{transform:none}}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+@keyframes grow{from{transform:scaleX(0)}to{transform:scaleX(1)}}
+.enter-f{animation:inFwd .28s cubic-bezier(.16,1,.3,1) both}
+.enter-b{animation:inBack .28s cubic-bezier(.16,1,.3,1) both}
+.fu{animation:fadeUp .3s cubic-bezier(.16,1,.3,1) both}
+.d1{animation-delay:.15s}.d2{animation-delay:.3s}.d3{animation-delay:.45s}.d4{animation-delay:.6s}.d5{animation-delay:.75s}
+.draw{stroke-dasharray:1400;animation:draw 1.8s cubic-bezier(.6,.1,.2,1) both}
+.wm{animation:fadeUp .5s cubic-bezier(.16,1,.3,1) both}
+.spin{animation:spinCar 14s linear infinite}
+.pop{animation:pop .45s cubic-bezier(.3,1.4,.5,1) both}
+.rise{animation:riseIn .32s cubic-bezier(.16,1,.3,1) both}
+@keyframes riseIn{from{transform:translateY(100%)}to{transform:none}}
+.sheet{animation:sheetIn .35s cubic-bezier(.2,.7,.2,1) both}
+.fade{animation:fadeIn .3s ease both}
+.grow{transform-origin:right;animation:grow .9s cubic-bezier(.2,.7,.2,1) .2s both}
+@keyframes write{from{clip-path:inset(-20% 0 -20% 100%)}to{clip-path:inset(-20% 0 -20% 0)}}
+@keyframes pen{0%{opacity:0;right:4%}8%{opacity:1}92%{opacity:1}100%{opacity:0;right:96%}}
+@keyframes settle{0%{filter:blur(3px)}100%{filter:blur(0)}}
+.write{animation:write 1.6s cubic-bezier(.65,.05,.36,1) .15s both,settle 1.6s ease-out .15s both}
+.pen{position:absolute;top:58%;width:7px;height:7px;border-radius:50%;background:#F2A93B;animation:pen 1.6s cubic-bezier(.65,.05,.36,1) .15s both;pointer-events:none}
+
+@media (hover:hover){.press:hover{transform:translateY(-1px)}}
+@media (prefers-reduced-motion: reduce){*{animation:none!important;transition:none!important}}

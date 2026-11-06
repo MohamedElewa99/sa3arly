@@ -1,7 +1,7 @@
 name: scrape
 
 # Hatla2ee answers a page in ~10 s, so work is split:
-#   daily  03:17 Cairo : zero prices + newest 60 list pages + up to 300 new ad pages   (~3 h, jobs run one after the other)
+#   daily  03:17 Cairo : Hatla2ee zero prices + newest 60 used pages (+300 ad pages), all of OpenSooq and Sylndr (~3.5 h, one job after the other)
 #   Friday 05:17 Cairo : full sweep of every list page, no ad pages (prices + removals) (~3.5 h)
 on:
   schedule:
@@ -28,7 +28,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with: { python-version: "3.12", cache: pip }
-      - run: pip install -r requirements.txt && python -m playwright install --with-deps chromium
+      - run: pip install -r requirements-scraper.txt && python -m playwright install --with-deps chromium
       - run: python -m pytest -q tests
       - name: scrape
         env:

@@ -1,0 +1,171 @@
+"""Read-only queries behind the Sa3arly app: catalog, one-car quote, market feed.
+
+Each function takes an open psycopg connection and returns plain JSON-able dicts.
+The Vercel functions in /api are thin wrappers around these, so they can be tested locally.
+"""
+from __future__ import annotations
+
+import statistics
+from datetime import date, datetime, timezone
+from typing import Optional
+
+from .pricing import DEFAULT_KM_RATE, DEFAULT_YEAR_RATE, Pricer
+
+BODY_WORDS = [
+    ("pickup", "pickup"), ("pick-up", "pickup"), ("pick up", "pickup"), ("van", "van"), ("bus", "van"),
+    ("hatch", "hatch"), ("suv", "suv"), ("crossover", "crossover"), ("coupe", "sedan"), ("sedan", "sedan"),
+]
+SOURCE_AR = {"hatla2ee": "هتلاقي", "opensooq": "السوق المفتوح", "sylndr": "Sylndr", "dubizzle": "دوبيزل", "contactcars": "كونتاكت كارز"}
+
+
+def _body(types: list[str]) -> str:
+    votes: dict[str, int] = {}
+    for t in types:
+        t = (t or "").lower()
+        for word, body in BODY_WORDS:
+            if word in t:
+                votes[body] = votes.get(body, 0) + 1
+                break
+    return max(votes, key=votes.get) if votes else "sedan"
+
+
+def _ref_price(rows: list[tuple[int, Optional[int], int]]) -> Optional[int]:
+    """median price brought to model year 2022 and 60,000 km, the anchor the app's local estimate uses"""
+    adj = []
+    for year, km, price in rows:
+        p = price * (1 + DEFAULT_YEAR_RATE) ** (2022 - year)
+        if km is not None:
+            p *= (1 + DEFAULT_KM_RATE) ** ((km - 60_000) / 10_000)
+        adj.append(p)
+    return int(round(statistics.median(adj) / 5000) * 5000) if adj else None
+
+
+def catalog(cx, days: int = 90, min_ads: int = 3) -> dict:
+    rows = cx.execute("""
+        select mk.name_en, mo.name_en, l.year, l.km, l.price_egp, l.trim_raw, l.body_type
+        from listings l join makes mk on mk.id = l.make_id join models mo on mo.id = l.model_id
+        where l.price_egp is not null and l.year is not null
+          and l.last_seen > now() - make_interval(days => %s)
+    """, (days,)).fetchall()
+    zero = cx.execute("""
+        select mk.name_en, mo.name_en, z.model_year, z.price_egp
+        from zero_prices z join makes mk on mk.id = z.make_id join models mo on mo.id = z.model_id
+        where z.effective_on > now() - interval '45 days'
+    """).fetchall()
+    zmap: dict[tuple, list] = {}
+    for mk, mo, y, p in zero:
+        zmap.setdefault((mk, mo), []).append((y, p))
+
+    groups: dict[tuple, list] = {}
+    for r in rows:
+        groups.setdefault((r[0], r[1]), []).append(r)
+    makes: dict[str, dict] = {}
+    best, best_n = None, 0
+    this_year = date.today().year
+    for (mk, mo), rs in groups.items():
+        if len(rs) < min_ads:
+            continue
+        years = sorted({r[2] for r in rs if 1990 <= r[2] <= this_year + 1})
+        trims: dict[str, int] = {}
+        for r in rs:
+            if r[5]:
+                trims[r[5].strip()] = trims.get(r[5].strip(), 0) + 1
+        top_trims = [t for t, _ in sorted(trims.items(), key=lambda kv: -kv[1])[:6]] or ["Standard"]
+        z = zmap.get((mk, mo), [])
+        zero_price = None
+        if z:
+            newest = max(y for y, _ in z)
+            zero_price = int(statistics.median(p for y, p in z if y == newest))
+        makes.setdefault(mk, {})[mo] = {
+            "body": _body([r[6] for r in rs]),
+            "trims": top_trims,
+            "years": years,
+            "ref": _ref_price([(r[2], r[3], r[4]) for r in rs]),
+            "zero": zero_price or 0,
+            "n": len(rs),
+        }
+        if len(rs) > best_n:
+            year_counts: dict[int, int] = {}
+            for r in rs:
+                year_counts[r[2]] = year_counts.get(r[2], 0) + 1
+            best_n = len(rs)
+            best = {"make": mk, "model": mo, "year": max(year_counts, key=year_counts.get), "trim": top_trims[0],
+                    "body": makes[mk][mo]["body"]}
+    return {"makes": makes, "default": best, "generated": datetime.now(timezone.utc).isoformat()}
+
+
+def quote(cx, make: str, model: str, year: int, km: int, trim: Optional[str] = None) -> dict:
+    """Market range for a factory-condition car; the app subtracts paint and repairs itself."""
+    q = Pricer(cx).quote(make, model, int(year), int(km), trim=trim or None)
+    comps = [{
+        "source": SOURCE_AR.get(c.source, c.source), "year": c.year, "km": c.km, "price": c.price,
+        "adjusted": int(round(c.adjusted)), "url": c.url, "trim": c.trim,
+    } for c in q.comparables]
+    return {
+        "low": q.low, "high": q.high, "mid": q.mid, "confidence": q.confidence,
+        "n": len(q.comparables) if q.low is None else _count(q), "zero": q.zero_price, "zero_year": q.zero_year,
+        "lines": q.lines, "comparables": comps,
+    }
+
+
+def _count(q) -> int:
+    # the explanation line "N عربية شبهها اتقارنت …" carries the number of comparables used
+    for line in q.lines:
+        head = line.split(" ", 1)[0]
+        if "عربية شبهها" in line and head.isdigit():
+            return int(head)
+    return len(q.comparables)
+
+
+def _when(ts) -> str:
+    if ts is None:
+        return ""
+    if isinstance(ts, date) and not isinstance(ts, datetime):
+        days = (date.today() - ts).days
+    else:
+        delta = datetime.now(timezone.utc) - ts
+        hours = int(delta.total_seconds() // 3600)
+        if hours < 1:
+            return "دلوقتي"
+        if hours < 24:
+            return "من ساعة" if hours == 1 else "من ساعتين" if hours == 2 else f"من {hours} ساعات" if hours <= 10 else f"من {hours} ساعة"
+        days = hours // 24
+    return "النهارده" if days <= 0 else "امبارح" if days == 1 else "من يومين" if days == 2 else f"من {days} أيام" if days <= 10 else f"من {days} يوم"
+
+
+def market(cx, limit: int = 12) -> dict:
+    items = []
+    for mk, mo, trim, y, old, new, ch, on in cx.execute("""
+        select mk.name_en, mo.name_en, c.trim_name, c.model_year, c.old_price_egp, c.new_price_egp, c.change_egp, c.changed_on
+        from zero_price_changes c join makes mk on mk.id = c.make_id join models mo on mo.id = c.model_id
+        where c.changed_on > current_date - 14 and c.change_egp <> 0
+        order by c.changed_on desc, abs(c.change_egp) desc
+        limit %s
+    """, (limit // 2,)).fetchall():
+        items.append({"t": "zero", "name": f"{mk} {mo} {y}", "kind": "سعر الزيرو", "when": _when(on), "price": new,
+                      "delta": ch, "pct": False, "up": ch > 0, "car": {"make": mk, "model": mo, "year": y, "trim": trim}, "km": 0})
+    for mk, mo, y, km, price, src, seen, trim, med in cx.execute("""
+        with recent as (
+          select l.make_id, l.model_id, l.year, l.km, l.price_egp, l.source, l.first_seen, l.trim_raw
+          from listings l
+          where l.first_seen > now() - interval '3 days' and l.removed_at is null and l.price_egp is not null and l.year is not null
+        ), med as (
+          select l.model_id, l.year, percentile_cont(0.5) within group (order by l.price_egp) as m, count(*) as n
+          from listings l
+          where l.last_seen > now() - interval '60 days' and l.price_egp is not null
+            and (l.model_id, l.year) in (select model_id, year from recent)
+          group by l.model_id, l.year
+        )
+        select mk.name_en, mo.name_en, r.year, r.km, r.price_egp, r.source, r.first_seen, r.trim_raw, med.m
+        from recent r join med on med.model_id = r.model_id and med.year = r.year and med.n >= 6
+        join makes mk on mk.id = r.make_id join models mo on mo.id = r.model_id
+        where r.price_egp < med.m * 0.9 and r.price_egp > med.m * 0.5
+        order by r.price_egp / med.m asc
+        limit %s
+    """, (limit,)).fetchall():
+        pct = round((price / med - 1) * 100, 1)
+        km_txt = f"، {km:,} كم" if km else ""
+        items.append({"t": "deal", "name": f"{mk} {mo} {y}{km_txt}", "kind": "لقطة على " + SOURCE_AR.get(src, src), "when": _when(seen),
+                      "price": price, "delta": pct, "pct": True, "up": False,
+                      "car": {"make": mk, "model": mo, "year": y, "trim": (trim or "Standard").strip()}, "km": km or 0})
+    return {"items": items[:limit]}

@@ -1,0 +1,7 @@
+/* page around the app column: phones fill the screen, desktop shows a centred column */
+html, body { margin: 0; background: #000; height: 100%; }
+body { font-family: 'Alexandria', sans-serif; -webkit-font-smoothing: antialiased; }
+#root { min-height: 100dvh; }
+@supports (padding: env(safe-area-inset-top)) {
+  #root > div { padding-top: env(safe-area-inset-top); box-sizing: border-box; }
+}

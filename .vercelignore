@@ -1,0 +1,6 @@
+tests
+.github
+db
+design
+web/node_modules
+*.jsonl
