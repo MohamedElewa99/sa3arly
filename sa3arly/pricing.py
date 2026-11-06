@@ -143,13 +143,16 @@ def _paint_weight(part: str) -> float:
     return 0.015
 
 
-def _ai_weight(n: int, known_model: bool, has_zero: bool) -> float:
-    """How much the learned model counts next to n close comparables (checked on held-out cars, see tests)."""
+def _ai_weight(n: int, known_model: bool, has_zero: bool, error: float = 0.0) -> float:
+    """How much the learned model counts next to n close comparables (checked on held-out cars, see tests).
+    A model whose held-out error is above 6 % counts proportionally less."""
     if n == 0:
         return 1.0
     w = 0.6 if n < 8 else 0.45 if n < 20 else 0.3
     if not known_model and not has_zero:
         w *= 0.4                     # the model never saw this car and has no zero price to anchor on
+    if error and error > 0.06:
+        w *= 0.06 / error
     return w
 
 
@@ -274,8 +277,8 @@ class Pricer:
         ai, info = self._ai(make, model, year, km, trim, zero)
         ai_out = None
         if ai and (mid is not None or info["known"]["model"] or zero):
-            w = _ai_weight(n, info["known"]["model"], bool(zero))
             met = info["metrics"]
+            w = _ai_weight(n, info["known"]["model"], bool(zero), met.get("median_ape") or 0.0)
             ai_out = {"mid": _round(ai["mid"]), "low": _round(ai["lo"]), "high": _round(ai["hi"]), "weight": round(w, 2),
                       "n_train": met.get("n_all", met.get("n_train")), "error": met.get("median_ape"), "comps_mid": _round(mid) if mid else None}
             if mid is None:

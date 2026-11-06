@@ -22,6 +22,7 @@ def test_ai_weight():
     assert _ai_weight(0, False, False) == 1.0
     assert _ai_weight(5, True, True) > _ai_weight(12, True, True) > _ai_weight(30, True, True)
     assert _ai_weight(5, False, False) < _ai_weight(5, True, False)
+    assert _ai_weight(5, True, True, 0.12) == _ai_weight(5, True, True) / 2
 
 
 def test_features():
