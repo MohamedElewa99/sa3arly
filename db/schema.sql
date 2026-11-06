@@ -86,7 +86,7 @@ create table if not exists listings (
   raw             jsonb,
   unique (source, source_id)
 );
-create index if not exists listings_comp on listings (make_id, model_id, year, last_seen desc) where removed_at is null;
+create index if not exists listings_make_model_year on listings (make_id, model_id, year) include (last_seen, removed_at, price_egp, km);
 create index if not exists listings_dedupe on listings (dedupe_key);
 
 -- Every price we ever saw for a listing (asking-price history, days on market)

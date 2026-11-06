@@ -38,6 +38,7 @@ def db():
                           year=y, km=km, price_egp=p))
     s.zero(ZeroPrice(source="hatla2ee", make_raw="Cupra", full_name="Cupra Formentor 2026 Automatic",
                      model_year=2026, price_egp=2_049_000, effective_on=__import__("datetime").date.today().isoformat()))
+    s.flush()
     yield s.cx
     s.close()
 

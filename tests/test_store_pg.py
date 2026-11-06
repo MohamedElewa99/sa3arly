@@ -19,7 +19,7 @@ def test_pg_roundtrip():
     s.listing(l)
     l.price_egp = 815_000                      # price drop seen next day
     s.listing(l)
-    s.run("hatla2ee:used", pages=1, items=1)
+    s.run("hatla2ee:used", pages=1, items=1)          # run() flushes buffered writes
     assert s.cx.execute("select count(*) from zero_price_changes").fetchone()[0] == 3
     assert s.cx.execute("select trim_name, change_egp from zero_price_changes order by changed_on desc, change_egp desc limit 1").fetchone() \
         == ("A/T / Black Edition", 160_000)
@@ -36,6 +36,7 @@ def test_pg_zero_model_page_market_price():
     s.cx.execute("truncate makes, models, zero_prices restart identity cascade")
     for z in h.parse_model_page((Path(__file__).parent / "fixtures/hatla2ee_model_tucson.txt").read_text(encoding="utf-8"), "Hyundai", "u"):
         s.zero(z)
+    s.flush()
     rows = s.cx.execute("select m.name_en, z.trim_name, z.model_year, z.price_egp, z.market_price_egp from zero_prices z "
                         "join models m on m.id = z.model_id order by z.model_year, z.price_egp").fetchall()
     assert len(rows) == 13 and rows[0] == ("Tucson", "A/T / SHADOW", 2025, 1_499_000, 1_499_000)

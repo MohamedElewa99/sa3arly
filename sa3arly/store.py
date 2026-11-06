@@ -42,11 +42,51 @@ class JsonlStore:
             f.close()
 
 
+LISTING_COLS = ("source text, source_id text, url text, mk int, md int, make_raw text, model_raw text, trim_raw text, "
+                "title text, year int, km int, transmission text, fuel text, body_type text, color text, city text, "
+                "governorate text, price_egp bigint, seller_type text, description text, photo_count int, "
+                "posted_on date, dk text, raw jsonb")
+
+# One statement per batch: upsert every listing, then add a price-history row only where the price
+# differs from the last one recorded (same rule as before, evaluated against the pre-statement snapshot).
+BATCH_UPSERT = f"""
+with b as (select * from jsonb_to_recordset(%s::jsonb) as x({LISTING_COLS})),
+up as (
+    insert into listings (source, source_id, url, make_id, model_id, make_raw, model_raw, trim_raw, title,
+        year, km, transmission, fuel, body_type, color, city, governorate, price_egp, seller_type,
+        description, photo_count, posted_on, dedupe_key, raw)
+    select source, source_id, url, mk, md, make_raw, model_raw, trim_raw, title, year, km, transmission, fuel,
+           body_type, color, city, governorate, price_egp, seller_type, description, photo_count, posted_on, dk,
+           coalesce(raw, '{{}}'::jsonb)
+    from b
+    on conflict (source, source_id) do update set
+        last_seen = now(), removed_at = null, price_egp = excluded.price_egp, km = coalesce(excluded.km, listings.km),
+        trim_raw = coalesce(excluded.trim_raw, listings.trim_raw),
+        description = coalesce(excluded.description, listings.description),
+        posted_on = coalesce(excluded.posted_on, listings.posted_on),
+        color = coalesce(excluded.color, listings.color),
+        raw = listings.raw || excluded.raw
+    returning id, price_egp
+)
+insert into listing_prices (listing_id, price_egp)
+select up.id, up.price_egp from up
+where up.price_egp is not null
+  and up.price_egp is distinct from (select lp.price_egp from listing_prices lp
+                                     where lp.listing_id = up.id order by lp.seen_at desc limit 1)
+"""
+
+
 class PgStore:
+    BATCH = 200
+
     def __init__(self, url: str):
         import psycopg
         self.cx = psycopg.connect(url, autocommit=True)
         self._makes, self._models = {}, {}
+        self._model_names: dict[int, list[str]] = {}     # make_id -> model names (N+1 fix for zero())
+        self._pending: dict[tuple, dict] = {}            # (source, source_id) -> row, last one wins
+        self._zero_rows: list[tuple] = []
+        self._change_rows: list[tuple] = []
 
     # -- catalogue
     def make_id(self, raw):
@@ -71,74 +111,91 @@ class PgStore:
                 "on conflict (make_id, slug) do update set slug = excluded.slug returning id",
                 (make_id, slug, raw.strip())).fetchone()
             self._models[key] = row[0]
+            if make_id in self._model_names and raw.strip() not in self._model_names[make_id]:
+                self._model_names[make_id].append(raw.strip())
         return self._models[key]
 
     def models_of(self, make_id):
-        return [r[0] for r in self.cx.execute("select name_en from models where make_id = %s", (make_id,))]
+        """Model names of a make, read once per make per run and kept up to date as models are added."""
+        if make_id not in self._model_names:
+            self._model_names[make_id] = [r[0] for r in self.cx.execute(
+                "select name_en from models where make_id = %s", (make_id,))]
+        return self._model_names[make_id]
 
     def known_ids(self, source):
         return {r[0] for r in self.cx.execute(
             "select source_id from listings where source = %s and description is not null", (source,))}
 
-    # -- writes
+    # -- writes (buffered: one round trip per batch instead of 1-2 per row)
     def listing(self, l: Listing):
         mk = self.make_id(l.make_raw)
         md = self.model_id(mk, l.model_raw)
-        row = self.cx.execute("""
-            insert into listings (source, source_id, url, make_id, model_id, make_raw, model_raw, trim_raw, title,
-                year, km, transmission, fuel, body_type, color, city, governorate, price_egp, seller_type,
-                description, photo_count, posted_on, dedupe_key, raw)
-            values (%(source)s, %(source_id)s, %(url)s, %(mk)s, %(md)s, %(make_raw)s, %(model_raw)s, %(trim_raw)s,
-                %(title)s, %(year)s, %(km)s, %(transmission)s, %(fuel)s, %(body_type)s, %(color)s, %(city)s,
-                %(governorate)s, %(price_egp)s, %(seller_type)s, %(description)s, %(photo_count)s, %(posted_on)s,
-                %(dk)s, %(raw)s)
-            on conflict (source, source_id) do update set
-                last_seen = now(), removed_at = null, price_egp = excluded.price_egp, km = coalesce(excluded.km, listings.km),
-                trim_raw = coalesce(excluded.trim_raw, listings.trim_raw),
-                description = coalesce(excluded.description, listings.description),
-                posted_on = coalesce(excluded.posted_on, listings.posted_on),
-                color = coalesce(excluded.color, listings.color),
-                raw = listings.raw || excluded.raw
-            returning id, (select price_egp from listing_prices lp where lp.listing_id = listings.id
-                           order by seen_at desc limit 1)
-        """, {**l.dict(), "mk": mk, "md": md,
-              "dk": dedupe_key(l.make_raw, l.model_raw, l.year, l.km, l.price_egp),
-              "raw": json.dumps(l.raw, ensure_ascii=False)}).fetchone()
-        lid, last_price = row
-        if l.price_egp and l.price_egp != last_price:
-            self.cx.execute("insert into listing_prices (listing_id, price_egp) values (%s, %s)", (lid, l.price_egp))
+        row = {**l.dict(), "mk": mk, "md": md, "dk": dedupe_key(l.make_raw, l.model_raw, l.year, l.km, l.price_egp)}
+        key = (l.source, l.source_id)
+        prev = self._pending.get(key)
+        if prev is not None and prev.get("price_egp") != l.price_egp:
+            self._flush_listings()          # keep both prices in the history, as the row-by-row version did
+        self._pending[key] = row
+        if len(self._pending) >= self.BATCH:
+            self._flush_listings()
+
+    def _flush_listings(self):
+        if not self._pending:
+            return
+        rows = list(self._pending.values())
+        self._pending = {}
+        self.cx.execute(BATCH_UPSERT, (json.dumps(rows, ensure_ascii=False, default=str),))
 
     def zero(self, z: ZeroPrice):
         mk = self.make_id(z.make_raw)
         model, trim = split_zero_name(z.full_name, z.make_raw, self.models_of(mk), z.model_year)
         md = self.model_id(mk, model)
-        self.cx.execute("""
-            insert into zero_prices (make_id, model_id, trim_name, model_year, price_egp, market_price_egp,
-                                     source, source_url, effective_on)
-            values (%s, %s, %s, %s, %s, %s, %s, %s, %s)
-            on conflict (make_id, trim_name, model_year, source, effective_on)
-            do update set price_egp = excluded.price_egp, market_price_egp = excluded.market_price_egp
-        """, (mk, md, trim or z.full_name, z.model_year, z.price_egp, z.market_price_egp, z.source,
-              z.source_url, z.effective_on))
+        self._zero_rows.append((mk, md, trim or z.full_name, z.model_year, z.price_egp, z.market_price_egp, z.source,
+                                z.source_url, z.effective_on))
         if z.old_price_egp:
-            self.cx.execute("""
-                insert into zero_price_changes (make_id, model_id, trim_name, model_year, old_price_egp, new_price_egp,
-                    changed_on, source, source_url)
-                values (%s, %s, %s, %s, %s, %s, %s, %s, %s) on conflict do nothing
-            """, (mk, md, trim or z.full_name, z.model_year, z.old_price_egp, z.price_egp, z.effective_on,
-                  z.source, z.source_url))
+            self._change_rows.append((mk, md, trim or z.full_name, z.model_year, z.old_price_egp, z.price_egp,
+                                      z.effective_on, z.source, z.source_url))
+        if len(self._zero_rows) >= self.BATCH:
+            self._flush_zero()
+
+    def _flush_zero(self):
+        with self.cx.cursor() as cur:
+            if self._zero_rows:
+                cur.executemany("""
+                    insert into zero_prices (make_id, model_id, trim_name, model_year, price_egp, market_price_egp,
+                                             source, source_url, effective_on)
+                    values (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+                    on conflict (make_id, trim_name, model_year, source, effective_on)
+                    do update set price_egp = excluded.price_egp, market_price_egp = excluded.market_price_egp
+                """, self._zero_rows)
+            if self._change_rows:
+                cur.executemany("""
+                    insert into zero_price_changes (make_id, model_id, trim_name, model_year, old_price_egp,
+                        new_price_egp, changed_on, source, source_url)
+                    values (%s, %s, %s, %s, %s, %s, %s, %s, %s) on conflict do nothing
+                """, self._change_rows)
+        self._zero_rows, self._change_rows = [], []
+
+    def flush(self):
+        self._flush_listings()
+        self._flush_zero()
 
     def run(self, source, pages=0, items=0, errors=0, note=None):
+        self.flush()
         self.cx.execute("insert into scrape_runs (source, finished_at, pages, items, errors, note) values (%s, now(), %s, %s, %s, %s)",
                         (source, pages, items, errors, note))
 
     def mark_removed(self, source, days=21):
         """Ads not seen for `days` are treated as sold/removed (days-on-market signal)."""
+        self.flush()
         self.cx.execute("update listings set removed_at = now() where source = %s and removed_at is null "
                         "and last_seen < now() - make_interval(days => %s)", (source, days))
 
     def close(self):
-        self.cx.close()
+        try:
+            self.flush()
+        finally:
+            self.cx.close()
 
 
 def open_store():

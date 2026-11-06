@@ -121,20 +121,20 @@ class Pricer:
         if not mk:
             return []
         ms = slugify(model)
+        like = ms.replace("\\", "\\\\").replace("_", "\\_").replace("%", "\\%") + "-%"
+        # model family ('elantra' ⇄ 'elantra-ad') is resolved in SQL, so only matching rows leave the database
         rows = self.cx.execute("""
-            select l.source, l.year, l.km, l.price_egp, l.url, l.trim_raw, coalesce(l.raw->'badges', '[]'::jsonb),
-                   mo.slug
-            from listings l left join models mo on mo.id = l.model_id
-            where l.make_id = %s and l.year between %s and %s and l.price_egp is not null
+            select l.source, l.year, l.km, l.price_egp, l.url, l.trim_raw, coalesce(l.raw->'badges', '[]'::jsonb)
+            from listings l
+            where l.make_id = %s
+              and l.model_id in (select id from models
+                                 where make_id = %s and (slug = %s or slug like %s or %s like slug || '-%%'))
+              and l.year between %s and %s and l.price_egp is not null
               and l.last_seen > now() - make_interval(days => %s)
               and (l.removed_at is null or l.removed_at > now() - make_interval(days => %s))
-        """, (mk, year - spread, year + spread, days, days)).fetchall()
+        """, (mk, mk, ms, like, ms, year - spread, year + spread, days, days)).fetchall()
         out = []
-        for src, y, km, price, url, trim, badges, mslug in rows:
-            mslug = mslug or ""
-            # 'elantra' matches 'elantra-ad', 'elantra-cn7'…; exact generation wins when given
-            if not (mslug == ms or mslug.startswith(ms + "-") or ms.startswith(mslug + "-")):
-                continue
+        for src, y, km, price, url, trim, badges in rows:
             if set(badges or []) & EXCLUDE_BADGES:
                 continue
             if km is not None and km < 1000 and y >= date.today().year:
@@ -148,11 +148,13 @@ class Pricer:
         if not mk:
             return None, None
         ms = slugify(model)
+        like = ms.replace("\\", "\\\\").replace("_", "\\_").replace("%", "\\%") + "-%"
         rows = self.cx.execute("""
-            select z.model_year, z.price_egp, mo.slug from zero_prices z join models mo on mo.id = z.model_id
+            select z.model_year, z.price_egp from zero_prices z
             where z.make_id = %s and z.effective_on > now() - interval '45 days'
-        """, (mk,)).fetchall()
-        rows = [(y, p) for y, p, s in rows if s == ms or s.startswith(ms + "-") or ms.startswith(s + "-")]
+              and z.model_id in (select id from models
+                                 where make_id = %s and (slug = %s or slug like %s or %s like slug || '-%%'))
+        """, (mk, mk, ms, like, ms)).fetchall()
         if not rows:
             return None, None
         top = max(y for y, _ in rows)
@@ -200,6 +202,11 @@ class Pricer:
         else:
             return Quote(None, None, None, "منخفضة", [], zero, zero_year,
                          lines + ["مفيش عربيات شبهها في القاعدة لسه"])
+
+        # few comparables -> the quartiles are too tight to be honest: enforce a minimum width
+        min_width = 0.10 if n < 8 else 0.07 if n < 20 else 0.0
+        if min_width and (high - low) < min_width * mid:
+            low, high = mid * (1 - min_width / 2), mid * (1 + min_width / 2)
 
         # condition
         paint = paint or {}
