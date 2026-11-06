@@ -278,6 +278,17 @@ class Fetcher:
     def overloaded(self) -> bool:
         return self.slow_streak >= 3
 
+    def reveal(self, href_regex: str, pause_ms: int = 120) -> None:
+        """Scroll every matching ad link into view once, so lazily rendered cards fill in their text."""
+        self.page.evaluate(r"""
+        async ([src, pause]) => {
+          const re = new RegExp(src);
+          for (const a of [...document.querySelectorAll('a[href]')].filter(a => re.test(a.href))) {
+            a.scrollIntoView({block: 'center'});
+            await new Promise(r => setTimeout(r, pause));
+          }
+        }""", [href_regex, pause_ms])
+
     def cards(self, href_regex: str) -> list[dict]:
         """For the current page: every link matching href_regex with the text of its own card.
 

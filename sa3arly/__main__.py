@@ -164,6 +164,7 @@ def main(argv=None):
     pr.add_argument("--model", required=True)
     pr.add_argument("--year", type=int, required=True)
     pr.add_argument("--km", type=int, required=True)
+    pr.add_argument("--trim", default=None, help="e.g. VZ, Highline — narrows to the same trim when enough ads")
     pr.add_argument("--paint", default="", help="e.g. hood=repainted,door_fl=replaced")
     pr.add_argument("--repair", action="append", default=[], help="min-max EGP, e.g. 15000-35000 (repeatable)")
     bm = sub.add_parser("benchmark", help="compare Sa3arly ranges with Hatla2ee's own min/max on saved ads")
@@ -186,7 +187,7 @@ def main(argv=None):
         if a.cmd == "price":
             paint = dict(kv.split("=", 1) for kv in a.paint.split(",") if "=" in kv)
             reps = [tuple(int(x) for x in r.split("-", 1)) for r in a.repair]
-            q = pricer.quote(a.make, a.model, a.year, a.km, paint, reps)
+            q = pricer.quote(a.make, a.model, a.year, a.km, paint, reps, trim=a.trim)
             print(q.text())
             for c in q.comparables[:5]:
                 print(f"   {c.source:9} {c.year} {c.km or 0:>7,} km  {c.price:>11,}  {c.url}")

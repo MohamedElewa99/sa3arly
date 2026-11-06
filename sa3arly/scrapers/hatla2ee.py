@@ -162,7 +162,10 @@ def scrape_zero(f: Fetcher, brands: Optional[list[str]] = None, max_change_pages
                 continue
             rows = parse_model_page(t, brand, url)
             if not rows:
-                print(f"[hatla2ee] no classes parsed on {url}")
+                if "Price Not Available" in t or "No data available" in t:
+                    print(f"[hatla2ee] no official price on site (discontinued / not sold new): {url}")
+                else:
+                    print(f"[hatla2ee] CHECK: classes not parsed on {url}")   # a real parser miss
             yield from rows
         seen_rows = set()
         for page in range(1, max_change_pages + 1):

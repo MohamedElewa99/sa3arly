@@ -1,11 +1,10 @@
-"""Shared plumbing for the Vercel functions: DB connection, JSON responses, the repo package on the path."""
+"""Shared plumbing for the Vercel functions in /api: DB connection, query string, JSON responses."""
 import json
 import os
 import sys
 from pathlib import Path
 from urllib.parse import parse_qs, urlparse
 
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 import psycopg  # noqa: E402
 

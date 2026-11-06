@@ -8,7 +8,7 @@ from .common import slugify
 
 # Same make, different spellings across sites -> one slug.
 MAKE_ALIASES = {
-    "mercedes-benz": "mercedes", "mercedes benz": "mercedes", "مرسيدس": "mercedes",
+    "mercedes-benz": "mercedes", "mercedes benz": "mercedes", "mercedesbenz": "mercedes", "مرسيدس": "mercedes",
     "vw": "volkswagen", "فولكس": "volkswagen", "هيونداي": "hyundai", "هيونداى": "hyundai",
     "كيا": "kia", "تويوتا": "toyota", "نيسان": "nissan", "شيفروليه": "chevrolet",
     "chevy": "chevrolet", "شيري": "chery", "شيرى": "chery", "ام جي": "mg", "إم جي": "mg",

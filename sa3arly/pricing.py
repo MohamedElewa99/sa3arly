@@ -3,7 +3,9 @@
 Method (matches the spec):
  1. comparables: same make + model, model year ±1 (±2 when thin), listed in the last 60 days,
     not customs-exempt ('Disabled'), not zero-km stock;
- 2. clean: drop prices outside 1.5×IQR;
+ 2. keep the closest cars: same trim and a similar odometer when there are enough of them;
+    clean: drop asking prices that are impossible next to today's zero price (down-payment ads,
+    typos), then 1.5×IQR on the raw prices and again on the normalised prices;
  3. normalise every comparable to this car's year and km (rates fitted from the comparables
     themselves when there are enough, otherwise market defaults);
  4. asking → deal: −5 % for classified ads, −2 % for Sylndr's fixed inspected prices;
@@ -73,6 +75,39 @@ def _iqr_filter(xs: list[Comparable]) -> list[Comparable]:
     q1, q3 = statistics.quantiles(ps, n=4)[0], statistics.quantiles(ps, n=4)[2]
     lo, hi = q1 - 1.5 * (q3 - q1), q3 + 1.5 * (q3 - q1)
     return [c for c in xs if lo <= c.price <= hi]
+
+
+MIN_SIMILAR = 8                # narrow to same trim / similar km only when this many remain
+
+
+def _norm_trim(t: Optional[str]) -> str:
+    return " ".join((t or "").lower().replace("-", " ").split())
+
+
+def _closest(comps: list[Comparable], trim: Optional[str], km: int) -> tuple[list[Comparable], list[str]]:
+    """Narrow the pool to the most similar cars, but never below MIN_SIMILAR."""
+    notes = []
+    tt = _norm_trim(trim)
+    if tt:
+        same = [c for c in comps if tt in _norm_trim(c.trim) or (_norm_trim(c.trim) and _norm_trim(c.trim) in tt)]
+        if len(same) >= MIN_SIMILAR:
+            notes.append(f"نفس الفئة ({trim}) بس: {len(same)} من {len(comps)}")
+            comps = same
+    band = max(40_000, km * 0.5)
+    near = [c for c in comps if c.km is not None and abs(c.km - km) <= band]
+    if len(near) >= MIN_SIMILAR and len(near) < len(comps):
+        notes.append(f"عداد قريب (±{int(band):,} كم) بس: {len(near)} من {len(comps)}")
+        comps = near
+    return comps, notes
+
+
+def _iqr_on(xs: list[Comparable], key) -> list[Comparable]:
+    if len(xs) < 5:
+        return xs
+    vs = sorted(key(c) for c in xs)
+    q = statistics.quantiles(vs, n=4)
+    lo, hi = q[0] - 1.5 * (q[2] - q[0]), q[2] + 1.5 * (q[2] - q[0])
+    return [c for c in xs if lo <= key(c) <= hi]
 
 
 def _fit_rates(comps: list[Comparable]) -> tuple[float, float, str]:
@@ -162,15 +197,20 @@ class Pricer:
 
     # ---------------------------------------------------------------- quote
     def quote(self, make: str, model: str, year: int, km: int, paint: Optional[dict] = None,
-              repairs: Optional[list[tuple[int, int]]] = None) -> Quote:
+              repairs: Optional[list[tuple[int, int]]] = None, trim: Optional[str] = None) -> Quote:
         lines = []
         comps = self.comparables(make, model, year, 1)
         spread = 1
         if len(comps) < 8:
             comps, spread = self.comparables(make, model, year, 2), 2
+        zero, zero_year = self.zero_price(make, model)
+        found = len(comps)
+        if zero:
+            # an asking price under 25 % or over 130 % of a new one is a down payment, a typo or a dream
+            comps = [c for c in comps if 0.25 * zero <= c.price <= 1.3 * zero]
+        comps, notes = _closest(comps, trim, km)
         comps = _iqr_filter(comps)
         y_rate, k_rate, how = _fit_rates(comps)
-        zero, zero_year = self.zero_price(make, model)
 
         for c in comps:
             adj = c.price * (1 + y_rate) ** (year - c.year)
@@ -178,7 +218,11 @@ class Pricer:
                 adj *= (1 + k_rate) ** ((c.km - km) / 10_000)   # comparable drove more -> worth more at our km
             adj *= 1 - DEAL_DISCOUNT.get(c.source, DEAL_DISCOUNT["default"])
             c.adjusted = adj
+        comps = _iqr_on(comps, lambda c: c.adjusted)     # second pass: odd once year/km are evened out
         n = len(comps)
+        lines.extend(notes)
+        if found - n:
+            lines.append(f"اتشال {found - n} إعلان سعره شاذ أو بعيد عن العربية دي")
         conf = "عالية" if n >= 20 else "متوسطة" if n >= 8 else "منخفضة"
         lines.append(f"{n} عربية شبهها اتقارنت (سنة {year - spread}–{year + spread}، آخر ٦٠ يوم، "
                      f"مصادر: {', '.join(sorted({c.source for c in comps})) or '—'})")

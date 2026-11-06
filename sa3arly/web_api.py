@@ -142,11 +142,13 @@ def market(cx, limit: int = 12) -> dict:
         order by c.changed_on desc, abs(c.change_egp) desc
         limit %s
     """, (limit // 2,)).fetchall():
-        items.append({"t": "zero", "name": f"{mk} {mo} {y}", "kind": "سعر الزيرو", "when": _when(on), "price": new,
-                      "delta": ch, "pct": False, "up": ch > 0, "car": {"make": mk, "model": mo, "year": y, "trim": trim}, "km": 0})
-    for mk, mo, y, km, price, src, seen, trim, med in cx.execute("""
+        name = f"{mk} {mo} {y}" + (f"، فئة {trim}" if trim else "")
+        items.append({"t": "zero", "name": name, "kind": "سعر الزيرو", "when": _when(on), "price": new, "old": old,
+                      "delta": ch, "pct": False, "up": ch > 0, "source": "هتلاقي",
+                      "car": {"make": mk, "model": mo, "year": y, "trim": trim}, "km": 0})
+    for mk, mo, y, km, price, src, seen, trim, med, url, city in cx.execute("""
         with recent as (
-          select l.make_id, l.model_id, l.year, l.km, l.price_egp, l.source, l.first_seen, l.trim_raw
+          select l.make_id, l.model_id, l.year, l.km, l.price_egp, l.source, l.first_seen, l.trim_raw, l.url, l.city
           from listings l
           where l.first_seen > now() - interval '3 days' and l.removed_at is null and l.price_egp is not null and l.year is not null
         ), med as (
@@ -156,7 +158,7 @@ def market(cx, limit: int = 12) -> dict:
             and (l.model_id, l.year) in (select model_id, year from recent)
           group by l.model_id, l.year
         )
-        select mk.name_en, mo.name_en, r.year, r.km, r.price_egp, r.source, r.first_seen, r.trim_raw, med.m
+        select mk.name_en, mo.name_en, r.year, r.km, r.price_egp, r.source, r.first_seen, r.trim_raw, med.m, r.url, r.city
         from recent r join med on med.model_id = r.model_id and med.year = r.year and med.n >= 6
         join makes mk on mk.id = r.make_id join models mo on mo.id = r.model_id
         where r.price_egp < med.m * 0.9 and r.price_egp > med.m * 0.5
@@ -166,6 +168,7 @@ def market(cx, limit: int = 12) -> dict:
         pct = round((price / med - 1) * 100, 1)
         km_txt = f"، {km:,} كم" if km else ""
         items.append({"t": "deal", "name": f"{mk} {mo} {y}{km_txt}", "kind": "لقطة على " + SOURCE_AR.get(src, src), "when": _when(seen),
-                      "price": price, "delta": pct, "pct": True, "up": False,
+                      "price": price, "median": int(round(med)), "delta": pct, "pct": True, "up": False,
+                      "source": SOURCE_AR.get(src, src), "url": url, "city": city,
                       "car": {"make": mk, "model": mo, "year": y, "trim": (trim or "Standard").strip()}, "km": km or 0})
     return {"items": items[:limit]}

@@ -73,3 +73,17 @@ def test_unknown_model(db):
     from sa3arly.pricing import Pricer
     q = Pricer(db).quote("Lada", "Niva", 2015, 100_000)
     assert q.low is None and "مفيش" in q.text()
+
+
+def test_closest_and_outliers_helpers():
+    from sa3arly.pricing import Comparable, _closest, _iqr_on
+    comps = [Comparable("h", 2022, 90_000 + i * 1000, 1_500_000, "u", "VZ") for i in range(9)]
+    comps += [Comparable("h", 2022, 300_000, 1_100_000, "u", "Style") for _ in range(5)]
+    near, notes = _closest(comps, "vz", 100_000)
+    assert len(near) == 9 and all(c.trim == "VZ" for c in near) and notes
+    few, notes2 = _closest(comps[:5], "VZ", 100_000)      # too few to narrow: keep everything
+    assert len(few) == 5 and not notes2
+    pool = [Comparable("h", 2022, 1, p, "u") for p in [100, 101, 99, 102, 98, 100, 400]]
+    for c in pool:
+        c.adjusted = c.price
+    assert 400 not in [c.price for c in _iqr_on(pool, lambda c: c.adjusted)]
