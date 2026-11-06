@@ -13,7 +13,9 @@ const auth = {
   googleOn: false,    // Google provider switched on in Supabase
   user: null,         // { id, email, name }
   items: [],          // saved pricings, newest first
-  google, email, signOut, save, remove, pending, takePending,
+  profile: null,      // { name, showroom, phone, city, avatar }
+  cities: [],
+  google, email, signOut, save, remove, pending, takePending, saveProfile, photo,
 };
 Component.auth = auth;
 
@@ -44,7 +46,7 @@ async function setUser(session) {
   const was = auth.user && auth.user.id;
   auth.user = u ? { id: u.id, email: u.email, name: (u.user_metadata && (u.user_metadata.full_name || u.user_metadata.name)) || '' } : null;
   auth.token = session ? session.access_token : null;
-  if (!auth.user) { auth.items = []; refresh(); return; }
+  if (!auth.user) { auth.items = []; auth.profile = null; refresh(); return; }
   if (was === auth.user.id) return;
   // clean the auth code out of the address bar after a redirect
   if (/[?&](code|error)=/.test(location.search)) history.replaceState(null, '', location.pathname);
@@ -64,7 +66,35 @@ async function call(method, path, body) {
 }
 
 async function load() {
-  try { auth.items = (await call('GET', '/api/saved')).items || []; } catch (e) { /* keep what we have */ }
+  await Promise.all([
+    call('GET', '/api/saved').then((d) => { auth.items = d.items || []; }).catch(() => {}),
+    call('GET', '/api/profile').then((d) => { auth.profile = d.profile || {}; auth.cities = d.cities || []; }).catch(() => {}),
+  ]);
+}
+
+async function saveProfile(fields) {
+  const d = await call('PUT', '/api/profile', fields);
+  auth.profile = d.profile;
+  refresh();
+  return d.profile;
+}
+
+// a picked photo -> a small square JPEG data URL (256px), so it fits in the profile row
+function photo(file) {
+  return new Promise((resolve, reject) => {
+    if (!file || !/^image\//.test(file.type)) return reject(new Error('type'));
+    const url = URL.createObjectURL(file);
+    const img = new Image();
+    img.onload = () => {
+      const n = 256, c = document.createElement('canvas'), side = Math.min(img.width, img.height);
+      c.width = c.height = n;
+      c.getContext('2d').drawImage(img, (img.width - side) / 2, (img.height - side) / 2, side, side, 0, 0, n, n);
+      URL.revokeObjectURL(url);
+      resolve(c.toDataURL('image/jpeg', 0.82));
+    };
+    img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('read')); };
+    img.src = url;
+  });
 }
 
 function google() {
@@ -81,7 +111,7 @@ function email(address) {
 
 async function signOut() {
   if (sb) await sb.auth.signOut();
-  auth.user = null; auth.items = []; refresh();
+  auth.user = null; auth.items = []; auth.profile = null; refresh();
 }
 
 async function save(q) {

@@ -7,8 +7,38 @@ import './app.css';
 import './shell.css';
 
 function Root() {
-  return <Component ref={(r) => { if (r) { bindApp(r); bindAuth(r); } }} />;
+  return <Component ref={(r) => { if (r) { appRef = r; bindApp(r); bindAuth(r); } }} />;
 }
+
+// wide screens get the website layout (top nav + the app beside a data panel); phones get the app
+const wide = window.matchMedia('(min-width: 1024px)');
+Component.desk = wide.matches;
+let appRef = null;
+const onWide = () => { Component.desk = wide.matches; if (appRef) appRef.forceUpdate(); };
+if (wide.addEventListener) wide.addEventListener('change', onWide); else wide.addListener(onWide);
+
+// phone browser (not the installed app): offer to install; the installed app never shows this
+const HIDE = 'sa3.installHide';
+let deferred = null;
+const standalone = () => window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
+const ios = /iphone|ipad|ipod/i.test(navigator.userAgent) && !window.MSStream;
+Component.install = {
+  ios,
+  show() {
+    if (standalone()) return false;
+    try { if (Date.now() < +(localStorage.getItem(HIDE) || 0)) return false; } catch (e) { /* private mode */ }
+    return ios || !!deferred;
+  },
+  prompt() {
+    if (!deferred) return Promise.resolve(false);
+    const d = deferred; deferred = null;
+    d.prompt();
+    return d.userChoice.then((c) => c.outcome === 'accepted').finally(() => { if (appRef) appRef.forceUpdate(); });
+  },
+  dismiss() { try { localStorage.setItem(HIDE, String(Date.now() + 14 * 864e5)); } catch (e) { /* private mode */ } },
+};
+window.addEventListener('beforeinstallprompt', (e) => { e.preventDefault(); deferred = e; if (appRef) appRef.forceUpdate(); });
+window.addEventListener('appinstalled', () => { deferred = null; if (appRef) appRef.forceUpdate(); });
 
 createRoot(document.getElementById('root')).render(<Root />);
 loadCatalog();

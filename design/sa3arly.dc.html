@@ -58,7 +58,29 @@ button:disabled{cursor:not-allowed}
 @media (prefers-reduced-motion: reduce){*{animation:none!important;transition:none!important}}
 </style>
 </helmet>
-<div dir="rtl" style="width: 390px; height: 844px; position: relative; overflow: hidden; color-scheme: {{ scheme }}; background: {{ t.bg }}; color: {{ t.ink }}; font-family: 'Alexandria', sans-serif; transition: background .4s ease, color .4s ease">
+<div class="{{ shellCls }}" dir="rtl" style="{{ shellStyle }}">
+<sc-if value="{{ desk }}" hint-placeholder-val="{{ false }}">
+<header style="height: 72px; flex: none; display: flex; align-items: center; gap: 28px; padding: 0 40px; border-bottom: 1px solid {{ t.line }}">
+  <button onClick="{{ goHomeBack }}" aria-label="سعرلي، الرئيسية" style="background: none; border: none; padding: 0; color: {{ t.ink }}; cursor: pointer">
+    <span translate="no" style="font-family: 'Aref Ruqaa', serif; font-size: 40px; font-weight: 700; line-height: 1">سعرلي</span>
+  </button>
+  <nav aria-label="الأقسام" style="display: flex; gap: 4px; flex: 1">
+    <sc-for list="{{ deskLinks }}" as="dl" hint-placeholder-count="4">
+      <button class="press" onClick="{{ dl.go }}" aria-current="{{ dl.cur }}" style="height: 40px; padding: 0 16px; border-radius: 999px; border: none; background: {{ dl.bg }}; color: {{ dl.fg }}; font-size: 14px; font-weight: 500">{{ dl.label }}</button>
+    </sc-for>
+  </nav>
+  <button class="press" onClick="{{ toggleTheme }}" aria-label="{{ themeLabel }}" style="width: 40px; height: 40px; border-radius: 50%; border: 1px solid {{ t.line2 }}; background: none; color: {{ t.ink }}; display: flex; align-items: center; justify-content: center; padding: 0">
+    <svg width="16" height="16" viewBox="0 0 18 18" aria-hidden="true"><path d="M15.5 11.2A7 7 0 0 1 6.8 2.5a7 7 0 1 0 8.7 8.7z" stroke="currentColor" stroke-width="1.4" fill="none"></path></svg>
+  </button>
+  <button class="press" onClick="{{ openAccount }}" style="height: 40px; padding: 0 6px 0 16px; border-radius: 999px; border: 1px solid {{ t.line2 }}; background: none; color: {{ t.ink }}; display: flex; align-items: center; gap: 10px; font-size: 14px">
+    <sc-if value="{{ hasAvatar }}" hint-placeholder-val="{{ false }}"><img src="{{ avatarSrc }}" alt="" width="28" height="28" style="width: 28px; height: 28px; border-radius: 50%; object-fit: cover"></sc-if>
+    <sc-if value="{{ hasInitial }}" hint-placeholder-val="{{ false }}"><span aria-hidden="true" style="width: 28px; height: 28px; border-radius: 50%; background: {{ t.ink }}; color: {{ t.bg }}; font-size: 13px; font-weight: 600; display: flex; align-items: center; justify-content: center">{{ initial }}</span></sc-if>
+    <span style="padding-left: 10px">{{ deskAccount }}</span>
+  </button>
+</header>
+</sc-if>
+<div style="{{ deskRow }}">
+<div class="app-col" dir="rtl" style="width: 390px; height: 844px; position: relative; overflow: hidden; color-scheme: {{ scheme }}; background: {{ t.bg }}; color: {{ t.ink }}; font-family: 'Alexandria', sans-serif; transition: background .4s ease, color .4s ease">
 
 <sc-if value="{{ isHome }}" hint-placeholder-val="{{ true }}">
 <div class="{{ enterCls }}" style="position: absolute; inset: 0; display: flex; flex-direction: column">
@@ -78,6 +100,17 @@ button:disabled{cursor:not-allowed}
       <button class="press" onClick="{{ openAlerts }}" aria-label="التنبيهات، 3 جديدة" aria-haspopup="dialog" style="width: 44px; height: 44px; background: none; border: none; color: {{ t.ink }}; display: flex; align-items: center; justify-content: center; padding: 0; position: relative">
         <svg width="20" height="22" viewBox="0 0 20 22" aria-hidden="true"><path d="M3 16V9a7 7 0 0 1 14 0v7l2 2H1zM7.5 20a2.5 2.5 0 0 0 5 0" stroke="currentColor" stroke-width="1.4" fill="none"></path></svg>
         <span class="num" style="position: absolute; top: 6px; left: 5px; min-width: 16px; height: 16px; border-radius: 8px; background: #F2A93B; color: #000000; font-size: 10px; font-weight: 600; display: flex; align-items: center; justify-content: center">3</span>
+      </button>
+      <button class="press" onClick="{{ openAccount }}" aria-label="{{ accountAria }}" aria-haspopup="dialog" style="width: 44px; height: 44px; background: none; border: none; color: {{ t.ink }}; display: flex; align-items: center; justify-content: center; padding: 0">
+        <sc-if value="{{ hasAvatar }}" hint-placeholder-val="{{ false }}">
+          <img src="{{ avatarSrc }}" alt="" width="30" height="30" style="width: 30px; height: 30px; border-radius: 50%; object-fit: cover; border: 1px solid {{ t.line2 }}">
+        </sc-if>
+        <sc-if value="{{ hasInitial }}" hint-placeholder-val="{{ false }}">
+          <span aria-hidden="true" style="width: 30px; height: 30px; border-radius: 50%; background: {{ t.ink }}; color: {{ t.bg }}; font-size: 14px; font-weight: 600; display: flex; align-items: center; justify-content: center">{{ initial }}</span>
+        </sc-if>
+        <sc-if value="{{ noUser }}" hint-placeholder-val="{{ true }}">
+          <svg width="20" height="20" viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="6.5" r="3.8" stroke="currentColor" stroke-width="1.4" fill="none"></circle><path d="M2.5 19c.8-4 3.8-6 7.5-6s6.7 2 7.5 6" stroke="currentColor" stroke-width="1.4" fill="none"></path></svg>
+        </sc-if>
       </button>
     </div>
   </header>
@@ -170,6 +203,19 @@ button:disabled{cursor:not-allowed}
     </section>
   </main>
 
+  <sc-if value="{{ installShow }}" hint-placeholder-val="{{ false }}">
+  <div class="fu" role="region" aria-label="نزّل الأبلكيشن" style="flex: none; margin: 0 12px 8px; padding: 10px 10px 10px 14px; border-radius: 16px; background: {{ t.soft }}; border: 1px solid {{ t.line }}; display: flex; align-items: center; gap: 12px">
+    <img src="/icon-192.png" alt="" width="40" height="40" style="flex: none; width: 40px; height: 40px; border-radius: 10px">
+    <span style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px">
+      <span style="font-size: 14px; font-weight: 600">نزّل سعرلي على موبايلك</span>
+      <span style="font-size: 12px; color: {{ t.mute }}; line-height: 1.5">{{ installSub }}</span>
+    </span>
+    <button class="press" onClick="{{ doInstall }}" style="flex: none; height: 36px; padding: 0 14px; border-radius: 999px; border: none; background: #F2A93B; color: #000000; font-size: 13px; font-weight: 600">{{ installBtn }}</button>
+    <button class="press" onClick="{{ hideInstall }}" aria-label="مش دلوقتي" style="flex: none; width: 32px; height: 36px; background: none; border: none; color: {{ t.mute }}; padding: 0; display: flex; align-items: center; justify-content: center">
+      <svg width="12" height="12" viewBox="0 0 16 16" aria-hidden="true"><path d="M1 1l14 14M15 1L1 15" stroke="currentColor" stroke-width="1.6"></path></svg>
+    </button>
+  </div>
+  </sc-if>
   <footer style="flex: none; padding: 10px 20px 24px; background: {{ t.bg }}; border-top: 1px solid {{ t.line }}">
     <button class="press" onClick="{{ goCar }}" style="width: 100%; height: 54px; border-radius: 999px; border: none; background: {{ t.ink }}; color: {{ t.bg }}; font-size: 16px; font-weight: 600; display: flex; align-items: center; justify-content: center; gap: 10px">
       <svg width="20" height="16" viewBox="0 0 20 16" aria-hidden="true"><path d="M1 4h4l2-3h6l2 3h4v11H1z" stroke="currentColor" stroke-width="1.5" fill="none"></path><circle cx="10" cy="9" r="3.4" stroke="currentColor" stroke-width="1.5" fill="none"></circle></svg>
@@ -598,7 +644,7 @@ button:disabled{cursor:not-allowed}
     <div style="border: 1px solid {{ t.line2 }}; border-radius: 16px; padding: 18px; display: flex; flex-direction: column; gap: 12px">
       <div style="display: flex; justify-content: space-between; align-items: center">
         <span translate="no" style="font-family: 'Aref Ruqaa', serif; font-size: 30px; font-weight: 700; line-height: 1.2">سعرلي</span>
-        <span class="num" style="font-size: 12px; color: {{ t.mute }}">إيصال رقم 7KQ2، 6 نوفمبر 2026</span>
+        <span class="num" style="font-size: 12px; color: {{ t.mute }}">{{ receiptDate }}</span>
       </div>
       <div style="display: flex; flex-direction: column; gap: 2px">
         <span style="font-size: 16px; font-weight: 600">{{ carName }}</span>
@@ -614,13 +660,19 @@ button:disabled{cursor:not-allowed}
         <div style="display: flex; justify-content: space-between; gap: 12px"><dt style="color: {{ t.mute }}">اتقارنت بـ</dt><dd style="margin: 0">{{ nComps }} عربية، آخر 60 يوم</dd></div>
         <div style="display: flex; justify-content: space-between; gap: 12px"><dt style="color: {{ t.mute }}">أقصى سعر شرا</dt><dd class="num" style="margin: 0; direction: ltr">{{ maxBuyTxt }}</dd></div>
       </dl>
+      <sc-if value="{{ hasFrom }}" hint-placeholder-val="{{ false }}">
+        <div style="display: flex; justify-content: space-between; gap: 12px; padding-top: 10px; border-top: 1px dashed {{ t.line2 }}; font-size: 13px">
+          <span style="font-weight: 500">{{ fromName }}</span>
+          <span class="num" dir="ltr" style="color: {{ t.mute }}">{{ fromPhone }}</span>
+        </div>
+      </sc-if>
       <label style="display: flex; align-items: center; gap: 10px; font-size: 13px; min-height: 40px; cursor: pointer">
         <input type="checkbox" checked="{{ hideBuy }}" onChange="{{ toggleHideBuy }}" style="width: 18px; height: 18px; margin: 0; accent-color: #F2A93B">
         خبّي سعر الشرا لو هتبعته للزبون
       </label>
     </div>
     <div style="display: flex; align-items: center; gap: 8px; height: 46px; padding: 0 6px 0 14px; border-radius: 999px; background: {{ t.soft }}">
-      <span class="num" style="flex: 1; min-width: 0; font-size: 14px; direction: ltr; text-align: left; overflow: hidden; text-overflow: ellipsis; white-space: nowrap">sa3arly.app/r/7KQ2</span>
+      <span class="num" style="flex: 1; min-width: 0; font-size: 14px; direction: ltr; text-align: left; overflow: hidden; text-overflow: ellipsis; white-space: nowrap">{{ siteHost }}</span>
       <button class="press" onClick="{{ copyLink }}" style="height: 36px; padding: 0 14px; border-radius: 999px; border: 1px solid {{ t.line2 }}; background: {{ t.bg }}; color: {{ t.ink }}; font-size: 13px">{{ copyLabel }}</button>
     </div>
     <a href="{{ waHref }}" target="_blank" rel="noopener" class="press" style="height: 52px; border-radius: 999px; background: #F2A93B; color: #000000; display: flex; align-items: center; justify-content: center; gap: 10px; font-size: 15px; font-weight: 600; text-decoration: none">
@@ -678,8 +730,63 @@ button:disabled{cursor:not-allowed}
 </div>
 </sc-if>
 
+<sc-if value="{{ profileOpen }}" hint-placeholder-val="{{ false }}">
+<div style="position: absolute; inset: 0; z-index: 12">
+  <button class="fade" onClick="{{ closeProfile }}" aria-label="اقفل" style="position: absolute; inset: 0; border: none; background: rgba(0,0,0,0.6); padding: 0"></button>
+  <section class="rise" role="dialog" aria-modal="true" aria-labelledby="pf-t" onKeyDown="{{ profileKey }}" style="position: absolute; left: 0; right: 0; bottom: 0; max-height: 94%; overflow-y: auto; overscroll-behavior: contain; background: {{ t.bg }}; border-radius: 22px 22px 0 0; padding: 10px 22px 24px; box-sizing: border-box; display: flex; flex-direction: column; gap: 14px">
+    <span aria-hidden="true" style="align-self: center; width: 36px; height: 4px; border-radius: 2px; background: {{ t.line2 }}"></span>
+    <h2 id="pf-t" style="margin: 4px 0 0; font-size: 20px; font-weight: 600">حسابك</h2>
+    <div class="fu" style="display: flex; align-items: center; gap: 16px">
+      <label style="position: relative; flex: none; width: 84px; height: 84px; border-radius: 50%; overflow: hidden; background: {{ t.soft }}; border: 1px solid {{ t.line2 }}; cursor: pointer; display: flex; align-items: center; justify-content: center">
+        <sc-if value="{{ pfHasPhoto }}" hint-placeholder-val="{{ false }}">
+          <img src="{{ pfPhoto }}" alt="صورتك" width="84" height="84" style="width: 100%; height: 100%; object-fit: cover">
+        </sc-if>
+        <sc-if value="{{ pfNoPhoto }}" hint-placeholder-val="{{ true }}">
+          <span aria-hidden="true" style="font-size: 32px; font-weight: 500">{{ initial }}</span>
+        </sc-if>
+        <input type="file" accept="image/*" onChange="{{ pickPhoto }}" aria-label="غيّر الصورة" style="position: absolute; inset: 0; opacity: 0; cursor: pointer">
+      </label>
+      <div style="display: flex; flex-direction: column; gap: 4px; min-width: 0">
+        <span style="font-size: 16px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap">{{ pfTitle }}</span>
+        <span dir="ltr" style="font-size: 12px; color: {{ t.mute }}; text-align: right; overflow: hidden; text-overflow: ellipsis; white-space: nowrap">{{ userEmail }}</span>
+        <span style="font-size: 12px; color: {{ t.mute }}">{{ photoNote }}</span>
+      </div>
+    </div>
+    <div class="fu" style="display: flex; flex-direction: column; gap: 12px; animation-delay: .05s">
+      <label style="display: flex; flex-direction: column; gap: 6px; font-size: 13px; color: {{ t.mute }}">الاسم
+        <input name="name" autocomplete="name" value="{{ pfName }}" onChange="{{ onPfName }}" placeholder="اسمك" maxlength="60" style="height: 50px; border-radius: 12px; border: 1px solid {{ t.line2 }}; background: {{ t.soft }}; color: {{ t.ink }}; padding: 0 14px; font-family: 'Alexandria', sans-serif; font-size: 16px">
+      </label>
+      <label style="display: flex; flex-direction: column; gap: 6px; font-size: 13px; color: {{ t.mute }}">اسم المعرض
+        <input name="showroom" autocomplete="organization" value="{{ pfShowroom }}" onChange="{{ onPfShowroom }}" placeholder="بيظهر على الإيصال، مثلاً: معرض طارق" maxlength="60" style="height: 50px; border-radius: 12px; border: 1px solid {{ t.line2 }}; background: {{ t.soft }}; color: {{ t.ink }}; padding: 0 14px; font-family: 'Alexandria', sans-serif; font-size: 16px">
+      </label>
+      <label style="display: flex; flex-direction: column; gap: 6px; font-size: 13px; color: {{ t.mute }}">موبايل / واتساب
+        <input name="phone" type="tel" inputmode="tel" autocomplete="tel" dir="ltr" value="{{ pfPhone }}" onChange="{{ onPfPhone }}" placeholder="01012345678" style="height: 50px; border-radius: 12px; border: 1px solid {{ pfPhoneBd }}; background: {{ t.soft }}; color: {{ t.ink }}; padding: 0 14px; font-family: 'Alexandria', sans-serif; font-size: 16px; text-align: left">
+      </label>
+      <label style="display: flex; flex-direction: column; gap: 6px; font-size: 13px; color: {{ t.mute }}">المدينة
+        <select name="city" value="{{ pfCity }}" onChange="{{ onPfCity }}" style="height: 50px; border-radius: 12px; border: 1px solid {{ t.line2 }}; background: {{ t.soft }}; color: {{ t.ink }}; padding: 0 12px; font-family: 'Alexandria', sans-serif; font-size: 16px">
+          <option value="">اختار مدينتك</option>
+          <sc-for list="{{ cities }}" as="ct" hint-placeholder-count="3">
+            <option value="{{ ct }}">{{ ct }}</option>
+          </sc-for>
+        </select>
+        <span style="font-size: 11px; color: {{ t.mute }}">لقطات مدينتك هتظهرلك الأول في السوق.</span>
+      </label>
+      <sc-if value="{{ hasPfErr }}" hint-placeholder-val="{{ false }}">
+        <p role="alert" style="margin: 0; font-size: 13px; color: {{ t.warn }}">{{ pfErr }}</p>
+      </sc-if>
+      <button class="press" onClick="{{ savePf }}" disabled="{{ pfSaveOff }}" style="height: 52px; border-radius: 999px; border: none; background: {{ t.ink }}; color: {{ t.bg }}; font-size: 16px; font-weight: 600; opacity: {{ pfSaveOp }}">{{ pfSaveLabel }}</button>
+    </div>
+    <div style="display: flex; align-items: center; justify-content: space-between; min-height: 48px; border-top: 1px solid {{ t.line }}; font-size: 14px">
+      <span style="color: {{ t.mute }}">تسعيرات محفوظة</span>
+      <span class="num">{{ savedCount }}</span>
+    </div>
+    <button class="press" onClick="{{ signOutNow }}" style="min-height: 44px; background: none; border: none; color: {{ t.warn }}; font-size: 14px; text-align: right; padding: 0">اخرج من الحساب</button>
+  </section>
+</div>
+</sc-if>
+
 <sc-if value="{{ hasFlash }}" hint-placeholder-val="{{ false }}">
-  <div class="fu" role="status" aria-live="polite" style="position: absolute; left: 50%; top: 72px; transform: translateX(-50%); z-index: 14; padding: 12px 18px; border-radius: 999px; background: {{ t.ink }}; color: {{ t.bg }}; font-size: 14px; white-space: nowrap; box-shadow: 0 8px 24px rgba(0,0,0,0.25)">{{ flash }}</div>
+  <div class="fu" role="status" aria-live="polite" style="position: absolute; left: 50%; top: 72px; transform: translateX(-50%); z-index: 14; padding: 12px 18px; border-radius: 999px; background: {{ t.ink }}; color: {{ t.bg }}; font-size: 14px; line-height: 1.6; text-align: center; width: max-content; max-width: calc(100% - 40px); box-sizing: border-box; box-shadow: 0 8px 24px rgba(0,0,0,0.25)">{{ flash }}</div>
 </sc-if>
 
 <sc-if value="{{ menu }}" hint-placeholder-val="{{ false }}">
@@ -713,6 +820,100 @@ button:disabled{cursor:not-allowed}
 </div>
 </sc-if>
 
+</div>
+
+<sc-if value="{{ desk }}" hint-placeholder-val="{{ false }}">
+<aside class="enter-f" key="{{ deskKey }}" style="flex: 1; min-width: 0; height: 100%; overflow-y: auto; scrollbar-width: thin; padding: 8px 4px 40px 8px; box-sizing: border-box; display: flex; flex-direction: column; gap: 36px">
+  <sc-if value="{{ deskHome }}" hint-placeholder-val="{{ true }}">
+    <section style="display: flex; flex-direction: column; gap: 14px; padding-top: 18px">
+      <h2 style="margin: 0; font-size: 44px; line-height: 1.25; font-weight: 600; max-width: 640px">اعرف تمن أي عربية مستعملة في مصر، قبل ما تدفع.</h2>
+      <p style="margin: 0; font-size: 16px; line-height: 1.8; color: {{ t.mute }}; max-width: 560px">بنقارن عربيتك بإعلانات حقيقية شبهها من هتلاقي والسوق المفتوح وSylndr، ونخصم الرش والمتغير والميكانيكا، ونطلعلك رينج عادل وأقصى سعر تشتري بيه.</p>
+      <div style="display: flex; gap: 40px; margin-top: 10px">
+        <sc-for list="{{ deskStats }}" as="ds" hint-placeholder-count="3">
+          <div style="display: flex; flex-direction: column; gap: 2px">
+            <span class="num" style="font-size: 34px; font-weight: 300">{{ ds.n }}</span>
+            <span style="font-size: 13px; color: {{ t.mute }}">{{ ds.label }}</span>
+          </div>
+        </sc-for>
+      </div>
+    </section>
+    <section aria-labelledby="dk-mkt" style="display: flex; flex-direction: column; gap: 12px">
+      <div style="display: flex; align-items: baseline; justify-content: space-between">
+        <h2 id="dk-mkt" style="margin: 0; font-size: 20px; font-weight: 600">السوق النهارده</h2>
+        <span style="font-size: 13px; color: {{ t.mute }}">تغييرات الزيرو ولقطات نزلت أرخص من السوق</span>
+      </div>
+      <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 12px">
+        <sc-for list="{{ deskMarket }}" as="dm" hint-placeholder-count="4">
+          <button class="press" onClick="{{ dm.go }}" style="min-height: 112px; padding: 16px; border-radius: 16px; border: 1px solid {{ t.line }}; background: {{ t.soft }}; color: {{ t.ink }}; text-align: right; display: flex; flex-direction: column; justify-content: space-between; gap: 12px">
+            <span style="display: flex; flex-direction: column; gap: 4px">
+              <span style="font-size: 15px; font-weight: 500; line-height: 1.5">{{ dm.name }}</span>
+              <span style="font-size: 12px; color: {{ t.mute }}">{{ dm.kind }}، {{ dm.when }}</span>
+            </span>
+            <span style="display: flex; align-items: baseline; justify-content: space-between; gap: 8px">
+              <span class="num" style="font-size: 20px; font-weight: 300; direction: ltr">{{ dm.price }}</span>
+              <span class="num" style="font-size: 13px; color: {{ dm.dc }}; direction: ltr">{{ dm.delta }}</span>
+            </span>
+          </button>
+        </sc-for>
+      </div>
+    </section>
+    <section aria-labelledby="dk-zero" style="display: flex; flex-direction: column; gap: 8px">
+      <div style="display: flex; align-items: baseline; justify-content: space-between">
+        <h2 id="dk-zero" style="margin: 0; font-size: 20px; font-weight: 600">أسعار الزيرو</h2>
+        <button class="press" onClick="{{ openZero }}" style="background: none; border: none; color: {{ t.mute }}; font-size: 13px; padding: 0; min-height: 36px">كل الأسعار</button>
+      </div>
+      <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: 32px">
+        <sc-for list="{{ deskZero }}" as="dz" hint-placeholder-count="6">
+          <button class="press" onClick="{{ dz.go }}" style="min-height: 52px; display: flex; align-items: center; justify-content: space-between; gap: 12px; background: none; border: none; border-bottom: 1px solid {{ t.line }}; color: {{ t.ink }}; padding: 0; text-align: right">
+            <span style="font-size: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap">{{ dz.name }}</span>
+            <span class="num" style="flex: none; font-size: 14px; direction: ltr">{{ dz.price }}</span>
+          </button>
+        </sc-for>
+      </div>
+    </section>
+  </sc-if>
+  <sc-if value="{{ deskFlow }}" hint-placeholder-val="{{ false }}">
+    <section style="display: flex; flex-direction: column; gap: 10px; padding-top: 18px">
+      <span style="font-size: 13px; color: {{ t.mute }}">بنسعّر دلوقتي</span>
+      <h2 style="margin: 0; font-size: 34px; font-weight: 600; line-height: 1.3">{{ carName }}</h2>
+      <span class="num" style="font-size: 14px; color: {{ t.mute }}">{{ kmTxt }} كم</span>
+      <div style="display: flex; align-items: baseline; gap: 14px; margin-top: 14px">
+        <span class="num" style="font-size: 60px; font-weight: 200; direction: ltr; line-height: 1.1">{{ finalLoTxt }} – {{ finalHiTxt }}</span>
+        <span style="font-size: 16px; color: {{ t.mute }}">جنيه</span>
+      </div>
+      <span style="font-size: 13px; color: {{ t.mute }}">السعر بيتحدّث وانت بتعلّم على الدهان والميكانيكا.</span>
+    </section>
+    <section aria-labelledby="dk-cmp" style="display: flex; flex-direction: column">
+      <div style="display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 6px">
+        <h2 id="dk-cmp" style="margin: 0; font-size: 20px; font-weight: 600">العربيات اللي اتقارنت ({{ nComps }})</h2>
+        <span style="font-size: 13px; color: {{ t.mute }}">مقارنة بالرينج لعربية فابريكا</span>
+      </div>
+      <div role="table" aria-labelledby="dk-cmp" style="display: flex; flex-direction: column">
+        <sc-for list="{{ deskComps }}" as="dc" hint-placeholder-count="6">
+          <button class="press" role="row" onClick="{{ dc.go }}" style="min-height: 56px; display: grid; grid-template-columns: minmax(0, 1fr) 140px 110px 90px; align-items: center; gap: 16px; background: none; border: none; border-bottom: 1px solid {{ t.line }}; color: {{ t.ink }}; padding: 0; text-align: right">
+            <span role="cell" style="font-size: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap">{{ dc.name }}</span>
+            <span role="cell" style="font-size: 13px; color: {{ t.mute }}; overflow: hidden; text-overflow: ellipsis; white-space: nowrap">{{ dc.sub }}</span>
+            <span role="cell" class="num" style="font-size: 14px; direction: ltr; text-align: right">{{ dc.val }}</span>
+            <span role="cell" style="font-size: 12px; color: {{ dc.tagFg }}">{{ dc.tag }}</span>
+          </button>
+        </sc-for>
+      </div>
+    </section>
+  </sc-if>
+  <sc-if value="{{ deskSaved }}" hint-placeholder-val="{{ false }}">
+    <section aria-labelledby="dk-mine" style="display: flex; flex-direction: column">
+      <h2 id="dk-mine" style="margin: 0 0 6px; font-size: 20px; font-weight: 600">تسعيراتك</h2>
+      <sc-for list="{{ recent }}" as="rc" hint-placeholder-count="2">
+        <button class="press" onClick="{{ rc.go }}" style="min-height: 56px; display: flex; align-items: center; justify-content: space-between; gap: 16px; background: none; border: none; border-bottom: 1px solid {{ t.line }}; color: {{ t.ink }}; padding: 0; text-align: right">
+          <span style="font-size: 14px">{{ rc.name }} <span style="color: {{ rc.noteFg }}; font-size: 12px; margin-right: 8px">{{ rc.note }}</span></span>
+          <span class="num" style="font-size: 14px; direction: ltr">{{ rc.range }}</span>
+        </button>
+      </sc-for>
+    </section>
+  </sc-if>
+</aside>
+</sc-if>
+</div>
 </div>
 </x-dc>
 <script type="text/x-dc" data-dc-script data-props='{"start":{"editor":"enum","options":["home","car","paint","mech","result","compare"],"default":"home"},"night":{"editor":"boolean","default":true},"$preview":{"width":390,"height":844}}'>
@@ -909,7 +1110,7 @@ class Component extends DCLogic {
       q: '', tray: [], km: 100000, agencyKm: 60000,
       paint: { bumperF: 2, doorRL: 1, fenderRR: 1 }, ex: {}, spin: true, angle: -35, dragging: false, last: '',
       mech: { shocksF: true, arms: true }, open: 'susp', k: 1,
-      gl: true, oth: {}, exOther: false, mo: {}, body: 'crossover', bodyAuto: true, heroOn: true, partsOpen: false, mf: 'all', paintReady: false, more: false, wm: 0, margin: 30000, receipt: false, hideBuy: false, copied: false, checked: {}, car: { make: 'كوبرا', model: 'فورمينتور', year: 2022, trim: 'VZ' }, picker: null, pickOther: '', sheet: null, login: null, loginSent: false, loginEmail: '', loginErr: '', loginBusy: false, saving: false, flash: '', item: null, shotsDone: { front: true, back: true }, extraShots: 0
+      gl: true, oth: {}, exOther: false, mo: {}, body: 'crossover', bodyAuto: true, heroOn: true, partsOpen: false, mf: 'all', paintReady: false, more: false, wm: 0, margin: 30000, receipt: false, hideBuy: false, copied: false, checked: {}, car: { make: 'كوبرا', model: 'فورمينتور', year: 2022, trim: 'VZ' }, picker: null, pickOther: '', sheet: null, login: null, loginSent: false, loginEmail: '', loginErr: '', loginBusy: false, saving: false, flash: '', profile: false, pf: null, pfBusy: false, pfErr: '', photoBusy: false, item: null, shotsDone: { front: true, back: true }, extraShots: 0
     };
     this._raf = null; this._paint = null; this._hero = null;
     var self = this;
@@ -1695,6 +1896,7 @@ class Component extends DCLogic {
     var steps = stepLabels.map(function (l, i) { return { label: l, bar: i <= idx ? t.ink : t.line2, fg: i === idx ? t.ink : t.mute }; });
     var services = Math.floor(S.km / 10000);
 
+    var desk = !!Component.desk;
     // ---------- account ----------
     var A = Component.auth || { ready: true, enabled: true, user: null, items: [] };
     var me = A.user;
@@ -1722,13 +1924,22 @@ class Component extends DCLogic {
       A.email(m).then(function () { self.setState({ loginBusy: false, loginSent: true }); },
         function (e) { self.setState({ loginBusy: false, loginErr: /rate|seconds/i.test(String(e && e.message)) ? 'استنى دقيقة وجرّب تاني.' : 'ماقدرناش نبعت اللينك. اتأكد من الإيميل وجرّب تاني.' }); });
     };
+    var P = (A.profile) || {};
+    var pf = S.pf || { name: P.name || '', showroom: P.showroom || '', phone: P.phone || '', city: P.city || '' };
+    var pfDirty = !!S.pf && ['name', 'showroom', 'phone', 'city'].some(function (k) { return (pf[k] || '') !== (P[k] || ''); });
+    var phoneDigits = String(pf.phone || '').replace(/[٠-٩]/g, function (d) { return String(d.charCodeAt(0) - 0x660); }).replace(/[\s\-()]/g, '').replace(/^(\+|00)20/, '0');
+    var phoneBad = !!pf.phone && !/^01[0125]\d{8}$/.test(phoneDigits);
+    var setPf = function (k) { return function (e) { var n = Object.assign({}, pf); n[k] = e.target.value; self.setState({ pf: n, pfErr: '' }); }; };
+    var displayName = P.name || (me && me.name) || '';
+    var openAccount = function () { if (!me) return needLogin('account', null); self.setState({ profile: true, pf: null, pfErr: '', menu: false }); };
+    var siteUrl = typeof location !== 'undefined' && location.origin && location.origin.indexOf('http') === 0 ? location.origin : 'https://sa3arly-6c4z.vercel.app';
     var ago = function (iso) {
       var d = Math.floor((Date.now() - new Date(iso).getTime()) / 864e5);
       return d <= 0 ? 'النهارده' : d === 1 ? 'امبارح' : d === 2 ? 'من يومين' : 'من ' + d + ' يوم';
     };
 
     var menuItems = [
-      me ? { label: me.name || me.email, sub: 'دوس هنا عشان تخرج من الحساب', go: function () { self.setState({ menu: false }); A.signOut().then(function () { self.flashMsg('خرجت من الحساب'); }); }, soon: false }
+      me ? { label: displayName || me.email, sub: 'حسابك: الصورة والمعرض والموبايل', go: openAccount, soon: false }
          : { label: 'ادخل حسابك', sub: 'احفظ تسعيراتك وشغّل التنبيهات', go: function () { needLogin('account', null); }, soon: false },
       { label: 'سعّر عربية', sub: 'من الصور والشيك ليست', go: function () { self.go('car'); }, soon: false },
       { label: 'قارن عربيات', sub: 'الزيرو والمستعمل جنب بعض', go: function () { self.go('compare'); }, soon: false },
@@ -1783,7 +1994,7 @@ class Component extends DCLogic {
         return { label: f[1], sel: on ? 'true' : 'false', bg: on ? t.ink : 'transparent', fg: on ? t.bg : t.ink, bd: on ? t.ink : t.line2,
           pick: function () { self.setState({ mf: f[0] }); } };
       }),
-      market: MARKET.filter(function (m) { return S.mf === 'all' || m.t === S.mf; }).slice(0, S.more ? 20 : 3).map(function (m) {
+      market: MARKET.slice().sort(function (a, b) { return (b.city && b.city === P.city ? 1 : 0) - (a.city && a.city === P.city ? 1 : 0); }).filter(function (m) { return S.mf === 'all' || m.t === S.mf; }).slice(0, S.more ? 20 : 3).map(function (m) {
         var d = m.delta * ease;
         var dtxt = m.pct ? (d > 0 ? '+' : '−') + Math.abs(d).toFixed(1).replace('.0', '') + '%' : (d > 0 ? '+' : '−') + fmt(Math.abs(Math.round(d / 1000) * 1000));
         if (!m.pct && d < 0) dtxt = '−' + fmt(Math.abs(Math.round(d / 1000) * 1000));
@@ -1821,6 +2032,90 @@ class Component extends DCLogic {
       closeLogin: function () { if (A.pending) A.pending(null); self.setState({ login: null }); },
       editEmail: function () { self.setState({ loginSent: false }); },
       hasFlash: !!S.flash, flash: S.flash,
+      installShow: !desk && !!Component.install && Component.install.show() && !S.installHidden,
+      installSub: Component.install && Component.install.ios ? 'دوس مشاركة ⬆ وبعدين Add to Home Screen' : 'يفتح زي أي أبلكيشن، من غير ستور',
+      installBtn: Component.install && Component.install.ios ? 'إزاي؟' : 'نزّله',
+      doInstall: function () {
+        var I = Component.install; if (!I) return;
+        if (I.ios) return self.flashMsg('دوس زرار المشاركة ⬆ تحت، وبعدين Add to Home Screen');
+        I.prompt().then(function (ok) { if (ok) self.setState({ installHidden: true }); });
+      },
+      hideInstall: function () { if (Component.install) Component.install.dismiss(); self.setState({ installHidden: true }); },
+      desk: desk, shellCls: desk ? 'desk' : '',
+      shellStyle: desk ? 'height: 100dvh; display: flex; flex-direction: column; background: ' + t.bg + '; color: ' + t.ink + '; font-family: Alexandria, sans-serif; transition: background .4s ease, color .4s ease' : 'display: contents',
+      deskRow: desk ? 'flex: 1; min-height: 0; width: 100%; max-width: 1400px; margin: 0 auto; padding: 24px 40px 0; box-sizing: border-box; display: flex; gap: 56px' : 'display: contents',
+      deskLinks: [['الرئيسية', 'home'], ['سعّر عربية', 'car'], ['قارن عربيات', 'compare'], ['أسعار الزيرو', 'zero']].map(function (l) {
+        var on = l[1] === 'zero' ? S.sheet === 'zero' : (l[1] === 'car' ? idx >= 0 : S.screen === l[1]) && S.sheet !== 'zero';
+        return { label: l[0], cur: on ? 'page' : 'false', bg: on ? t.soft : 'transparent', fg: on ? t.ink : t.mute,
+          go: function () { if (l[1] === 'zero') self.setState({ sheet: 'zero' }); else { self.setState({ sheet: null }); self.go(l[1], 'f'); } } };
+      }),
+      deskAccount: me ? (P.showroom || displayName || 'حسابك') : 'ادخل',
+      deskKey: idx >= 0 ? 'flow' : 'home', deskHome: idx < 0, deskFlow: idx >= 0,
+      deskSaved: idx < 0 && !!me && (A.items || []).length > 0,
+      deskStats: (function () {
+        var mk = Object.keys(CAT), models = 0, ads = 0;
+        mk.forEach(function (m) { Object.keys(CAT[m]).forEach(function (md) { models++; ads += CAT[m][md].n || 0; }); });
+        return [{ n: fmt(ads), label: 'إعلان بنقارن بيهم' }, { n: fmt(models), label: 'موديل' }, { n: fmt(mk.length), label: 'ماركة' }];
+      })(),
+      deskMarket: !desk ? [] : MARKET.slice().sort(function (a, b) { return (b.city && b.city === P.city ? 1 : 0) - (a.city && a.city === P.city ? 1 : 0); }).slice(0, 12).map(function (m) {
+        var dtxt = m.pct ? (m.delta > 0 ? '+' : '−') + Math.abs(m.delta).toFixed(1).replace('.0', '') + '%' : (m.delta > 0 ? '+' : '−') + fmt(Math.abs(Math.round(m.delta / 1000) * 1000));
+        return { name: m.name, kind: m.kind, when: m.when, price: fmt(m.price), delta: dtxt, dc: m.up ? t.warn : '#5B9CF5',
+          go: function () { self.setState({ sheet: 'item', item: m }); } };
+      }),
+      openZero: function () { self.setState({ sheet: 'zero' }); },
+      deskZero: !desk ? [] : (function () {
+        var out = [];
+        Object.keys(CAT).forEach(function (mk) { Object.keys(CAT[mk]).forEach(function (md) { var c = CAT[mk][md]; if (c.zero) out.push({ mk: mk, md: md, c: c }); }); });
+        return out.sort(function (a, b) { return (b.c.n || 0) - (a.c.n || 0); }).slice(0, 12).map(function (z) {
+          var y = z.c.years[z.c.years.length - 1];
+          return { name: z.mk + ' ' + z.md + ' ' + y, price: fmt(z.c.zero), go: function () { self.setCar({ make: z.mk, model: z.md, year: y, trim: z.c.trims[0] }, 0); } };
+        });
+      })(),
+      deskComps: !desk || idx < 0 ? [] : liveComps ? liveComps.slice(0, 30).map(function (cp) {
+        var inR = cp.adjusted >= baseLo && cp.adjusted <= baseHi;
+        return { name: car.make + ' ' + car.model + ' ' + cp.year + (cp.km ? '، ' + fmt(cp.km) + ' كم' : ''), sub: cp.source + (cp.trim ? '، ' + cp.trim : ''), val: fmt(cp.price),
+          tag: inR ? 'في الرينج' : (cp.adjusted < baseLo ? 'أرخص' : 'أغلى'), tagFg: inR ? t.ink : t.mute,
+          go: function () { if (cp.url && window.open) window.open(cp.url, '_blank', 'noopener'); } };
+      }) : prices.map(function (pr, i) {
+        var y = (car.year || 2022) + (i % 3 === 0 ? -1 : i % 3 === 1 ? 0 : 1), kmc = Math.max(5000, Math.round((S.km + (i - 6) * 9000) / 1000) * 1000);
+        var inRange = pr >= finalLo && pr <= finalHi;
+        return { name: car.make + ' ' + car.model + ' ' + y + '، ' + fmt(kmc) + ' كم', sub: ['هتلاقي', 'السوق المفتوح', 'Sylndr'][i % 3] + '، من ' + (2 + i * 3) + ' يوم', val: fmt(pr),
+          tag: inRange ? 'في الرينج' : (pr < finalLo ? 'أرخص' : 'أغلى'), tagFg: inRange ? t.ink : t.mute, go: function () {} };
+      }),
+      openAccount: openAccount, accountAria: me ? 'حسابك' : 'ادخل حسابك',
+      hasAvatar: !!(me && P.avatar), avatarSrc: P.avatar || '', hasInitial: !!(me && !P.avatar), noUser: !me,
+      initial: (displayName || (me && me.email) || '؟').trim().charAt(0).toUpperCase(),
+      profileOpen: !!S.profile && !!me,
+      closeProfile: function () { self.setState({ profile: false, pf: null }); },
+      profileKey: function (e) { if (e.key === 'Escape') self.setState({ profile: false, pf: null }); },
+      pfHasPhoto: !!P.avatar, pfNoPhoto: !P.avatar, pfPhoto: P.avatar || '',
+      pfTitle: P.showroom || displayName || 'حسابك', userEmail: me ? me.email : '',
+      photoNote: S.photoBusy ? 'بنرفع الصورة…' : P.avatar ? 'دوس على الصورة عشان تغيّرها' : 'دوس على الدايرة وحط صورتك',
+      pickPhoto: function (e) {
+        var f = e.target.files && e.target.files[0]; e.target.value = '';
+        if (!f || !A.photo) return;
+        self.setState({ photoBusy: true });
+        A.photo(f).then(function (url) { return A.saveProfile({ avatar: url }); })
+          .then(function () { self.setState({ photoBusy: false }); self.flashMsg('الصورة اتغيّرت'); },
+            function () { self.setState({ photoBusy: false, pfErr: 'الصورة دي ماتنفعش، جرّب صورة تانية.' }); });
+      },
+      pfName: pf.name, pfShowroom: pf.showroom, pfPhone: pf.phone, pfCity: pf.city,
+      onPfName: setPf('name'), onPfShowroom: setPf('showroom'), onPfPhone: setPf('phone'), onPfCity: setPf('city'),
+      pfPhoneBd: phoneBad ? t.warn : t.line2,
+      cities: (A.cities && A.cities.length) ? A.cities : ['القاهرة', 'الجيزة', 'الإسكندرية'],
+      pfErr: S.pfErr || (phoneBad ? 'رقم الموبايل لازم يبقى 11 رقم ويبدأ بـ 01' : ''), hasPfErr: !!S.pfErr || phoneBad,
+      pfSaveOff: !pfDirty || phoneBad || S.pfBusy, pfSaveOp: !pfDirty || phoneBad || S.pfBusy ? 0.45 : 1,
+      pfSaveLabel: S.pfBusy ? 'بيتحفظ…' : 'احفظ',
+      savePf: function () {
+        if (!A.saveProfile) return;
+        self.setState({ pfBusy: true, pfErr: '' });
+        A.saveProfile({ name: pf.name, showroom: pf.showroom, phone: pf.phone, city: pf.city })
+          .then(function () { self.setState({ pfBusy: false, pf: null }); self.flashMsg('اتحفظ'); },
+            function () { self.setState({ pfBusy: false, pfErr: 'ماتحفظش. اتأكد من البيانات وجرّب تاني.' }); });
+      },
+      savedCount: (A.items || []).length,
+      signOutNow: function () { self.setState({ profile: false, pf: null }); A.signOut().then(function () { self.flashMsg('خرجت من الحساب'); }); },
+      hasFrom: !!(me && (P.showroom || P.name || P.phone)), fromName: P.showroom || P.name || '', fromPhone: P.phone || '',
       knobX: S.dark ? 0 : -22,
       noResults: !!q && results.length === 0,
       menuKey: function (e) { if (e.key === 'Escape') self.setState({ menu: false }); },
@@ -1879,11 +2174,13 @@ class Component extends DCLogic {
       paintSummary: (paintNames.length || replNames.length) ? ((paintNames.length ? paintNames.length + ' رش' : '') + (paintNames.length && replNames.length ? '، ' : '') + (replNames.length ? replNames.length + ' متغير' : '')) : 'فابريكا بالكامل',
       mechSummary: mHi ? mechNames.length + ' حاجات، ' + fmt(mLo) + ' – ' + fmt(mHi) : 'سليمة',
       copyLabel: S.copied ? 'اتنسخ' : 'انسخ',
+      receiptDate: (function () { var d = new Date(); return d.getDate() + ' ' + ['يناير', 'فبراير', 'مارس', 'أبريل', 'مايو', 'يونيو', 'يوليو', 'أغسطس', 'سبتمبر', 'أكتوبر', 'نوفمبر', 'ديسمبر'][d.getMonth()] + ' ' + d.getFullYear(); })(),
+      siteHost: siteUrl.replace(/^https?:\/\//, ''),
       copyLink: function () {
-        try { if (navigator.clipboard) navigator.clipboard.writeText('https://sa3arly.app/r/7KQ2'); } catch (e) {}
+        try { if (navigator.clipboard) navigator.clipboard.writeText(siteUrl); } catch (e) {}
         self.setState({ copied: true });
       },
-      waHref: 'https://wa.me/?text=' + encodeURIComponent('تسعير سعرلي: ' + carName + '، ' + fmt(S.km) + ' كم\nالسعر العادل: ' + fmt(finalLo) + ' – ' + fmt(finalHi) + ' جنيه' + (S.hideBuy ? '' : '\nأقصى سعر شرا: ' + fmt(r5((finalLo + finalHi) / 2 - S.margin))) + '\nhttps://sa3arly.app/r/7KQ2'),
+      waHref: 'https://wa.me/?text=' + encodeURIComponent('تسعير سعرلي: ' + carName + '، ' + fmt(S.km) + ' كم\nالسعر العادل: ' + fmt(finalLo) + ' – ' + fmt(finalHi) + ' جنيه' + (S.hideBuy ? '' : '\nأقصى سعر شرا: ' + fmt(r5((finalLo + finalHi) / 2 - S.margin))) + ((P.showroom || P.name) ? '\n— ' + (P.showroom || P.name) + (P.phone ? '، ' + P.phone : '') : '') + '\n' + siteUrl),
       carName: carName, carShort: carShort, nComps: nComps, compsBtn: 'شوف الـ ' + nComps + ' عربية',
       confTxt: 'ثقة ' + conf + '. قارنّا بـ ' + nComps + ' عربية من نفس الفئة وعدادها قريب، آخر 60 يوم.' + (known ? ' وشلنا الإعلانات اللي أسعارها شاذة.' : ' الموديل ده مش عندنا كفاية، فالرينج أعرض.'),
       axisLo: fmt(lo), axisHi: fmt(hi),
