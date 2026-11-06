@@ -6,11 +6,20 @@ body { font-family: 'Alexandria', sans-serif; -webkit-font-smoothing: antialiase
   #root > div { padding-top: env(safe-area-inset-top); box-sizing: border-box; }
 }
 
-/* website layout on wide screens: the app sits in a framed column beside the data panel */
+/* website layout on wide screens: a normal scrolling site with a nav; the pricing flow sits in a centred panel */
 .desk .app-col {
-  flex: none; width: 420px !important; max-width: 420px !important;
-  height: calc(100dvh - 120px) !important; margin: 0 !important;
+  flex: none; width: 100% !important; max-width: 760px !important;
+  height: calc(100dvh - 120px) !important; margin: 0 auto !important;
   border-radius: 24px; border: 1px solid rgba(127, 127, 127, 0.28);
-  box-shadow: 0 30px 80px rgba(0, 0, 0, 0.35);
 }
-.desk aside button:hover { opacity: 0.85; }
+/* home and zero-price pages: the app column only hosts the sheets (login, account, details), full screen */
+.desk-over .app-col {
+  position: fixed !important; top: 72px; left: 0; right: 0; bottom: 0;
+  width: auto !important; max-width: none !important; height: auto !important; margin: 0 !important;
+  border: none; border-radius: 0; background: transparent !important; pointer-events: none; z-index: 30; overflow: visible !important;
+}
+.desk-over .app-col [data-scr] { display: none !important; }
+.desk-over .app-col > * { pointer-events: auto; }
+.desk section.rise { max-width: 560px; margin: 0 auto; }
+.desk nav.sheet { box-shadow: -20px 0 60px rgba(0, 0, 0, 0.3); }
+.desk .app-col section.rise { bottom: auto !important; top: 6vh; max-height: 86vh !important; border-radius: 22px !important; box-shadow: 0 30px 90px rgba(0, 0, 0, 0.45); }

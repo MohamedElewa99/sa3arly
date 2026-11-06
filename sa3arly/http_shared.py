@@ -41,7 +41,7 @@ def anon_key() -> str:
 
 def read_json(handler) -> dict:
     n = int(handler.headers.get("Content-Length") or 0)
-    if not n or n > 200_000:
+    if not n or n > 2_500_000:
         return {}
     try:
         body = json.loads(handler.rfile.read(n))

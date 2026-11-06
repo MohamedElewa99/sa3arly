@@ -27,6 +27,7 @@ export async function initAuth() {
   try {
     const cfg = await fetch(API + '/api/config').then((r) => r.json());
     auth.enabled = !!cfg.auth;
+    if (cfg.vision) Component.readPhoto = readPhoto;
     if (auth.enabled) {
       fetch(cfg.supabaseUrl + '/auth/v1/settings', { headers: { apikey: cfg.anonKey } })
         .then((r) => r.json()).then((st) => { auth.googleOn = !!(st.external && st.external.google); refresh(); }).catch(() => {});
@@ -133,4 +134,32 @@ function pending(action) {
 }
 function takePending() {
   try { const a = JSON.parse(localStorage.getItem(PENDING) || 'null'); localStorage.removeItem(PENDING); return a; } catch (e) { return null; }
+}
+
+// photo -> what the server's vision model sees: { make, model, years, trim, confidence, note } or { km, confidence }
+async function readPhoto(kind, file, makes) {
+  const image = await shrink(file, 1024, 0.82);
+  const res = await fetch(API + '/api/vision', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ kind, image, makes: makes || [] }),
+  });
+  if (!res.ok) throw new Error('vision ' + res.status);
+  return res.json();
+}
+
+function shrink(file, max, q) {
+  return new Promise((resolve, reject) => {
+    const url = URL.createObjectURL(file);
+    const img = new Image();
+    img.onload = () => {
+      const k = Math.min(1, max / Math.max(img.width, img.height));
+      const c = document.createElement('canvas');
+      c.width = Math.round(img.width * k); c.height = Math.round(img.height * k);
+      c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+      URL.revokeObjectURL(url);
+      resolve(c.toDataURL('image/jpeg', q));
+    };
+    img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('read')); };
+    img.src = url;
+  });
 }

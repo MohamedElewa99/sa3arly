@@ -195,7 +195,7 @@ class Component extends React.Component {
       q: '', tray: [], km: 100000, agencyKm: 60000,
       paint: { bumperF: 2, doorRL: 1, fenderRR: 1 }, ex: {}, spin: true, angle: -35, dragging: false, last: '',
       mech: { shocksF: true, arms: true }, open: 'susp', k: 1,
-      gl: true, oth: {}, exOther: false, mo: {}, body: 'crossover', bodyAuto: true, heroOn: true, partsOpen: false, mf: 'all', paintReady: false, more: false, wm: 0, margin: 30000, receipt: false, hideBuy: false, copied: false, checked: {}, car: { make: 'كوبرا', model: 'فورمينتور', year: 2022, trim: 'VZ' }, picker: null, pickOther: '', sheet: null, login: null, loginSent: false, loginEmail: '', loginErr: '', loginBusy: false, saving: false, flash: '', profile: false, pf: null, pfBusy: false, pfErr: '', photoBusy: false, item: null, shotsDone: {}, extraShots: 0, shotPick: null, extras: []
+      gl: true, oth: {}, exOther: false, mo: {}, body: 'crossover', bodyAuto: true, heroOn: true, partsOpen: false, mf: 'all', paintReady: false, more: false, wm: 0, margin: 30000, receipt: false, hideBuy: false, copied: false, checked: {}, car: { make: 'كوبرا', model: 'فورمينتور', year: 2022, trim: 'VZ' }, picker: null, pickOther: '', sheet: null, login: null, loginSent: false, loginEmail: '', loginErr: '', loginBusy: false, saving: false, flash: '', profile: false, pf: null, pfBusy: false, pfErr: '', photoBusy: false, item: null, shotsDone: {}, extraShots: 0, shotPick: null, extras: [], deskPage: null, zq: '', vis: { busy: false, note: '' }
     };
     this._raf = null; this._paint = null; this._hero = null;
     var self = this;
@@ -249,7 +249,7 @@ class Component extends React.Component {
   }
   setCar(c, km, screen) {
     var inf = ((Component.remoteCat || Component.CAT)[c.make] || {})[c.model];
-    var patch = { car: Object.assign({}, c), paint: {}, ex: {}, mech: {}, mo: {}, menu: false };
+    var patch = { car: Object.assign({}, c), paint: {}, ex: {}, mech: {}, mo: {}, menu: false, vis: { busy: false, note: '' } };
     if (inf) { patch.body = inf.body; patch.bodyAuto = true; }
     if (km !== undefined) { patch.km = km; patch.agencyKm = Math.min(this.state.agencyKm, Math.floor(km / 10000) * 10000); }
     this.setState(patch);
@@ -264,6 +264,41 @@ class Component extends React.Component {
     if (p && p.kind === 'save' && p.q) A.save(p.q).then(function () { self.flashMsg('دخلت، والتسعيرة اتحفظت'); }, function () { self.flashMsg('دخلت، بس التسعيرة ماتحفظتش'); });
     else if (p && p.kind === 'alerts') { this.setState({ sheet: 'alerts' }); this.flashMsg('دخلت، التنبيهات شغّالة'); }
     else if (p || wasOpen) this.flashMsg('أهلاً، دخلت');
+  }
+  // read a photo with the server's vision model: the car from front/back/side, the km from the odometer
+  readShot(k, file) {
+    var self = this, read = Component.readPhoto;
+    if (!read || !file) return;
+    var CAT = Component.remoteCat || Component.CAT;
+    var F = Component._fz || (Component._fz = Component.fzInit());
+    var fmtN = function (n) { return String(n).replace(/\B(?=(\d{3})+(?!\d))/g, ','); };
+    if (k === 'odo') {
+      this.setState({ vis: { busy: true, note: '' } });
+      return read('odo', file).then(function (r) {
+        if (r.km == null || r.confidence < 0.5) return self.setState({ vis: { busy: false, note: 'ماقدرناش نقرا العداد من الصورة دي. اكتبه بإيدك تحت.' } });
+        self.setState({ km: r.km, agencyKm: Math.min(self.state.agencyKm, Math.floor(r.km / 10000) * 10000), vis: { busy: false, note: 'قرينا العداد: ' + fmtN(r.km) + ' كم. لو غلط عدّله تحت.' } });
+      }, function () { self.setState({ vis: { busy: false, note: '' } }); });
+    }
+    if (this.state.vis.carDone) return;               // the first clear car photo is enough
+    this.setState({ vis: { busy: true, note: '' } });
+    read('car', file, Object.keys(CAT)).then(function (r) {
+      if (!r.make || r.confidence < 0.45) return self.setState({ vis: { busy: false, note: 'مش واضح من الصورة دي. جرّب صورة لقدام العربية كلها.' } });
+      var seen = r.make + ' ' + (r.model || '') + (r.years ? ' ' + r.years[0] + '–' + r.years[1] : '');
+      var mk = (Component.fuzzy(r.make, Object.keys(CAT), String)[0] || {});
+      if (!mk.item || mk.score < 0.8) return self.setState({ vis: { busy: false, carDone: true, note: 'شكلها ' + seen + '، بس مفيش إعلانات كفاية ليها عندنا. اختارها بإيدك تحت.' } });
+      var models = Object.keys(CAT[mk.item]);
+      var md = r.model ? (Component.fuzzy(r.model, models, String)[0] || {}) : {};
+      if (!md.item || md.score < 0.75) return self.setState({ vis: { busy: false, carDone: true, note: 'شكلها ' + seen + '. اختار الموديل بالظبط تحت.' } });
+      var inf = CAT[mk.item][md.item], c = Object.assign({}, self.state.car, { make: mk.item, model: md.item });
+      var y = self.state.car.year;
+      if (r.years && (y < r.years[0] || y > r.years[1])) y = Math.min(r.years[1], inf.years[inf.years.length - 1]);
+      if (inf.years.indexOf(y) < 0) y = inf.years[inf.years.length - 2] || inf.years[0];
+      c.year = y;
+      var tr = r.trim ? (Component.fuzzy(r.trim, inf.trims, String)[0] || {}) : {};
+      c.trim = tr.item && tr.score >= 0.8 ? tr.item : (inf.trims.indexOf(c.trim) >= 0 ? c.trim : inf.trims[0]);
+      self.setState({ car: c, body: inf.body, bodyAuto: true, vis: { busy: false, carDone: true,
+        note: 'من الصورة: ' + mk.item + ' ' + md.item + (r.years ? ' (' + r.years[0] + '–' + r.years[1] + ')' : '') + (tr.item && tr.score >= 0.8 ? '، فئة ' + tr.item : '') + '. ' + (r.note ? r.note + '. ' : '') + 'اتأكد من السنة والفئة تحت.' } });
+    }, function () { self.setState({ vis: { busy: false, note: '' } }); });
   }
   flashMsg(m) {
     var self = this;
@@ -284,6 +319,10 @@ class Component extends React.Component {
   }
   componentDidMount() { if (this.state.screen === 'result' || this.state.screen === 'home') this.count(); }
   componentDidUpdate(pp, ps) {
+    if (ps.screen !== this.state.screen || ps.deskPage !== this.state.deskPage) {
+      var sh = typeof document !== 'undefined' && document.querySelector('.desk');
+      if (sh) sh.scrollTop = 0;
+    }
     if (this._paint && ps.paint !== this.state.paint) this._paint.update(this.state.paint);
     if (this._paint && ps.body !== this.state.body) this._paint.setBody(this.state.body);
     if (ps.dark !== this.state.dark) {
@@ -667,7 +706,7 @@ class Component extends React.Component {
     this._raf = requestAnimationFrame(step);
   }
   go(s, dir) {
-    this.setState({ screen: s, dir: dir || 'f', menu: false });
+    this.setState({ screen: s, dir: dir || 'f', menu: false, deskPage: null });
     if (s === 'result' || s === 'home') this.count();
   }
   renderVals() {
@@ -1126,17 +1165,24 @@ class Component extends React.Component {
         I.prompt().then(function (ok) { if (ok) self.setState({ installHidden: true }); });
       },
       hideInstall: function () { if (Component.install) Component.install.dismiss(); self.setState({ installHidden: true }); },
-      desk: desk, shellCls: desk ? 'desk' : '',
-      shellStyle: desk ? 'height: 100dvh; display: flex; flex-direction: column; background: ' + t.bg + '; color: ' + t.ink + '; font-family: Alexandria, sans-serif; transition: background .4s ease, color .4s ease' : 'display: contents',
-      deskRow: desk ? 'flex: 1; min-height: 0; width: 100%; max-width: 1400px; margin: 0 auto; padding: 24px 40px 0; box-sizing: border-box; display: flex; gap: 56px' : 'display: contents',
+      desk: desk, shellCls: !desk ? '' : 'desk' + (idx < 0 && S.screen !== 'compare' ? ' desk-over' : ''),
+      shellStyle: desk ? 'height: 100dvh; overflow-y: auto; display: flex; flex-direction: column; background: ' + t.bg + '; color: ' + t.ink + '; font-family: Alexandria, sans-serif; transition: background .4s ease, color .4s ease' : 'display: contents',
+      deskRow: desk ? 'width: 100%; max-width: 1200px; margin: 0 auto; padding: 32px 40px 0; box-sizing: border-box; display: flex; flex-direction: column; gap: 56px' : 'display: contents',
       deskLinks: [['الرئيسية', 'home'], ['سعّر عربية', 'car'], ['قارن عربيات', 'compare'], ['أسعار الزيرو', 'zero']].map(function (l) {
-        var on = l[1] === 'zero' ? S.sheet === 'zero' : (l[1] === 'car' ? idx >= 0 : S.screen === l[1]) && S.sheet !== 'zero';
+        var on = l[1] === 'zero' ? S.deskPage === 'zero' : (l[1] === 'car' ? idx >= 0 : S.screen === l[1]) && S.deskPage !== 'zero';
         return { label: l[0], cur: on ? 'page' : 'false', bg: on ? t.soft : 'transparent', fg: on ? t.ink : t.mute,
-          go: function () { if (l[1] === 'zero') self.setState({ sheet: 'zero' }); else { self.setState({ sheet: null }); self.go(l[1], 'f'); } } };
+          go: function () { if (l[1] === 'zero') { if (self.state.screen !== 'home') self.go('home', 'f'); self.setState({ deskPage: 'zero', sheet: null }); } else { self.setState({ sheet: null }); self.go(l[1], 'f'); } } };
       }),
       deskAccount: me ? (P.showroom || displayName || 'حسابك') : 'ادخل',
-      deskKey: idx >= 0 ? 'flow' : 'home', deskHome: idx < 0, deskFlow: idx >= 0,
-      deskSaved: idx < 0 && !!me && (A.items || []).length > 0,
+      deskKey: S.deskPage === 'zero' ? 'zero' : idx >= 0 ? 'flow' : S.screen, deskHome: S.screen === 'home' && S.deskPage !== 'zero', deskFlow: idx >= 0, deskZeroPage: S.deskPage === 'zero',
+      zeroEmpty: !!(desk && S.deskPage === 'zero' && S.zq.trim()) && false,
+      zq: S.zq, onZq: function (e) { self.setState({ zq: e.target.value }); },
+      deskHow: [
+        { n: '01', title: 'صوّر واختار العربية', body: 'صوّر قدام وورا والعداد، واختار الماركة والموديل والسنة والفئة. البحث بيفهم لو كتبت غلط.' },
+        { n: '02', title: 'علّم الدهان والميكانيكا', body: 'لف العربية ودوس على أي جزء: رش أو متغير. وعلّم أي عيب في الموتور أو الفتيس أو العفشة.' },
+        { n: '03', title: 'خد السعر والإيصال', body: 'رينج عادل من إعلانات حقيقية شبهها، وأقصى سعر تشتري بيه، وإيصال تبعته للزبون على واتساب.' }
+      ],
+      deskSaved: S.screen === 'home' && S.deskPage !== 'zero' && !!me && (A.items || []).length > 0,
       deskStats: (function () {
         var mk = Object.keys(CAT), models = 0, ads = 0;
         mk.forEach(function (m) { Object.keys(CAT[m]).forEach(function (md) { models++; ads += CAT[m][md].n || 0; }); });
@@ -1147,7 +1193,17 @@ class Component extends React.Component {
         return { name: m.name, kind: m.kind, when: m.when, price: fmt(m.price), delta: dtxt, dc: m.up ? t.warn : '#5B9CF5',
           go: function () { self.setState({ sheet: 'item', item: m }); } };
       }),
-      openZero: function () { self.setState({ sheet: 'zero' }); },
+      openZero: function () { if (desk) self.setState({ deskPage: 'zero', sheet: null }); else self.setState({ sheet: 'zero' }); },
+      zeroAll: !desk || S.deskPage !== 'zero' ? [] : (function () {
+        var out = [];
+        Object.keys(CAT).forEach(function (mk) { Object.keys(CAT[mk]).forEach(function (md) { var c = CAT[mk][md]; if (c.zero) out.push({ mk: mk, md: md, c: c, name: mk + ' ' + md }); }); });
+        var zq = S.zq.trim();
+        var list = zq ? Component.fuzzy(zq, out, function (z) { return z.name; }).map(function (h) { return h.item; }) : out.sort(function (a, b) { return a.name.localeCompare(b.name); });
+        return list.map(function (z) {
+          var y = z.c.years[z.c.years.length - 1];
+          return { name: z.name + ' ' + y, n: fmt(z.c.n || 0), price: fmt(z.c.zero), go: function () { self.setCar({ make: z.mk, model: z.md, year: y, trim: z.c.trims[0] }, 0); } };
+        });
+      })(),
       deskZero: !desk ? [] : (function () {
         var out = [];
         Object.keys(CAT).forEach(function (mk) { Object.keys(CAT[mk]).forEach(function (md) { var c = CAT[mk][md]; if (c.zero) out.push({ mk: mk, md: md, c: c }); }); });
@@ -1269,7 +1325,7 @@ class Component extends React.Component {
       carName: carName, carShort: carShort, nComps: nComps, compsBtn: 'شوف الـ ' + nComps + ' عربية',
       confTxt: 'ثقة ' + conf + '. قارنّا بـ ' + nComps + ' عربية من نفس الفئة وعدادها قريب، آخر 60 يوم.' + (known ? ' وشلنا الإعلانات اللي أسعارها شاذة.' : ' الموديل ده مش عندنا كفاية، فالرينج أعرض.'),
       axisLo: fmt(lo), axisHi: fmt(hi),
-      detectTxt: (S.shotsDone.front || S.shotsDone.back || S.shotsDone.side) ? 'الصور معاك في التسعيرة دي. اتأكد من الماركة والموديل والفئة تحت.' : 'صوّر قدام وورا والعداد، دوس على أي مربع وافتح الكاميرا أو اختار من الصور.',
+      detectTxt: S.vis.busy ? 'بنبص على الصورة…' : S.vis.note ? S.vis.note : (S.shotsDone.front || S.shotsDone.back || S.shotsDone.side) ? 'الصور معاك في التسعيرة دي. اتأكد من الماركة والموديل والفئة تحت.' : 'صوّر قدام وورا والعداد، دوس على أي مربع وافتح الكاميرا أو اختار من الصور.',
       fields: [['make', 'الماركة', car.make], ['model', 'الموديل', car.model], ['year', 'السنة', String(car.year)], ['trim', 'الفئة', car.trim]].map(function (f) {
         return { label: f[1], value: f[2], aria: f[1] + ': ' + f[2] + '، غيّر', open: function () { self.setState({ picker: f[0], pickOther: '', sheet: 'picker' }); } };
       }),
@@ -1295,7 +1351,7 @@ class Component extends React.Component {
         var urls = files.map(function (f) { return URL.createObjectURL(f); });
         var k = self.state.shotPick;
         if (k === 'extra') self.setState({ extras: self.state.extras.concat(urls).slice(0, 12), shotPick: null });
-        else { var o = Object.assign({}, self.state.shotsDone); o[k] = urls[0]; self.setState({ shotsDone: o, shotPick: null }); }
+        else { var o = Object.assign({}, self.state.shotsDone); o[k] = urls[0]; self.setState({ shotsDone: o, shotPick: null }); self.readShot(k, files[0]); }
       },
       removeShot: function () { var o = Object.assign({}, self.state.shotsDone); delete o[self.state.shotPick]; self.setState({ shotsDone: o, shotPick: null }); },
       closeShot: function () { self.setState({ shotPick: null }); },
@@ -1366,7 +1422,7 @@ class Component extends React.Component {
     return (
 <div className={v.shellCls} dir="rtl" style={css(v.shellStyle)}>
 {(v.desk) && (<>
-<header style={css(`height: 72px; flex: none; display: flex; align-items: center; gap: 28px; padding: 0 40px; border-bottom: 1px solid ${v.t.line}`)}>
+<header style={css(`position: sticky; top: 0; z-index: 40; height: 72px; flex: none; display: flex; align-items: center; gap: 28px; padding: 0 40px; border-bottom: 1px solid ${v.t.line}; background: ${v.t.bg}`)}>
 <button onClick={v.goHomeBack} aria-label="سعرلي، الرئيسية" style={css(`background: none; border: none; padding: 0; color: ${v.t.ink}; cursor: pointer`)}>
 <span translate="no" style={css("font-family: 'Aref Ruqaa', serif; font-size: 40px; font-weight: 700; line-height: 1")}>سعرلي</span>
 </button>
@@ -1388,7 +1444,7 @@ class Component extends React.Component {
 <div style={css(v.deskRow)}>
 <div className="app-col" dir="rtl" style={css(`width: 100%; max-width: 520px; height: 100dvh; margin: 0 auto; position: relative; overflow: hidden; color-scheme: ${v.scheme}; background: ${v.t.bg}; color: ${v.t.ink}; font-family: 'Alexandria', sans-serif; transition: background .4s ease, color .4s ease`)}>
 {(v.isHome) && (<>
-<div className={v.enterCls} style={css("position: absolute; inset: 0; display: flex; flex-direction: column")}>
+<div data-scr="home" className={v.enterCls} style={css("position: absolute; inset: 0; display: flex; flex-direction: column")}>
 <header style={css("height: 60px; flex: none; padding: 0 12px; display: flex; align-items: center; justify-content: space-between")}>
 <button className="press" onClick={v.openMenu} aria-label="القائمة" aria-haspopup="dialog" style={css(`width: 44px; height: 44px; background: none; border: none; color: ${v.t.ink}; display: flex; align-items: center; justify-content: center; padding: 0`)}>
 <svg width="22" height="14" viewBox="0 0 22 14" aria-hidden="true"><path d="M0 1h22M0 7h22M8 13h14" stroke="currentColor" strokeWidth="1.4" fill="none"></path></svg>
@@ -1525,7 +1581,7 @@ class Component extends React.Component {
 </div>
 </>)}
 {(v.isFlow) && (<>
-<div style={css("position: absolute; inset: 0; display: flex; flex-direction: column")}>
+<div data-scr="flow" style={css("position: absolute; inset: 0; display: flex; flex-direction: column")}>
 <header style={css("height: 64px; flex: none; padding: 0 12px; display: flex; align-items: center; justify-content: space-between")}>
 <button className="press" onClick={v.back} aria-label="رجوع" style={css(`width: 44px; height: 44px; background: none; border: none; color: ${v.t.ink}; display: flex; align-items: center; justify-content: center; padding: 0`)}>
 <svg width="10" height="18" viewBox="0 0 10 18" aria-hidden="true"><path d="M1 1l8 8-8 8" stroke="currentColor" strokeWidth="1.4" fill="none"></path></svg>
@@ -1825,7 +1881,7 @@ class Component extends React.Component {
 </div>
 </>)}
 {(v.isCompare) && (<>
-<div className={v.enterCls} style={css("position: absolute; inset: 0; display: flex; flex-direction: column")}>
+<div data-scr="compare" className={v.enterCls} style={css("position: absolute; inset: 0; display: flex; flex-direction: column")}>
 <header style={css("height: 64px; flex: none; padding: 0 12px; display: flex; align-items: center; justify-content: space-between")}>
 <button className="press" onClick={v.goHomeBack} aria-label="رجوع" style={css(`width: 44px; height: 44px; background: none; border: none; color: ${v.t.ink}; display: flex; align-items: center; justify-content: center; padding: 0`)}>
 <svg width="10" height="18" viewBox="0 0 10 18" aria-hidden="true"><path d="M1 1l8 8-8 8" stroke="currentColor" strokeWidth="1.4" fill="none"></path></svg>
@@ -2134,95 +2190,153 @@ class Component extends React.Component {
 </>)}
 </div>
 {(v.desk) && (<>
-<aside className="enter-f" key={v.deskKey} style={css("flex: 1; min-width: 0; height: 100%; overflow-y: auto; scrollbar-width: thin; padding: 8px 4px 40px 8px; box-sizing: border-box; display: flex; flex-direction: column; gap: 36px")}>
+<div className="fu" key={v.deskKey} style={css("display: flex; flex-direction: column; gap: 88px; padding-bottom: 40px")}>
 {(v.deskHome) && (<>
-<section style={css("display: flex; flex-direction: column; gap: 14px; padding-top: 18px")}>
-<h2 style={css("margin: 0; font-size: 44px; line-height: 1.25; font-weight: 600; max-width: 640px")}>اعرف تمن أي عربية مستعملة في مصر، قبل ما تدفع.</h2>
-<p style={css(`margin: 0; font-size: 16px; line-height: 1.8; color: ${v.t.mute}; max-width: 560px`)}>بنقارن عربيتك بإعلانات حقيقية شبهها من هتلاقي والسوق المفتوح وSylndr، ونخصم الرش والمتغير والميكانيكا، ونطلعلك رينج عادل وأقصى سعر تشتري بيه.</p>
-<div style={css("display: flex; gap: 40px; margin-top: 10px")}>
+<section style={css("display: flex; flex-direction: column; align-items: center; text-align: center; gap: 22px; padding: 56px 0 8px")}>
+<span translate="no" className="wm" style={css("font-family: 'Aref Ruqaa', serif; font-size: 120px; font-weight: 700; line-height: 1.1")}>سعرلي</span>
+<h1 style={css("margin: 0; font-size: 48px; line-height: 1.3; font-weight: 600; max-width: 820px")}>اعرف تمن أي عربية مستعملة في مصر، قبل ما تدفع.</h1>
+<p style={css(`margin: 0; font-size: 18px; line-height: 1.8; color: ${v.t.mute}; max-width: 680px`)}>بنقارن العربية بإعلانات حقيقية شبهها من هتلاقي والسوق المفتوح وSylndr، ونخصم الرش والمتغير والميكانيكا، ونطلعلك رينج عادل وأقصى سعر تشتري بيه.</p>
+<div style={css("display: flex; gap: 12px; margin-top: 8px")}>
+<button className="press" onClick={v.goCar} style={css(`height: 56px; padding: 0 34px; border-radius: 999px; border: none; background: ${v.t.ink}; color: ${v.t.bg}; font-size: 17px; font-weight: 600`)}>سعّر عربية</button>
+<button className="press" onClick={v.goCompare} style={css(`height: 56px; padding: 0 30px; border-radius: 999px; border: 1px solid ${v.t.ink}; background: none; color: ${v.t.ink}; font-size: 17px; font-weight: 500`)}>قارن عربيات</button>
+</div>
+<div style={css("display: flex; gap: 64px; margin-top: 28px")}>
 {(v.deskStats || []).map((ds, i25) => (<React.Fragment key={i25}>
-<div style={css("display: flex; flex-direction: column; gap: 2px")}>
-<span className="num" style={css("font-size: 34px; font-weight: 300")}>{ds.n}</span>
-<span style={css(`font-size: 13px; color: ${v.t.mute}`)}>{ds.label}</span>
+<div style={css("display: flex; flex-direction: column; gap: 4px")}>
+<span className="num" style={css("font-size: 40px; font-weight: 200")}>{ds.n}</span>
+<span style={css(`font-size: 14px; color: ${v.t.mute}`)}>{ds.label}</span>
 </div>
 </React.Fragment>))}
 </div>
 </section>
-<section aria-labelledby="dk-mkt" style={css("display: flex; flex-direction: column; gap: 12px")}>
-<div style={css("display: flex; align-items: baseline; justify-content: space-between")}>
-<h2 id="dk-mkt" style={css("margin: 0; font-size: 20px; font-weight: 600")}>السوق النهارده</h2>
-<span style={css(`font-size: 13px; color: ${v.t.mute}`)}>تغييرات الزيرو ولقطات نزلت أرخص من السوق</span>
+<section aria-labelledby="dk-q" style={css("display: flex; flex-direction: column; gap: 14px; max-width: 760px; width: 100%; margin: 0 auto")}>
+<h2 id="dk-q" style={css("margin: 0; font-size: 26px; font-weight: 600")}>دوّر على عربية</h2>
+<div style={css(`display: flex; align-items: center; gap: 12px; height: 60px; padding: 0 22px; border-radius: 999px; background: ${v.t.soft}; border: 1px solid ${v.t.line}`)}>
+<svg width="18" height="18" viewBox="0 0 16 16" aria-hidden="true"><circle cx="7" cy="7" r="5.5" stroke={v.t.mute} strokeWidth="1.4" fill="none"></circle><path d="M11 11l4 4" stroke={v.t.mute} strokeWidth="1.4"></path></svg>
+<input name="search_desk" value={v.q} onChange={v.onQ} aria-labelledby="dk-q" placeholder="اكتبها زي ما تحب: كورولا 2020، النترا، tucson…" autoComplete="off" style={css(`flex: 1; min-width: 0; height: 52px; border: none; background: transparent; color: ${v.t.ink}; font-family: 'Alexandria', sans-serif; font-size: 17px`)} />
 </div>
-<div style={css("display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 12px")}>
-{(v.deskMarket || []).map((dm, i26) => (<React.Fragment key={i26}>
-<button className="press" onClick={dm.go} style={css(`min-height: 112px; padding: 16px; border-radius: 16px; border: 1px solid ${v.t.line}; background: ${v.t.soft}; color: ${v.t.ink}; text-align: right; display: flex; flex-direction: column; justify-content: space-between; gap: 12px`)}>
-<span style={css("display: flex; flex-direction: column; gap: 4px")}>
-<span style={css("font-size: 15px; font-weight: 500; line-height: 1.5")}>{dm.name}</span>
-<span style={css(`font-size: 12px; color: ${v.t.mute}`)}>{dm.kind}، {dm.when}</span>
+{(v.didYouMean) && (<>
+<p aria-live="polite" style={css(`margin: 0 8px; font-size: 14px; color: ${v.t.mute}`)}>قصدك <span style={css(`color: ${v.t.ink}`)}>{v.didYouMean}</span>؟</p>
+</>)}
+{(v.results || []).map((r, i26) => (<React.Fragment key={i26}>
+<div style={css(`min-height: 68px; display: flex; align-items: center; justify-content: space-between; gap: 16px; border-bottom: 1px solid ${v.t.line}`)}>
+<div style={css("display: flex; flex-direction: column; gap: 3px")}>
+<span style={css("font-size: 16px")}>{r.name}</span>
+<span className="num" style={css(`font-size: 13px; color: ${v.t.mute}`)}>مستعمل {r.used}</span>
+</div>
+<button className="press" onClick={r.toggle} aria-pressed={r.pressed} style={css(`flex: none; min-height: 42px; padding: 0 20px; border-radius: 999px; border: 1px solid ${r.bd}; background: ${r.bg}; color: ${r.fg}; font-size: 14px`)}>{r.btn}</button>
+</div>
+</React.Fragment>))}
+{(v.noResults) && (<>
+<p style={css(`margin: 0 8px; font-size: 14px; color: ${v.t.mute}`)}>مفيش عربية بالاسم ده. جرّب اسم الماركة بس.</p>
+</>)}
+{(v.canCompare) && (<>
+<button className="press" onClick={v.goCompare} style={css(`align-self: flex-start; height: 50px; padding: 0 28px; border-radius: 999px; border: none; background: ${v.t.ink}; color: ${v.t.bg}; font-size: 15px; font-weight: 600`)}>قارن الـ {v.trayCount} عربيات</button>
+</>)}
+</section>
+<section aria-labelledby="dk-mkt" style={css("display: flex; flex-direction: column; gap: 18px")}>
+<div style={css("display: flex; align-items: baseline; justify-content: space-between; gap: 16px")}>
+<h2 id="dk-mkt" style={css("margin: 0; font-size: 30px; font-weight: 600")}>السوق النهارده</h2>
+<span style={css(`font-size: 14px; color: ${v.t.mute}`)}>تغييرات أسعار الزيرو، ولقطات نزلت أرخص من السوق</span>
+</div>
+<div style={css("display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px")}>
+{(v.deskMarket || []).map((dm, i27) => (<React.Fragment key={i27}>
+<button className="press" onClick={dm.go} style={css(`min-height: 140px; padding: 20px; border-radius: 18px; border: 1px solid ${v.t.line}; background: ${v.t.soft}; color: ${v.t.ink}; text-align: right; display: flex; flex-direction: column; justify-content: space-between; gap: 14px`)}>
+<span style={css("display: flex; flex-direction: column; gap: 6px")}>
+<span style={css("font-size: 16px; font-weight: 500; line-height: 1.5")}>{dm.name}</span>
+<span style={css(`font-size: 13px; color: ${v.t.mute}`)}>{dm.kind}، {dm.when}</span>
 </span>
 <span style={css("display: flex; align-items: baseline; justify-content: space-between; gap: 8px")}>
-<span className="num" style={css("font-size: 20px; font-weight: 300; direction: ltr")}>{dm.price}</span>
-<span className="num" style={css(`font-size: 13px; color: ${dm.dc}; direction: ltr`)}>{dm.delta}</span>
+<span className="num" style={css("font-size: 24px; font-weight: 300; direction: ltr")}>{dm.price}</span>
+<span className="num" style={css(`font-size: 14px; color: ${dm.dc}; direction: ltr`)}>{dm.delta}</span>
 </span>
 </button>
 </React.Fragment>))}
 </div>
 </section>
-<section aria-labelledby="dk-zero" style={css("display: flex; flex-direction: column; gap: 8px")}>
+<section aria-labelledby="dk-zero" style={css("display: flex; flex-direction: column; gap: 12px")}>
 <div style={css("display: flex; align-items: baseline; justify-content: space-between")}>
-<h2 id="dk-zero" style={css("margin: 0; font-size: 20px; font-weight: 600")}>أسعار الزيرو</h2>
-<button className="press" onClick={v.openZero} style={css(`background: none; border: none; color: ${v.t.mute}; font-size: 13px; padding: 0; min-height: 36px`)}>كل الأسعار</button>
+<h2 id="dk-zero" style={css("margin: 0; font-size: 30px; font-weight: 600")}>أسعار الزيرو</h2>
+<button className="press" onClick={v.openZero} style={css(`background: none; border: none; color: ${v.t.ink}; font-size: 15px; padding: 0; min-height: 40px; text-decoration: underline`)}>كل الأسعار ←</button>
 </div>
-<div style={css("display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: 32px")}>
-{(v.deskZero || []).map((dz, i27) => (<React.Fragment key={i27}>
-<button className="press" onClick={dz.go} style={css(`min-height: 52px; display: flex; align-items: center; justify-content: space-between; gap: 12px; background: none; border: none; border-bottom: 1px solid ${v.t.line}; color: ${v.t.ink}; padding: 0; text-align: right`)}>
-<span style={css("font-size: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap")}>{dz.name}</span>
-<span className="num" style={css("flex: none; font-size: 14px; direction: ltr")}>{dz.price}</span>
+<div style={css("display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: 48px")}>
+{(v.deskZero || []).map((dz, i28) => (<React.Fragment key={i28}>
+<button className="press" onClick={dz.go} style={css(`min-height: 60px; display: flex; align-items: center; justify-content: space-between; gap: 12px; background: none; border: none; border-bottom: 1px solid ${v.t.line}; color: ${v.t.ink}; padding: 0; text-align: right`)}>
+<span style={css("font-size: 15px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap")}>{dz.name}</span>
+<span className="num" style={css("flex: none; font-size: 16px; direction: ltr")}>{dz.price}</span>
 </button>
 </React.Fragment>))}
 </div>
+</section>
+{(v.deskSaved) && (<>
+<section aria-labelledby="dk-mine" style={css("display: flex; flex-direction: column")}>
+<h2 id="dk-mine" style={css("margin: 0 0 10px; font-size: 30px; font-weight: 600")}>تسعيراتك</h2>
+{(v.recent || []).map((rc, i29) => (<React.Fragment key={i29}>
+<button className="press" onClick={rc.go} style={css(`min-height: 64px; display: flex; align-items: center; justify-content: space-between; gap: 16px; background: none; border: none; border-bottom: 1px solid ${v.t.line}; color: ${v.t.ink}; padding: 0; text-align: right`)}>
+<span style={css("font-size: 15px")}>{rc.name} <span style={css(`color: ${rc.noteFg}; font-size: 13px; margin-right: 10px`)}>{rc.note}</span></span>
+<span className="num" style={css("font-size: 16px; direction: ltr")}>{rc.range}</span>
+</button>
+</React.Fragment>))}
+</section>
+</>)}
+<section aria-labelledby="dk-how" style={css("display: flex; flex-direction: column; gap: 22px")}>
+<h2 id="dk-how" style={css("margin: 0; font-size: 30px; font-weight: 600")}>بيشتغل إزاي</h2>
+<ol style={css("margin: 0; padding: 0; list-style: none; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px")}>
+{(v.deskHow || []).map((hw, i30) => (<React.Fragment key={i30}>
+<li style={css(`padding: 24px; border-radius: 18px; border: 1px solid ${v.t.line}; display: flex; flex-direction: column; gap: 10px`)}>
+<span className="num" style={css("font-size: 15px; color: #F2A93B")}>{hw.n}</span>
+<span style={css("font-size: 18px; font-weight: 600")}>{hw.title}</span>
+<span style={css(`font-size: 14px; line-height: 1.8; color: ${v.t.mute}`)}>{hw.body}</span>
+</li>
+</React.Fragment>))}
+</ol>
+</section>
+</>)}
+{(v.deskZeroPage) && (<>
+<section aria-labelledby="dk-zp" style={css("display: flex; flex-direction: column; gap: 16px; padding-top: 40px")}>
+<h1 id="dk-zp" style={css("margin: 0; font-size: 44px; font-weight: 600")}>أسعار الزيرو النهارده</h1>
+<p style={css(`margin: 0; font-size: 16px; color: ${v.t.mute}`)}>أرخص فئة لكل موديل، من هتلاقي. دوس على أي عربية تسعّر مستعمل منها.</p>
+<input name="zero_filter" value={v.zq} onChange={v.onZq} aria-label="دوّر في أسعار الزيرو" placeholder="دوّر: كيا، تويوتا كامري…" autoComplete="off" style={css(`height: 56px; max-width: 520px; border-radius: 999px; border: 1px solid ${v.t.line}; background: ${v.t.soft}; color: ${v.t.ink}; padding: 0 22px; font-family: 'Alexandria', sans-serif; font-size: 16px`)} />
+<div role="table" aria-labelledby="dk-zp" style={css("display: flex; flex-direction: column; margin-top: 8px")}>
+<div role="row" style={css(`display: grid; grid-template-columns: minmax(0, 1fr) 160px 160px; gap: 16px; padding: 0 0 10px; border-bottom: 1px solid ${v.t.line2}; font-size: 13px; color: ${v.t.mute}`)}>
+<span role="columnheader">العربية</span><span role="columnheader">الإعلانات المستعملة</span><span role="columnheader" style={css("text-align: left")}>سعر الزيرو</span>
+</div>
+{(v.zeroAll || []).map((za, i31) => (<React.Fragment key={i31}>
+<button className="press" role="row" onClick={za.go} style={css(`min-height: 58px; display: grid; grid-template-columns: minmax(0, 1fr) 160px 160px; align-items: center; gap: 16px; background: none; border: none; border-bottom: 1px solid ${v.t.line}; color: ${v.t.ink}; padding: 0; text-align: right`)}>
+<span role="cell" style={css("font-size: 15px")}>{za.name}</span>
+<span role="cell" className="num" style={css(`font-size: 14px; color: ${v.t.mute}`)}>{za.n}</span>
+<span role="cell" className="num" style={css("font-size: 16px; direction: ltr; text-align: left")}>{za.price}</span>
+</button>
+</React.Fragment>))}
+</div>
+{(v.zeroEmpty) && (<>
+<p style={css(`margin: 0; font-size: 14px; color: ${v.t.mute}`)}>مفيش موديل بالاسم ده.</p>
+</>)}
 </section>
 </>)}
 {(v.deskFlow) && (<>
-<section style={css("display: flex; flex-direction: column; gap: 10px; padding-top: 18px")}>
-<span style={css(`font-size: 13px; color: ${v.t.mute}`)}>بنسعّر دلوقتي</span>
-<h2 style={css("margin: 0; font-size: 34px; font-weight: 600; line-height: 1.3")}>{v.carName}</h2>
-<span className="num" style={css(`font-size: 14px; color: ${v.t.mute}`)}>{v.kmTxt} كم</span>
-<div style={css("display: flex; align-items: baseline; gap: 14px; margin-top: 14px")}>
-<span className="num" style={css("font-size: 60px; font-weight: 200; direction: ltr; line-height: 1.1")}>{v.finalLoTxt} – {v.finalHiTxt}</span>
-<span style={css(`font-size: 16px; color: ${v.t.mute}`)}>جنيه</span>
-</div>
-<span style={css(`font-size: 13px; color: ${v.t.mute}`)}>السعر بيتحدّث وانت بتعلّم على الدهان والميكانيكا.</span>
-</section>
-<section aria-labelledby="dk-cmp" style={css("display: flex; flex-direction: column")}>
-<div style={css("display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 6px")}>
-<h2 id="dk-cmp" style={css("margin: 0; font-size: 20px; font-weight: 600")}>العربيات اللي اتقارنت ({v.nComps})</h2>
+<section aria-labelledby="dk-cmp" style={css("display: flex; flex-direction: column; max-width: 1000px; width: 100%; margin: 0 auto")}>
+<div style={css("display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 8px")}>
+<h2 id="dk-cmp" style={css("margin: 0; font-size: 26px; font-weight: 600")}>العربيات اللي اتقارنت ({v.nComps})</h2>
 <span style={css(`font-size: 13px; color: ${v.t.mute}`)}>مقارنة بالرينج لعربية فابريكا</span>
 </div>
 <div role="table" aria-labelledby="dk-cmp" style={css("display: flex; flex-direction: column")}>
-{(v.deskComps || []).map((dc, i28) => (<React.Fragment key={i28}>
-<button className="press" role="row" onClick={dc.go} style={css(`min-height: 56px; display: grid; grid-template-columns: minmax(0, 1fr) 140px 110px 90px; align-items: center; gap: 16px; background: none; border: none; border-bottom: 1px solid ${v.t.line}; color: ${v.t.ink}; padding: 0; text-align: right`)}>
-<span role="cell" style={css("font-size: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap")}>{dc.name}</span>
+{(v.deskComps || []).map((dc, i32) => (<React.Fragment key={i32}>
+<button className="press" role="row" onClick={dc.go} style={css(`min-height: 58px; display: grid; grid-template-columns: minmax(0, 1fr) 180px 130px 90px; align-items: center; gap: 16px; background: none; border: none; border-bottom: 1px solid ${v.t.line}; color: ${v.t.ink}; padding: 0; text-align: right`)}>
+<span role="cell" style={css("font-size: 15px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap")}>{dc.name}</span>
 <span role="cell" style={css(`font-size: 13px; color: ${v.t.mute}; overflow: hidden; text-overflow: ellipsis; white-space: nowrap`)}>{dc.sub}</span>
-<span role="cell" className="num" style={css("font-size: 14px; direction: ltr; text-align: right")}>{dc.val}</span>
-<span role="cell" style={css(`font-size: 12px; color: ${dc.tagFg}`)}>{dc.tag}</span>
+<span role="cell" className="num" style={css("font-size: 15px; direction: ltr; text-align: right")}>{dc.val}</span>
+<span role="cell" style={css(`font-size: 13px; color: ${dc.tagFg}`)}>{dc.tag}</span>
 </button>
 </React.Fragment>))}
 </div>
 </section>
 </>)}
-{(v.deskSaved) && (<>
-<section aria-labelledby="dk-mine" style={css("display: flex; flex-direction: column")}>
-<h2 id="dk-mine" style={css("margin: 0 0 6px; font-size: 20px; font-weight: 600")}>تسعيراتك</h2>
-{(v.recent || []).map((rc, i29) => (<React.Fragment key={i29}>
-<button className="press" onClick={rc.go} style={css(`min-height: 56px; display: flex; align-items: center; justify-content: space-between; gap: 16px; background: none; border: none; border-bottom: 1px solid ${v.t.line}; color: ${v.t.ink}; padding: 0; text-align: right`)}>
-<span style={css("font-size: 14px")}>{rc.name} <span style={css(`color: ${rc.noteFg}; font-size: 12px; margin-right: 8px`)}>{rc.note}</span></span>
-<span className="num" style={css("font-size: 14px; direction: ltr")}>{rc.range}</span>
-</button>
-</React.Fragment>))}
-</section>
-</>)}
-</aside>
+<footer style={css(`display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 28px 0 8px; border-top: 1px solid ${v.t.line}; color: ${v.t.mute}; font-size: 13px`)}>
+<span translate="no" style={css(`font-family: 'Aref Ruqaa', serif; font-size: 30px; font-weight: 700; color: ${v.t.ink}`)}>سعرلي</span>
+<span>الأسعار من إعلانات حقيقية بتتحدث كل يوم. السعر تقديري، اتأكد من العربية بنفسك قبل ما تشتري.</span>
+</footer>
+</div>
 </>)}
 </div>
 </div>
