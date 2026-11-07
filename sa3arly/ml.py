@@ -355,7 +355,7 @@ def comps_error(cx, n: int = 300, seed: int = 5, wide: bool = True) -> dict:
     from .pricing import DEAL_DISCOUNT, Pricer
     ads = cx.execute("""select mk.name_en, mo.name_en, l.year, l.km, l.trim_raw, l.url, l.price_egp
                         from listings l join makes mk on mk.id = l.make_id join models mo on mo.id = l.model_id
-                        where l.price_egp between 50000 and 50000000 and l.km is not null
+                        where l.price_egp between 50000 and 50000000 and l.km is not null and l.year is not null
                           and l.last_seen > now() - interval '60 days'""").fetchall()
     random.Random(seed).shuffle(ads)
     pr = Pricer(cx, use_ai=False, wide=wide)
