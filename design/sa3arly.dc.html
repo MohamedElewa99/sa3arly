@@ -55,6 +55,21 @@ button:disabled{cursor:not-allowed}
 .pen{position:absolute;top:58%;width:7px;height:7px;border-radius:50%;background:#F2A93B;animation:pen 1.6s cubic-bezier(.65,.05,.36,1) .15s both;pointer-events:none}
 
 @media (hover:hover){.press:hover{transform:translateY(-1px)}}
+/* loading: a little car driving on a moving road (used wherever we wait) */
+.ld{display:flex;flex-direction:column;align-items:center;gap:8px}
+.ld svg{overflow:visible}
+.ld .road{stroke-dasharray:9 8;animation:ldRoad .45s linear infinite}
+.ld .body{animation:ldBump .32s ease-in-out infinite alternate}
+.ld .wh{transform-box:fill-box;transform-origin:center;animation:ldSpin .4s linear infinite}
+.ld .wind{stroke-dasharray:6 30;animation:ldWind .6s linear infinite}
+.ld .wind.b{animation-delay:.2s}.ld .wind.c{animation-delay:.4s}
+.ld .lamp{animation:ldLamp 1.2s ease-in-out infinite}
+.ld .cap{font-size:13px;opacity:.75}
+@keyframes ldRoad{to{stroke-dashoffset:-17}}
+@keyframes ldBump{from{transform:translateY(0)}to{transform:translateY(-1.4px)}}
+@keyframes ldSpin{to{transform:rotate(-360deg)}}
+@keyframes ldWind{from{stroke-dashoffset:0;opacity:0}30%{opacity:.7}to{stroke-dashoffset:-36;opacity:0}}
+@keyframes ldLamp{0%,100%{opacity:.35}50%{opacity:1}}
 @media (prefers-reduced-motion: reduce){*{animation:none!important;transition:none!important}}
 </style>
 </helmet>
@@ -292,7 +307,8 @@ button:disabled{cursor:not-allowed}
           </div>
         </sc-if>
         <button class="press" onClick="{{ addShot }}" style="align-self: flex-start; min-height: 36px; padding: 0 14px; border-radius: 999px; border: 1px dashed {{ t.edge }}; background: none; color: {{ t.ink }}; font-size: 12px">{{ extraShotsLabel }}</button>
-        <p style="margin: 0; font-size: 12px; color: {{ t.mute }}; line-height: 1.7">{{ detectTxt }}</p>
+        <sc-if value="{{ visBusy }}" hint-placeholder-val="{{ false }}"><div style="padding: 6px 0; display: flex; justify-content: center; color: {{ t.mute }}"><div class="ld" role="status"><svg width="132" height="40" viewBox="0 0 132 40" aria-hidden="true"><path class="wind" d="M112 13h18" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"></path><path class="wind b" d="M116 19h14" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"></path><path class="wind c" d="M110 25h18" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"></path><g class="body"><path d="M8 28V23Q10 19 18 18L32 16L44 9Q54 5.5 70 6.5Q82 7.5 90 15L104 17Q110 18 111 22V28" stroke="currentColor" stroke-width="1.6" fill="none" stroke-linejoin="round"></path><path d="M8 28H17M37 28H82M102 28H111" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"></path><path d="M47 15L52 10Q58 8 66 8.5V15ZM70 15V8.7Q79 9.5 84 15Z" fill="currentColor" opacity=".25"></path><circle class="lamp" cx="10.5" cy="21.5" r="1.8" fill="#F2A93B"></circle></g><g class="wh"><circle cx="27" cy="28" r="6.5" stroke="currentColor" stroke-width="1.6" fill="none"></circle><path d="M27 22.5v11M21.5 28h11" stroke="currentColor" stroke-width="1"></path></g><g class="wh"><circle cx="92" cy="28" r="6.5" stroke="currentColor" stroke-width="1.6" fill="none"></circle><path d="M92 22.5v11M86.5 28h11" stroke="currentColor" stroke-width="1"></path></g><path class="road" d="M0 37.5H132" stroke="#F2A93B" stroke-width="1.4" stroke-linecap="round"></path></svg><span class="cap">بنبص على الصورة…</span></div></div></sc-if>
+        <sc-if value="{{ visIdle }}" hint-placeholder-val="{{ true }}"><p style="margin: 0; font-size: 12px; color: {{ t.mute }}; line-height: 1.7">{{ detectTxt }}</p></sc-if>
       </div>
       <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px 12px">
         <sc-for list="{{ fields }}" as="fd" hint-placeholder-count="4">
@@ -336,7 +352,7 @@ button:disabled{cursor:not-allowed}
 
       <sc-if value="{{ gl }}" hint-placeholder-val="{{ true }}">
         <div style="position: relative; align-self: center">
-        <sc-if value="{{ paintLoading }}" hint-placeholder-val="{{ true }}"><span aria-hidden="true" style="position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-size: 13px; color: {{ t.mute }}">بنجهّز العربية…</span></sc-if>
+        <sc-if value="{{ paintLoading }}" hint-placeholder-val="{{ true }}"><div style="position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; color: {{ t.mute }}; pointer-events: none"><div class="ld" role="status"><svg width="132" height="40" viewBox="0 0 132 40" aria-hidden="true"><path class="wind" d="M112 13h18" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"></path><path class="wind b" d="M116 19h14" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"></path><path class="wind c" d="M110 25h18" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"></path><g class="body"><path d="M8 28V23Q10 19 18 18L32 16L44 9Q54 5.5 70 6.5Q82 7.5 90 15L104 17Q110 18 111 22V28" stroke="currentColor" stroke-width="1.6" fill="none" stroke-linejoin="round"></path><path d="M8 28H17M37 28H82M102 28H111" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"></path><path d="M47 15L52 10Q58 8 66 8.5V15ZM70 15V8.7Q79 9.5 84 15Z" fill="currentColor" opacity=".25"></path><circle class="lamp" cx="10.5" cy="21.5" r="1.8" fill="#F2A93B"></circle></g><g class="wh"><circle cx="27" cy="28" r="6.5" stroke="currentColor" stroke-width="1.6" fill="none"></circle><path d="M27 22.5v11M21.5 28h11" stroke="currentColor" stroke-width="1"></path></g><g class="wh"><circle cx="92" cy="28" r="6.5" stroke="currentColor" stroke-width="1.6" fill="none"></circle><path d="M92 22.5v11M86.5 28h11" stroke="currentColor" stroke-width="1"></path></g><path class="road" d="M0 37.5H132" stroke="#F2A93B" stroke-width="1.4" stroke-linecap="round"></path></svg><span class="cap">بنجهّز العربية…</span></div></div></sc-if>
         <canvas ref="{{ paintRef }}" width="350" height="240" role="img" aria-label="عربية 3D: لفّها بصباعك ودوس على أي جزء" style="width: 350px; height: 240px; display: block; position: relative; flex: none; align-self: center; touch-action: none; cursor: grab; opacity: {{ paintOp }}; transition: opacity .4s ease"></canvas>
         </div>
       </sc-if>
@@ -457,12 +473,17 @@ button:disabled{cursor:not-allowed}
       <span style="font-size: 14px">{{ carName }}</span>
       <span style="font-size: 12px; color: {{ t.mute }}; margin-top: 3px">{{ kmTxt }} كم، صيانات توكيل لحد {{ agencyTxt }}</span>
 
+      <sc-if value="{{ quoteLoading }}" hint-placeholder-val="{{ false }}">
+        <div style="margin-top: 34px; min-height: 150px; display: flex; align-items: center; justify-content: center; color: {{ t.mute }}"><div class="ld" role="status"><svg width="132" height="40" viewBox="0 0 132 40" aria-hidden="true"><path class="wind" d="M112 13h18" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"></path><path class="wind b" d="M116 19h14" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"></path><path class="wind c" d="M110 25h18" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"></path><g class="body"><path d="M8 28V23Q10 19 18 18L32 16L44 9Q54 5.5 70 6.5Q82 7.5 90 15L104 17Q110 18 111 22V28" stroke="currentColor" stroke-width="1.6" fill="none" stroke-linejoin="round"></path><path d="M8 28H17M37 28H82M102 28H111" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"></path><path d="M47 15L52 10Q58 8 66 8.5V15ZM70 15V8.7Q79 9.5 84 15Z" fill="currentColor" opacity=".25"></path><circle class="lamp" cx="10.5" cy="21.5" r="1.8" fill="#F2A93B"></circle></g><g class="wh"><circle cx="27" cy="28" r="6.5" stroke="currentColor" stroke-width="1.6" fill="none"></circle><path d="M27 22.5v11M21.5 28h11" stroke="currentColor" stroke-width="1"></path></g><g class="wh"><circle cx="92" cy="28" r="6.5" stroke="currentColor" stroke-width="1.6" fill="none"></circle><path d="M92 22.5v11M86.5 28h11" stroke="currentColor" stroke-width="1"></path></g><path class="road" d="M0 37.5H132" stroke="#F2A93B" stroke-width="1.4" stroke-linecap="round"></path></svg><span class="cap">بنقارنها بالإعلانات الحقيقية…</span></div></div>
+      </sc-if>
+      <sc-if value="{{ quoteReady }}" hint-placeholder-val="{{ true }}">
       <div style="margin-top: 22px; display: flex; flex-direction: column; align-items: center; gap: 0">
         <span style="font-size: 13px; color: {{ t.mute }}">السعر العادل</span>
         <span style="display: flex; align-items: baseline; gap: 10px"><span style="font-size: 16px; color: {{ t.mute }}">من</span><span style="font-size: 46px; font-weight: 200; direction: ltr; font-variant-numeric: tabular-nums">{{ shownLo }}</span></span>
         <span style="display: flex; align-items: baseline; gap: 10px"><span style="font-size: 16px; color: {{ t.mute }}">لـ</span><span style="font-size: 46px; font-weight: 200; direction: ltr; font-variant-numeric: tabular-nums">{{ shownHi }}</span></span>
         <span style="font-size: 14px; margin-top: 2px">جنيه</span>
       </div>
+      </sc-if>
 
       <div dir="ltr" role="img" aria-label="{{ stripAria }}" style="margin-top: 22px; position: relative; height: 44px; flex: none">
         <div class="grow" style="position: absolute; top: 21px; left: 0; right: 0; height: 1px; background: {{ t.line2 }}"></div>
@@ -738,7 +759,7 @@ button:disabled{cursor:not-allowed}
         <input name="zero_search" value="{{ zpQ }}" onChange="{{ onZpQ }}" aria-label="{{ zpSearchPh }}" placeholder="{{ zpSearchPh }}" autocomplete="off" style="flex: 1; min-width: 0; height: 42px; border: none; background: transparent; color: {{ t.ink }}; font-family: 'Alexandria', sans-serif; font-size: 15px">
       </div>
       <sc-if value="{{ zpLoading }}" hint-placeholder-val="{{ false }}">
-        <p role="status" style="margin: 18px 4px; font-size: 14px; color: {{ t.mute }}">بنجيب الأسعار…</p>
+        <div style="padding: 48px 0; display: flex; justify-content: center; color: {{ t.mute }}"><div class="ld" role="status"><svg width="132" height="40" viewBox="0 0 132 40" aria-hidden="true"><path class="wind" d="M112 13h18" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"></path><path class="wind b" d="M116 19h14" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"></path><path class="wind c" d="M110 25h18" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"></path><g class="body"><path d="M8 28V23Q10 19 18 18L32 16L44 9Q54 5.5 70 6.5Q82 7.5 90 15L104 17Q110 18 111 22V28" stroke="currentColor" stroke-width="1.6" fill="none" stroke-linejoin="round"></path><path d="M8 28H17M37 28H82M102 28H111" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"></path><path d="M47 15L52 10Q58 8 66 8.5V15ZM70 15V8.7Q79 9.5 84 15Z" fill="currentColor" opacity=".25"></path><circle class="lamp" cx="10.5" cy="21.5" r="1.8" fill="#F2A93B"></circle></g><g class="wh"><circle cx="27" cy="28" r="6.5" stroke="currentColor" stroke-width="1.6" fill="none"></circle><path d="M27 22.5v11M21.5 28h11" stroke="currentColor" stroke-width="1"></path></g><g class="wh"><circle cx="92" cy="28" r="6.5" stroke="currentColor" stroke-width="1.6" fill="none"></circle><path d="M92 22.5v11M86.5 28h11" stroke="currentColor" stroke-width="1"></path></g><path class="road" d="M0 37.5H132" stroke="#F2A93B" stroke-width="1.4" stroke-linecap="round"></path></svg><span class="cap">بنجيب أسعار الزيرو…</span></div></div>
       </sc-if>
       <sc-for list="{{ zpRows }}" as="zr" hint-placeholder-count="6">
         <button class="press" onClick="{{ zr.go }}" style="width: 100%; min-height: 64px; padding: 10px 0; display: flex; align-items: center; justify-content: space-between; gap: 12px; background: none; border: none; border-bottom: 1px solid {{ t.line }}; color: {{ t.ink }}; text-align: right">
@@ -2018,6 +2039,7 @@ class Component extends DCLogic {
     var nComps = known ? Math.max(5, Math.round(info.n * (1 - Math.abs((car.year || 2022) - 2022) * 0.12))) : 3;
     // the real app prices from the database; the design falls back to the sample estimate above
     var live = Component.remoteQuote ? Component.remoteQuote(car, S.km) : null;
+    var quoteWait = !live && !!(Component.quoteLoading && Component.quoteLoading(car, S.km));
     if (live && live.low) { baseLo = live.low; baseHi = live.high; mid = (baseLo + baseHi) / 2; nComps = live.n; if (live.zero) info = Object.assign({}, info, { zero: live.zero }); }
     var liveComps = live && live.comparables ? live.comparables : null;
     var conf = live && live.confidence ? live.confidence : nComps >= 20 ? 'عالية' : nComps >= 8 ? 'متوسطة' : 'منخفضة';
@@ -2585,7 +2607,7 @@ class Component extends DCLogic {
       axisLo: fmt(lo), axisHi: fmt(hi),
       hasAi: !!aiQ, aiMid: aiQ ? fmt(aiQ.mid) : '',
       aiSub: !aiQ ? '' : 'اتعلّم من ' + fmt(aiQ.n_train || 0) + ' إعلان إزاي السعر بيتغيّر مع الموديل والسنة والعداد والفئة. '
-        + (aiQ.weight >= 1 ? 'مفيش إعلانات قريبة كفاية، فده تقدير تقريبي منه، والرينج واسع على قد غلطه.' : aiQ.weight === 0 ? 'للموديل ده لسه مش أدق من الإعلانات القريبة، فبيراجع السعر بس ومش داخل فيه.' : 'وزنه في السعر ' + Math.round(aiQ.weight * 100) + '٪، والباقي من العربيات اللي شبهها.')
+        + (aiQ.weight >= 1 && !nComps ? 'مفيش إعلانات قريبة كفاية، فده تقدير تقريبي منه، والرينج واسع على قد غلطه.' : aiQ.weight === 0 ? 'للموديل ده لسه مش أدق من الإعلانات القريبة، فبيراجع السعر بس ومش داخل فيه.' : 'وزنه في السعر ' + Math.round(aiQ.weight * 100) + '٪، والباقي من العربيات اللي شبهها.')
         + (aiQ.error ? ' غلطه المعتاد حوالي ' + Math.round(aiQ.error * 100) + '٪.' : ''),
       aiWarn: !live || !live.lines ? '' : (live.lines.filter(function (l) { return l.indexOf('الإعلانات القريبة') === 0 || l.indexOf('فاعتمدنا على الإعلانات') > 0; })[0] || ''),
       detectTxt: S.vis.busy ? 'بنبص على الصورة…' : S.vis.note ? S.vis.note : (S.shotsDone.front || S.shotsDone.back || S.shotsDone.side) ? 'الصور معاك في التسعيرة دي. اتأكد من الماركة والموديل والفئة تحت.' : 'صوّر قدام وورا والعداد، دوس على أي مربع وافتح الكاميرا أو اختار من الصور.',
@@ -2636,6 +2658,8 @@ class Component extends DCLogic {
       pickOtherKey: function (e) { if (e.key === 'Enter') { e.preventDefault(); useOther(); } },
       usePickOther: function () { useOther(); },
       sheetRows: sheetRows,
+      visBusy: !!S.vis.busy, visIdle: !S.vis.busy,
+      quoteLoading: quoteWait, quoteReady: !quoteWait,
       paintLoading: !S.paintReady, paintOp: S.paintReady ? 1 : 0,
       wmKey: 'w' + S.wm, penKey: 'p' + S.wm,
       rewrite: function () { self.setState({ wm: self.state.wm + 1 }); },

@@ -894,6 +894,7 @@ class Component extends React.Component {
     var nComps = known ? Math.max(5, Math.round(info.n * (1 - Math.abs((car.year || 2022) - 2022) * 0.12))) : 3;
     // the real app prices from the database; the design falls back to the sample estimate above
     var live = Component.remoteQuote ? Component.remoteQuote(car, S.km) : null;
+    var quoteWait = !live && !!(Component.quoteLoading && Component.quoteLoading(car, S.km));
     if (live && live.low) { baseLo = live.low; baseHi = live.high; mid = (baseLo + baseHi) / 2; nComps = live.n; if (live.zero) info = Object.assign({}, info, { zero: live.zero }); }
     var liveComps = live && live.comparables ? live.comparables : null;
     var conf = live && live.confidence ? live.confidence : nComps >= 20 ? 'عالية' : nComps >= 8 ? 'متوسطة' : 'منخفضة';
@@ -1461,7 +1462,7 @@ class Component extends React.Component {
       axisLo: fmt(lo), axisHi: fmt(hi),
       hasAi: !!aiQ, aiMid: aiQ ? fmt(aiQ.mid) : '',
       aiSub: !aiQ ? '' : 'اتعلّم من ' + fmt(aiQ.n_train || 0) + ' إعلان إزاي السعر بيتغيّر مع الموديل والسنة والعداد والفئة. '
-        + (aiQ.weight >= 1 ? 'مفيش إعلانات قريبة كفاية، فده تقدير تقريبي منه، والرينج واسع على قد غلطه.' : aiQ.weight === 0 ? 'للموديل ده لسه مش أدق من الإعلانات القريبة، فبيراجع السعر بس ومش داخل فيه.' : 'وزنه في السعر ' + Math.round(aiQ.weight * 100) + '٪، والباقي من العربيات اللي شبهها.')
+        + (aiQ.weight >= 1 && !nComps ? 'مفيش إعلانات قريبة كفاية، فده تقدير تقريبي منه، والرينج واسع على قد غلطه.' : aiQ.weight === 0 ? 'للموديل ده لسه مش أدق من الإعلانات القريبة، فبيراجع السعر بس ومش داخل فيه.' : 'وزنه في السعر ' + Math.round(aiQ.weight * 100) + '٪، والباقي من العربيات اللي شبهها.')
         + (aiQ.error ? ' غلطه المعتاد حوالي ' + Math.round(aiQ.error * 100) + '٪.' : ''),
       aiWarn: !live || !live.lines ? '' : (live.lines.filter(function (l) { return l.indexOf('الإعلانات القريبة') === 0 || l.indexOf('فاعتمدنا على الإعلانات') > 0; })[0] || ''),
       detectTxt: S.vis.busy ? 'بنبص على الصورة…' : S.vis.note ? S.vis.note : (S.shotsDone.front || S.shotsDone.back || S.shotsDone.side) ? 'الصور معاك في التسعيرة دي. اتأكد من الماركة والموديل والفئة تحت.' : 'صوّر قدام وورا والعداد، دوس على أي مربع وافتح الكاميرا أو اختار من الصور.',
@@ -1512,6 +1513,8 @@ class Component extends React.Component {
       pickOtherKey: function (e) { if (e.key === 'Enter') { e.preventDefault(); useOther(); } },
       usePickOther: function () { useOther(); },
       sheetRows: sheetRows,
+      visBusy: !!S.vis.busy, visIdle: !S.vis.busy,
+      quoteLoading: quoteWait, quoteReady: !quoteWait,
       paintLoading: !S.paintReady, paintOp: S.paintReady ? 1 : 0,
       wmKey: 'w' + S.wm, penKey: 'p' + S.wm,
       rewrite: function () { self.setState({ wm: self.state.wm + 1 }); },
@@ -1784,7 +1787,8 @@ class Component extends React.Component {
 </div>
 </>)}
 <button className="press" onClick={v.addShot} style={css(`align-self: flex-start; min-height: 36px; padding: 0 14px; border-radius: 999px; border: 1px dashed ${v.t.edge}; background: none; color: ${v.t.ink}; font-size: 12px`)}>{v.extraShotsLabel}</button>
-<p style={css(`margin: 0; font-size: 12px; color: ${v.t.mute}; line-height: 1.7`)}>{v.detectTxt}</p>
+{(v.visBusy) && (<><div style={css(`padding: 6px 0; display: flex; justify-content: center; color: ${v.t.mute}`)}><div className="ld" role="status"><svg width="132" height="40" viewBox="0 0 132 40" aria-hidden="true"><path className="wind" d="M112 13h18" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"></path><path className="wind b" d="M116 19h14" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"></path><path className="wind c" d="M110 25h18" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"></path><g className="body"><path d="M8 28V23Q10 19 18 18L32 16L44 9Q54 5.5 70 6.5Q82 7.5 90 15L104 17Q110 18 111 22V28" stroke="currentColor" strokeWidth="1.6" fill="none" strokeLinejoin="round"></path><path d="M8 28H17M37 28H82M102 28H111" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round"></path><path d="M47 15L52 10Q58 8 66 8.5V15ZM70 15V8.7Q79 9.5 84 15Z" fill="currentColor" opacity=".25"></path><circle className="lamp" cx="10.5" cy="21.5" r="1.8" fill="#F2A93B"></circle></g><g className="wh"><circle cx="27" cy="28" r="6.5" stroke="currentColor" strokeWidth="1.6" fill="none"></circle><path d="M27 22.5v11M21.5 28h11" stroke="currentColor" strokeWidth="1"></path></g><g className="wh"><circle cx="92" cy="28" r="6.5" stroke="currentColor" strokeWidth="1.6" fill="none"></circle><path d="M92 22.5v11M86.5 28h11" stroke="currentColor" strokeWidth="1"></path></g><path className="road" d="M0 37.5H132" stroke="#F2A93B" strokeWidth="1.4" strokeLinecap="round"></path></svg><span className="cap">بنبص على الصورة…</span></div></div></>)}
+{(v.visIdle) && (<><p style={css(`margin: 0; font-size: 12px; color: ${v.t.mute}; line-height: 1.7`)}>{v.detectTxt}</p></>)}
 </div>
 <div style={css("display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px 12px")}>
 {(v.fields || []).map((fd, i9) => (<React.Fragment key={i9}>
@@ -1825,7 +1829,7 @@ class Component extends React.Component {
 <p style={css(`margin: 0; font-size: 13px; color: ${v.t.mute}; line-height: 1.6`)}>لفّ العربية بصباعك، ودوس على أي جزء: فابريكا ثم رش ثم متغير.</p>
 {(v.gl) && (<>
 <div style={css("position: relative; align-self: center")}>
-{(v.paintLoading) && (<><span aria-hidden="true" style={css(`position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-size: 13px; color: ${v.t.mute}`)}>بنجهّز العربية…</span></>)}
+{(v.paintLoading) && (<><div style={css(`position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; color: ${v.t.mute}; pointer-events: none`)}><div className="ld" role="status"><svg width="132" height="40" viewBox="0 0 132 40" aria-hidden="true"><path className="wind" d="M112 13h18" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"></path><path className="wind b" d="M116 19h14" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"></path><path className="wind c" d="M110 25h18" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"></path><g className="body"><path d="M8 28V23Q10 19 18 18L32 16L44 9Q54 5.5 70 6.5Q82 7.5 90 15L104 17Q110 18 111 22V28" stroke="currentColor" strokeWidth="1.6" fill="none" strokeLinejoin="round"></path><path d="M8 28H17M37 28H82M102 28H111" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round"></path><path d="M47 15L52 10Q58 8 66 8.5V15ZM70 15V8.7Q79 9.5 84 15Z" fill="currentColor" opacity=".25"></path><circle className="lamp" cx="10.5" cy="21.5" r="1.8" fill="#F2A93B"></circle></g><g className="wh"><circle cx="27" cy="28" r="6.5" stroke="currentColor" strokeWidth="1.6" fill="none"></circle><path d="M27 22.5v11M21.5 28h11" stroke="currentColor" strokeWidth="1"></path></g><g className="wh"><circle cx="92" cy="28" r="6.5" stroke="currentColor" strokeWidth="1.6" fill="none"></circle><path d="M92 22.5v11M86.5 28h11" stroke="currentColor" strokeWidth="1"></path></g><path className="road" d="M0 37.5H132" stroke="#F2A93B" strokeWidth="1.4" strokeLinecap="round"></path></svg><span className="cap">بنجهّز العربية…</span></div></div></>)}
 <canvas ref={v.paintRef} width="350" height="240" role="img" aria-label="عربية 3D: لفّها بصباعك ودوس على أي جزء" style={css(`width: 350px; height: 240px; display: block; position: relative; flex: none; align-self: center; touch-action: none; cursor: grab; opacity: ${v.paintOp}; transition: opacity .4s ease`)}></canvas>
 </div>
 </>)}
@@ -1940,12 +1944,17 @@ class Component extends React.Component {
 <main style={css("flex: 1; min-height: 0; overflow-y: auto; padding: 16px 20px 8px; display: flex; flex-direction: column")}>
 <span style={css("font-size: 14px")}>{v.carName}</span>
 <span style={css(`font-size: 12px; color: ${v.t.mute}; margin-top: 3px`)}>{v.kmTxt} كم، صيانات توكيل لحد {v.agencyTxt}</span>
+{(v.quoteLoading) && (<>
+<div style={css(`margin-top: 34px; min-height: 150px; display: flex; align-items: center; justify-content: center; color: ${v.t.mute}`)}><div className="ld" role="status"><svg width="132" height="40" viewBox="0 0 132 40" aria-hidden="true"><path className="wind" d="M112 13h18" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"></path><path className="wind b" d="M116 19h14" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"></path><path className="wind c" d="M110 25h18" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"></path><g className="body"><path d="M8 28V23Q10 19 18 18L32 16L44 9Q54 5.5 70 6.5Q82 7.5 90 15L104 17Q110 18 111 22V28" stroke="currentColor" strokeWidth="1.6" fill="none" strokeLinejoin="round"></path><path d="M8 28H17M37 28H82M102 28H111" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round"></path><path d="M47 15L52 10Q58 8 66 8.5V15ZM70 15V8.7Q79 9.5 84 15Z" fill="currentColor" opacity=".25"></path><circle className="lamp" cx="10.5" cy="21.5" r="1.8" fill="#F2A93B"></circle></g><g className="wh"><circle cx="27" cy="28" r="6.5" stroke="currentColor" strokeWidth="1.6" fill="none"></circle><path d="M27 22.5v11M21.5 28h11" stroke="currentColor" strokeWidth="1"></path></g><g className="wh"><circle cx="92" cy="28" r="6.5" stroke="currentColor" strokeWidth="1.6" fill="none"></circle><path d="M92 22.5v11M86.5 28h11" stroke="currentColor" strokeWidth="1"></path></g><path className="road" d="M0 37.5H132" stroke="#F2A93B" strokeWidth="1.4" strokeLinecap="round"></path></svg><span className="cap">بنقارنها بالإعلانات الحقيقية…</span></div></div>
+</>)}
+{(v.quoteReady) && (<>
 <div style={css("margin-top: 22px; display: flex; flex-direction: column; align-items: center; gap: 0")}>
 <span style={css(`font-size: 13px; color: ${v.t.mute}`)}>السعر العادل</span>
 <span style={css("display: flex; align-items: baseline; gap: 10px")}><span style={css(`font-size: 16px; color: ${v.t.mute}`)}>من</span><span style={css("font-size: 46px; font-weight: 200; direction: ltr; font-variant-numeric: tabular-nums")}>{v.shownLo}</span></span>
 <span style={css("display: flex; align-items: baseline; gap: 10px")}><span style={css(`font-size: 16px; color: ${v.t.mute}`)}>لـ</span><span style={css("font-size: 46px; font-weight: 200; direction: ltr; font-variant-numeric: tabular-nums")}>{v.shownHi}</span></span>
 <span style={css("font-size: 14px; margin-top: 2px")}>جنيه</span>
 </div>
+</>)}
 <div dir="ltr" role="img" aria-label={v.stripAria} style={css("margin-top: 22px; position: relative; height: 44px; flex: none")}>
 <div className="grow" style={css(`position: absolute; top: 21px; left: 0; right: 0; height: 1px; background: ${v.t.line2}`)}></div>
 <div className="fade d4" style={css(`position: absolute; top: 12px; height: 19px; left: ${v.bandL}px; width: ${v.bandW}px; border: 1px solid ${v.t.ink}; border-radius: 10px; box-sizing: border-box`)}></div>
@@ -2212,7 +2221,7 @@ class Component extends React.Component {
 <input name="zero_search" value={v.zpQ} onChange={v.onZpQ} aria-label={v.zpSearchPh} placeholder={v.zpSearchPh} autoComplete="off" style={css(`flex: 1; min-width: 0; height: 42px; border: none; background: transparent; color: ${v.t.ink}; font-family: 'Alexandria', sans-serif; font-size: 15px`)} />
 </div>
 {(v.zpLoading) && (<>
-<p role="status" style={css(`margin: 18px 4px; font-size: 14px; color: ${v.t.mute}`)}>بنجيب الأسعار…</p>
+<div style={css(`padding: 48px 0; display: flex; justify-content: center; color: ${v.t.mute}`)}><div className="ld" role="status"><svg width="132" height="40" viewBox="0 0 132 40" aria-hidden="true"><path className="wind" d="M112 13h18" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"></path><path className="wind b" d="M116 19h14" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"></path><path className="wind c" d="M110 25h18" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"></path><g className="body"><path d="M8 28V23Q10 19 18 18L32 16L44 9Q54 5.5 70 6.5Q82 7.5 90 15L104 17Q110 18 111 22V28" stroke="currentColor" strokeWidth="1.6" fill="none" strokeLinejoin="round"></path><path d="M8 28H17M37 28H82M102 28H111" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round"></path><path d="M47 15L52 10Q58 8 66 8.5V15ZM70 15V8.7Q79 9.5 84 15Z" fill="currentColor" opacity=".25"></path><circle className="lamp" cx="10.5" cy="21.5" r="1.8" fill="#F2A93B"></circle></g><g className="wh"><circle cx="27" cy="28" r="6.5" stroke="currentColor" strokeWidth="1.6" fill="none"></circle><path d="M27 22.5v11M21.5 28h11" stroke="currentColor" strokeWidth="1"></path></g><g className="wh"><circle cx="92" cy="28" r="6.5" stroke="currentColor" strokeWidth="1.6" fill="none"></circle><path d="M92 22.5v11M86.5 28h11" stroke="currentColor" strokeWidth="1"></path></g><path className="road" d="M0 37.5H132" stroke="#F2A93B" strokeWidth="1.4" strokeLinecap="round"></path></svg><span className="cap">بنجيب أسعار الزيرو…</span></div></div>
 </>)}
 {(v.zpRows || []).map((zr, i23) => (<React.Fragment key={i23}>
 <button className="press" onClick={zr.go} style={css(`width: 100%; min-height: 64px; padding: 10px 0; display: flex; align-items: center; justify-content: space-between; gap: 12px; background: none; border: none; border-bottom: 1px solid ${v.t.line}; color: ${v.t.ink}; text-align: right`)}>

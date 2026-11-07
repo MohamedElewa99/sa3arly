@@ -48,6 +48,11 @@ Component.remoteQuote = function (car, km) {
   return null;
 };
 
+Component.quoteLoading = function (car, km) {
+  if (!Component.remoteCat) return false;
+  return quotes.get([car.make, car.model, car.year, car.trim, Math.round(km / 5000)].join('|')) === 'loading';
+};
+
 // zero prices: makes -> models -> trims (one request per level, cached)
 const zeros = new Map();
 Component.remoteZero = function (make, model) {
