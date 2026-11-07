@@ -12,10 +12,15 @@ body { font-family: 'Alexandria', sans-serif; -webkit-font-smoothing: antialiase
 
 /* website layout on wide screens: a normal scrolling site with a nav; the pricing flow sits in a centred panel */
 .desk .app-col {
-  flex: none; width: 100% !important; max-width: 760px !important;
-  height: calc(100dvh - 120px) !important; margin: 0 auto !important;
-  border-radius: 24px; border: 1px solid rgba(127, 127, 127, 0.28);
+  flex: none; width: 100% !important; max-width: none !important;
+  height: calc(100dvh - 72px) !important; margin: 0 !important;
 }
+/* full screen, with the content in a comfortable reading width */
+.desk:not(.desk-over) .app-col [data-scr] > * {
+  width: 100% !important; max-width: 980px !important; margin-left: auto !important; margin-right: auto !important; box-sizing: border-box;
+}
+/* the site nav already shows the wordmark */
+.desk .app-col [data-scr] > header > span[translate="no"] { visibility: hidden; }
 /* home and zero-price pages: the app column only hosts the sheets (login, account, details), full screen */
 .desk-over .app-col {
   position: fixed !important; top: 72px; left: 0; right: 0; bottom: 0;
@@ -42,3 +47,4 @@ body { font-family: 'Alexandria', sans-serif; -webkit-font-smoothing: antialiase
 }
 @media (max-width: 1023px) { .scroll-bar { display: none; } }
 @media (prefers-reduced-motion: reduce) { .desk [data-reveal] { opacity: 1; transform: none; transition: none; } }
+.desk:not(.desk-over) .site-foot { padding-left: 40px !important; padding-right: 40px !important; }

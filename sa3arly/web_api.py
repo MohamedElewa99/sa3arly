@@ -49,6 +49,19 @@ def _junk(name) -> bool:
     return (name or "").strip().lower() in JUNK
 
 
+def _trims_by_level(rs) -> list:
+    """The model's trims, highest first: each trim's median price brought to the same model year
+    (9 %/year), so a trim isn't 'higher' just because its ads are newer. Up to 8 of the most listed."""
+    by: dict[str, list] = {}
+    newest = max(r[2] for r in rs)
+    for r in rs:
+        t = (r[5] or "").strip()
+        if t and r[4]:
+            by.setdefault(t, []).append(r[4] * 1.09 ** (newest - r[2]))
+    common = sorted(by, key=lambda t: -len(by[t]))[:8]
+    return sorted(common, key=lambda t: -statistics.median(by[t]))
+
+
 def catalog(cx, days: int = 90, min_ads: int = 3) -> dict:
     rows = cx.execute("""
         select mk.name_en, mo.name_en, l.year, l.km, l.price_egp, l.trim_raw, l.body_type
@@ -75,11 +88,7 @@ def catalog(cx, days: int = 90, min_ads: int = 3) -> dict:
         if len(rs) < min_ads or _junk(mk) or _junk(mo):
             continue
         years = sorted({r[2] for r in rs if 1990 <= r[2] <= this_year + 1})
-        trims: dict[str, int] = {}
-        for r in rs:
-            if r[5]:
-                trims[r[5].strip()] = trims.get(r[5].strip(), 0) + 1
-        top_trims = [t for t, _ in sorted(trims.items(), key=lambda kv: -kv[1])[:6]] or ["Standard"]
+        top_trims = _trims_by_level(rs) or ["Standard"]
         z = zmap.get((mk, mo), [])
         zero_price = None
         if z:

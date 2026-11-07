@@ -245,13 +245,14 @@ class Component extends React.Component {
       screen: props.start || 'home', dir: 'f', dark: props.night !== false, menu: false,
       q: '', tray: [], km: 100000, agencyKm: 60000,
       paint: {}, ex: {}, spin: true, angle: -35, dragging: false, last: '',
-      mech: {}, open: 'susp', k: 1, carSet: false, kmSet: false, hist: [],
+      mech: {}, open: 'susp', k: 1, carSet: false, kmSet: false, hist: [], picked: {},
       gl: true, oth: {}, exOther: false, mo: {}, body: 'crossover', bodyAuto: true, heroOn: true, partsOpen: false, mf: 'all', paintReady: false, more: false, wm: 0, margin: 30000, receipt: false, hideBuy: false, copied: false, checked: {}, car: { make: 'كوبرا', model: 'فورمينتور', year: 2022, trim: 'VZ' }, picker: null, pickOther: '', sheet: null, login: null, loginSent: false, loginEmail: '', loginErr: '', loginBusy: false, saving: false, flash: '', profile: false, pf: null, pfBusy: false, pfErr: '', photoBusy: false, item: null, shotsDone: {}, extraShots: 0, shotPick: null, extras: [], deskPage: null, zq: '', zp: null, zpq: '', vis: { busy: false, note: '' }, folds: {}
     };
     // what this person did last time (car, km, paint, mechanics, margin, compare list, history) comes back
     try {
       var kept = JSON.parse(window.localStorage.getItem(Component.KEEP_KEY) || 'null');
       if (kept && kept.v === 1) Component.KEEP.forEach(function (k) { if (kept[k] !== undefined) this.state[k] = kept[k]; }, this);
+      if (this.state.carSet && !(this.state.picked || {}).make) this.state.picked = { make: true, model: true, year: true, trim: true };
     } catch (e) { /* first visit, private mode or the design canvas */ }
     this._raf = null; this._paint = null; this._hero = null;
     var self = this;
@@ -297,20 +298,30 @@ class Component extends React.Component {
     this._paintRef = mk('_paint', false);
     this._heroRef = mk('_hero', true);
   }
+  // the user picks make, then model, then year, then trim: each pick opens the next list
   pickField(k, v) {
     var CAT = Component.remoteCat || Component.CAT, c = Object.assign({}, this.state.car), patch = {};
+    var picked = Object.assign({}, this.state.picked || {});
     c[k] = v;
-    if (k === 'make') { var models = Object.keys(CAT[v] || {}); c.model = models[0] || c.model; }
+    picked[k] = true;
+    if (k === 'make') { var models = Object.keys(CAT[v] || {}); c.model = models[0] || c.model; picked.model = picked.year = picked.trim = false; }
+    if (k === 'model') { picked.year = picked.trim = false; }
+    if (k === 'year') { picked.trim = false; }
     if (k === 'make' || k === 'model') {
       var inf = (CAT[c.make] || {})[c.model];
       if (inf) { if (inf.years.indexOf(c.year) < 0) c.year = inf.years[inf.years.length - 2] || inf.years[0]; c.trim = inf.trims[0]; patch.body = inf.body; patch.bodyAuto = true; }
     }
-    patch.car = c; patch.sheet = null; patch.picker = null; patch.pickOther = ""; patch.checked = this.state.checked; patch.carSet = true;
+    var inf2 = (CAT[c.make] || {})[c.model];
+    if (k === 'year' && inf2 && inf2.trims.length <= 1) picked.trim = true;      // one trim: nothing to choose
+    var next = !picked.model ? 'model' : !picked.year ? 'year' : !picked.trim ? 'trim' : null;
+    patch.car = c; patch.picked = picked; patch.pickOther = ""; patch.checked = this.state.checked;
+    patch.carSet = !!(picked.make && picked.model && picked.year && picked.trim);
+    patch.picker = next; patch.sheet = next ? 'picker' : null;
     this.setState(patch);
   }
   setCar(c, km, screen) {
     var inf = ((Component.remoteCat || Component.CAT)[c.make] || {})[c.model];
-    var patch = { car: Object.assign({}, c), carSet: true, paint: {}, ex: {}, mech: {}, mo: {}, menu: false, vis: { busy: false, note: '' } };
+    var patch = { car: Object.assign({}, c), carSet: true, picked: { make: true, model: true, year: true, trim: true }, paint: {}, ex: {}, mech: {}, mo: {}, menu: false, vis: { busy: false, note: '' } };
     if (inf) { patch.body = inf.body; patch.bodyAuto = true; }
     if (km) patch.kmSet = true;
     if (km !== undefined) { patch.km = km; patch.agencyKm = Math.min(this.state.agencyKm, Math.floor(km / 10000) * 10000); }
@@ -388,7 +399,7 @@ class Component extends React.Component {
     if (this._paint) { this._paint.update(n); this._paint.setSpin(false); }
   }
   componentDidMount() { if (this.state.screen === 'result' || this.state.screen === 'home') this.count(); }
-  static get KEEP() { return ['car', 'carSet', 'km', 'kmSet', 'agencyKm', 'paint', 'ex', 'exOther', 'mech', 'mo', 'oth', 'margin', 'tray', 'hist', 'checked', 'body', 'bodyAuto', 'hideBuy']; }
+  static get KEEP() { return ['car', 'carSet', 'picked', 'km', 'kmSet', 'agencyKm', 'paint', 'ex', 'exOther', 'mech', 'mo', 'oth', 'margin', 'tray', 'hist', 'checked', 'body', 'bodyAuto', 'hideBuy']; }
   static get KEEP_KEY() { return 'sa3.mine'; }
   componentDidUpdate(pp, ps) {
     var st = this.state;
@@ -1019,9 +1030,12 @@ class Component extends React.Component {
         : info.trims;
       var pq = S.pickOther.trim();
       if (pq) list = Component.fuzzy(pq, list, String).map(function (h) { return h.item; });
+      var RANK = ['الفئة الأولى (الأعلى)', 'الفئة التانية', 'الفئة التالتة', 'الفئة الرابعة', 'الفئة الخامسة', 'الفئة السادسة', 'الفئة السابعة', 'الفئة التامنة'];
+      var allTrims = S.picker === 'trim' && known ? info.trims : [];
       pickOpts = list.map(function (v) {
-        var on = String(car[S.picker]) === String(v);
-        return { label: String(v), sel: on ? 'true' : 'false', bg: on ? t.ink : 'transparent', fg: on ? t.bg : t.ink, bd: on ? t.ink : t.line2,
+        var on = String(car[S.picker]) === String(v) && (S.carSet || (S.picked || {})[S.picker]);
+        var rk = allTrims.indexOf(v);
+        return { label: String(v), sub: rk >= 0 && allTrims.length > 1 ? RANK[rk] || '' : '', sel: on ? 'true' : 'false', bg: on ? t.ink : 'transparent', fg: on ? t.bg : t.ink, bd: on ? t.ink : t.line2,
           pick: function () { self.pickField(S.picker, v); } };
       });
     }
@@ -1342,7 +1356,9 @@ class Component extends React.Component {
       hideInstall: function () { if (Component.install) Component.install.dismiss(); self.setState({ installHidden: true }); },
       desk: desk, shellCls: !desk ? '' : 'desk' + (idx < 0 && S.screen !== 'compare' ? ' desk-over' : ''),
       shellStyle: desk ? 'height: 100dvh; overflow-y: auto; display: flex; flex-direction: column; background: ' + t.bg + '; color: ' + t.ink + '; font-family: Alexandria, sans-serif; transition: background .4s ease, color .4s ease' : 'display: contents',
-      deskRow: desk ? 'width: 100%; max-width: 1200px; margin: 0 auto; padding: 32px 40px 0; box-sizing: border-box; display: flex; flex-direction: column; gap: 56px' : 'display: contents',
+      deskRow: !desk ? 'display: contents' : (idx >= 0 || S.screen === 'compare')
+        ? 'width: 100%; padding: 0 0 40px; box-sizing: border-box; display: flex; flex-direction: column; gap: 48px'
+        : 'width: 100%; max-width: 1200px; margin: 0 auto; padding: 32px 40px 0; box-sizing: border-box; display: flex; flex-direction: column; gap: 56px',
       deskLinks: [['الرئيسية', 'home'], ['سعّر عربية', 'car'], ['قارن عربيات', 'compare'], ['أسعار الزيرو', 'zero']].map(function (l) {
         var on = l[1] === 'zero' ? !!S.zp : (l[1] === 'car' ? idx >= 0 : S.screen === l[1]) && S.deskPage !== 'zero';
         return { label: l[0], cur: on ? 'page' : 'false', bg: on ? t.soft : 'transparent', fg: on ? t.ink : t.mute,
@@ -1507,8 +1523,9 @@ class Component extends React.Component {
       aiWarn: !live || !live.lines ? '' : (live.lines.filter(function (l) { return l.indexOf('الإعلانات القريبة') === 0 || l.indexOf('فاعتمدنا على الإعلانات') > 0; })[0] || ''),
       detectTxt: S.vis.busy ? 'بنبص على الصورة…' : S.vis.note ? S.vis.note : (S.shotsDone.front || S.shotsDone.back || S.shotsDone.side) ? 'الصور معاك في التسعيرة دي. اتأكد من الماركة والموديل والفئة تحت.' : 'صوّر قدام وورا والعداد، دوس على أي مربع وافتح الكاميرا أو اختار من الصور.',
       fields: [['make', 'الماركة', car.make], ['model', 'الموديل', car.model], ['year', 'السنة', String(car.year)], ['trim', 'الفئة', car.trim]].map(function (f) {
-        var shown = S.carSet ? f[2] : 'اختار';
-        return { label: f[1], value: shown, fg: S.carSet ? t.ink : t.mute, aria: f[1] + ': ' + shown + '، غيّر', open: function () { self.setState({ picker: f[0], pickOther: '', sheet: 'picker' }); } };
+        var done = S.carSet || (S.picked || {})[f[0]];
+        var shown = done ? f[2] : 'اختار';
+        return { label: f[1], value: shown, fg: done ? t.ink : t.mute, aria: f[1] + ': ' + shown + '، غيّر', open: function () { self.setState({ picker: f[0], pickOther: '', sheet: 'picker' }); } };
       }),
       shots: [['front', 'قدام'], ['back', 'ورا'], ['side', 'الجنب'], ['odo', 'العداد']].map(function (s2) {
         var d2 = !!S.shotsDone[s2[0]];
@@ -2146,7 +2163,10 @@ class Component extends React.Component {
 </>)}
 <div style={css("display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px")}>
 {(v.pickOpts || []).map((po, i20) => (<React.Fragment key={i20}>
-<button className="press" onClick={po.pick} aria-pressed={po.sel} style={css(`min-height: 52px; padding: 6px 12px; border-radius: 12px; border: 1px solid ${po.bd}; background: ${po.bg}; color: ${po.fg}; font-size: 15px; text-align: right; overflow: hidden; text-overflow: ellipsis; white-space: nowrap`)}>{po.label}</button>
+<button className="press" onClick={po.pick} aria-pressed={po.sel} style={css(`min-height: 52px; padding: 6px 12px; border-radius: 12px; border: 1px solid ${po.bd}; background: ${po.bg}; color: ${po.fg}; font-size: 15px; text-align: right; display: flex; flex-direction: column; justify-content: center; gap: 2px; min-width: 0`)}>
+<span style={css("font-size: 11px; opacity: .65")}>{po.sub}</span>
+<span style={css("overflow: hidden; text-overflow: ellipsis; white-space: nowrap")}>{po.label}</span>
+</button>
 </React.Fragment>))}
 </div>
 </>)}
@@ -2495,7 +2515,6 @@ class Component extends React.Component {
 <section data-reveal="" style={css("display: flex; flex-direction: column; align-items: center; text-align: center; gap: 22px; padding: 56px 0 8px")}>
 <span translate="no" className="wm" data-parallax="" style={css("font-family: 'Aref Ruqaa', serif; font-size: 120px; font-weight: 700; line-height: 1.1")}>سعرلي</span>
 <h1 style={css("margin: 0; font-size: 48px; line-height: 1.3; font-weight: 600; max-width: 820px")}>اعرف تمن أي عربية مستعملة في مصر، قبل ما تدفع.</h1>
-<p style={css(`margin: 0; font-size: 18px; line-height: 1.8; color: ${v.t.mute}; max-width: 680px`)}>بنقارن العربية بإعلانات حقيقية شبهها من هتلاقي والسوق المفتوح وSylndr، ونخصم الرش والمتغير والميكانيكا، ونطلعلك رينج عادل وأقصى سعر تشتري بيه.</p>
 <div style={css("display: flex; gap: 12px; margin-top: 8px")}>
 <button className="press" onClick={v.goCar} style={css(`height: 56px; padding: 0 34px; border-radius: 999px; border: none; background: ${v.t.ink}; color: ${v.t.bg}; font-size: 17px; font-weight: 600`)}>سعّر عربية</button>
 <button className="press" onClick={v.goCompare} style={css(`height: 56px; padding: 0 30px; border-radius: 999px; border: 1px solid ${v.t.ink}; background: none; color: ${v.t.ink}; font-size: 17px; font-weight: 500`)}>قارن عربيات</button>
@@ -2615,7 +2634,7 @@ class Component extends React.Component {
 </section>
 </>)}
 {(v.deskFlow) && (<>
-<section data-reveal="" aria-labelledby="dk-cmp" style={css("display: flex; flex-direction: column; max-width: 1000px; width: 100%; margin: 0 auto")}>
+<section data-reveal="" aria-labelledby="dk-cmp" style={css("display: flex; flex-direction: column; max-width: 980px; width: 100%; margin: 0 auto; padding: 0 40px; box-sizing: border-box")}>
 <div style={css("display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 8px")}>
 <h2 id="dk-cmp" style={css("margin: 0; font-size: 26px; font-weight: 600")}>العربيات اللي اتقارنت ({v.nComps})</h2>
 <span style={css(`font-size: 13px; color: ${v.t.mute}`)}>مقارنة بالرينج لعربية فابريكا</span>
@@ -2632,7 +2651,7 @@ class Component extends React.Component {
 </div>
 </section>
 </>)}
-<footer data-reveal="" style={css(`display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 28px 0 8px; border-top: 1px solid ${v.t.line}; color: ${v.t.mute}; font-size: 13px`)}>
+<footer data-reveal="" className="site-foot" style={css(`display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 28px 0 8px; max-width: 1200px; width: 100%; margin: 0 auto; box-sizing: border-box; border-top: 1px solid ${v.t.line}; color: ${v.t.mute}; font-size: 13px`)}>
 <span translate="no" style={css(`font-family: 'Aref Ruqaa', serif; font-size: 30px; font-weight: 700; color: ${v.t.ink}`)}>سعرلي</span>
 <span>الأسعار من إعلانات حقيقية بتتحدث كل يوم. السعر تقديري، اتأكد من العربية بنفسك قبل ما تشتري.</span>
 </footer>
