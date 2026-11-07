@@ -175,6 +175,9 @@ def scrape_used(f: Fetcher, source: str, max_pages: int = 250, **_) -> Iterator[
     seen: set[str] = set()
     for page in range(1, max_pages + 1):
         f.get(page_url.format(page=page), scroll=True)
+        if source == "sylndr":
+            # Sylndr's list ignores ?page= and grows as you scroll: load it all on the first page
+            print(f"[sylndr] {f.load_more(ad_re)} ads on the page after loading more")
         if source == "opensooq":
             f.reveal(ad_re)                  # OpenSooq renders card text only when it is on screen
         rows = [r for r in f.cards(ad_re) if r["href"].split("?")[0] not in seen]

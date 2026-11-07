@@ -289,6 +289,27 @@ class Fetcher:
           }
         }""", [href_regex, pause_ms])
 
+    def load_more(self, href_regex: str, rounds: int = 80, pause_ms: int = 1500) -> int:
+        """Infinite-scroll / 'Load more' lists: scroll to the bottom and press any load-more button
+        until the number of ads stops growing (twice in a row). Returns the number of ads on the page."""
+        count = lambda: self.page.evaluate(
+            "(src) => { const re = new RegExp(src); return new Set([...document.querySelectorAll('a[href]')]"
+            ".map(a => a.href.split('?')[0]).filter(h => re.test(h))).size; }", href_regex)
+        last, still = count(), 0
+        for _ in range(rounds):
+            self.page.evaluate("() => window.scrollTo(0, document.body.scrollHeight)")
+            self.page.evaluate(r"""() => {
+              const b = [...document.querySelectorAll('button, a')].find(e => /load more|show more|view more|عرض المزيد|المزيد/i.test(e.innerText || ''));
+              if (b) b.click();
+            }""")
+            self.page.wait_for_timeout(pause_ms)
+            n = count()
+            still = still + 1 if n <= last else 0
+            last = max(last, n)
+            if still >= 2:
+                break
+        return last
+
     def cards(self, href_regex: str) -> list[dict]:
         """For the current page: every link matching href_regex with the text of its own card.
 
