@@ -20,7 +20,8 @@ export async function loadCatalog() {
     if (data && data.makes && Object.keys(data.makes).length) {
       Component.remoteCat = data.makes;
       // start the app on a car that really exists in the database
-      if (app && data.default) app.setState({ car: data.default, body: data.default.body || app.state.body });
+      // the car the app falls back to internally; a car the user picked (kept on the phone) stays
+      if (app && data.default && !app.state.carSet) app.setState({ car: data.default, body: data.default.body || app.state.body });
       refresh();
     }
   } catch (e) { /* offline or API not deployed yet: keep the sample catalog */ }

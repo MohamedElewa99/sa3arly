@@ -244,10 +244,15 @@ class Component extends React.Component {
     this.state = {
       screen: props.start || 'home', dir: 'f', dark: props.night !== false, menu: false,
       q: '', tray: [], km: 100000, agencyKm: 60000,
-      paint: { bumperF: 2, doorRL: 1, fenderRR: 1 }, ex: {}, spin: true, angle: -35, dragging: false, last: '',
-      mech: { shocksF: true, arms: true }, open: 'susp', k: 1,
+      paint: {}, ex: {}, spin: true, angle: -35, dragging: false, last: '',
+      mech: {}, open: 'susp', k: 1, carSet: false, kmSet: false, hist: [],
       gl: true, oth: {}, exOther: false, mo: {}, body: 'crossover', bodyAuto: true, heroOn: true, partsOpen: false, mf: 'all', paintReady: false, more: false, wm: 0, margin: 30000, receipt: false, hideBuy: false, copied: false, checked: {}, car: { make: 'كوبرا', model: 'فورمينتور', year: 2022, trim: 'VZ' }, picker: null, pickOther: '', sheet: null, login: null, loginSent: false, loginEmail: '', loginErr: '', loginBusy: false, saving: false, flash: '', profile: false, pf: null, pfBusy: false, pfErr: '', photoBusy: false, item: null, shotsDone: {}, extraShots: 0, shotPick: null, extras: [], deskPage: null, zq: '', zp: null, zpq: '', vis: { busy: false, note: '' }, folds: {}
     };
+    // what this person did last time (car, km, paint, mechanics, margin, compare list, history) comes back
+    try {
+      var kept = JSON.parse(window.localStorage.getItem(Component.KEEP_KEY) || 'null');
+      if (kept && kept.v === 1) Component.KEEP.forEach(function (k) { if (kept[k] !== undefined) this.state[k] = kept[k]; }, this);
+    } catch (e) { /* first visit, private mode or the design canvas */ }
     this._raf = null; this._paint = null; this._hero = null;
     var self = this;
     var mk = function (slot, hero) {
@@ -300,13 +305,14 @@ class Component extends React.Component {
       var inf = (CAT[c.make] || {})[c.model];
       if (inf) { if (inf.years.indexOf(c.year) < 0) c.year = inf.years[inf.years.length - 2] || inf.years[0]; c.trim = inf.trims[0]; patch.body = inf.body; patch.bodyAuto = true; }
     }
-    patch.car = c; patch.sheet = null; patch.picker = null; patch.pickOther = ""; patch.checked = this.state.checked;
+    patch.car = c; patch.sheet = null; patch.picker = null; patch.pickOther = ""; patch.checked = this.state.checked; patch.carSet = true;
     this.setState(patch);
   }
   setCar(c, km, screen) {
     var inf = ((Component.remoteCat || Component.CAT)[c.make] || {})[c.model];
-    var patch = { car: Object.assign({}, c), paint: {}, ex: {}, mech: {}, mo: {}, menu: false, vis: { busy: false, note: '' } };
+    var patch = { car: Object.assign({}, c), carSet: true, paint: {}, ex: {}, mech: {}, mo: {}, menu: false, vis: { busy: false, note: '' } };
     if (inf) { patch.body = inf.body; patch.bodyAuto = true; }
+    if (km) patch.kmSet = true;
     if (km !== undefined) { patch.km = km; patch.agencyKm = Math.min(this.state.agencyKm, Math.floor(km / 10000) * 10000); }
     this.setState(patch);
     this.go(screen || 'car', 'f');
@@ -382,7 +388,26 @@ class Component extends React.Component {
     if (this._paint) { this._paint.update(n); this._paint.setSpin(false); }
   }
   componentDidMount() { if (this.state.screen === 'result' || this.state.screen === 'home') this.count(); }
+  static get KEEP() { return ['car', 'carSet', 'km', 'kmSet', 'agencyKm', 'paint', 'ex', 'exOther', 'mech', 'mo', 'oth', 'margin', 'tray', 'hist', 'checked', 'body', 'bodyAuto', 'hideBuy']; }
+  static get KEEP_KEY() { return 'sa3.mine'; }
   componentDidUpdate(pp, ps) {
+    var st = this.state;
+    if (Component.KEEP.some(function (k) { return ps[k] !== st[k]; })) {
+      clearTimeout(this._keepT);
+      this._keepT = setTimeout(function () {
+        try {
+          var o = { v: 1 };
+          Component.KEEP.forEach(function (k) { o[k] = st[k]; });
+          window.localStorage.setItem(Component.KEEP_KEY, JSON.stringify(o));
+        } catch (e) { /* storage full or blocked: nothing to keep */ }
+      }, 250);
+    }
+    // a finished pricing goes to this phone's history (newest first, no repeats, last 20)
+    if (st.screen === 'result' && ps.screen !== 'result' && st.carSet) {
+      var c = st.car, key = [c.make, c.model, c.year, c.trim, st.km].join('|');
+      var h = [{ car: Object.assign({}, c), km: st.km, at: new Date().toISOString() }].concat((st.hist || []).filter(function (x) { return [x.car.make, x.car.model, x.car.year, x.car.trim, x.km].join('|') !== key; })).slice(0, 20);
+      this.setState({ hist: h });
+    }
     if (ps.screen !== this.state.screen || ps.deskPage !== this.state.deskPage) {
       var sh = typeof document !== 'undefined' && document.querySelector('.desk');
       if (sh) sh.scrollTop = 0;
@@ -1171,6 +1196,13 @@ class Component extends React.Component {
       menu: S.menu, menuItems: menuItems,
       openMenu: function () { self.setState({ menu: true }); }, closeMenu: function () { self.setState({ menu: false }); },
       goCar: function () { self.go('car', 'f'); }, goPaint: function () { self.go('paint', 'f'); },
+      carNext: function () {
+        if (!self.state.carSet) return self.setState({ picker: 'make', pickOther: '', sheet: 'picker' });
+        if (!self.state.kmSet) { var el = document.querySelector('input[name=km]'); if (el) el.focus(); return self.flashMsg('اكتب العداد الأول'); }
+        self.go('paint', 'f');
+      },
+      carNextLabel: !S.carSet ? 'اختار العربية الأول' : !S.kmSet ? 'اكتب العداد' : 'التالي: الدهان',
+      carNextOp: S.carSet && S.kmSet ? 1 : 0.55,
       goMech: function () { self.go('mech', 'f'); }, goResult: function () { self.go('result', 'f'); },
       goCompare: function () { self.go('compare', 'f'); }, goHomeBack: function () { self.go('home', 'b'); },
       back: function () { self.go(idx > 0 ? order[idx - 1] : 'home', 'b'); },
@@ -1183,9 +1215,10 @@ class Component extends React.Component {
       km: S.km, kmTxt: fmt(S.km),
       onKm: function (e) {
         var v = parseInt(String(e.target.value).replace(/[^0-9]/g, ''), 10) || 0;
-        self.setState({ km: v, agencyKm: Math.min(self.state.agencyKm, Math.floor(v / 10000) * 10000) });
+        self.setState({ km: v, kmSet: v > 0, agencyKm: Math.min(self.state.agencyKm, Math.floor(v / 10000) * 10000) });
       },
-      kmErr: S.km <= 0, kmBorder: S.km <= 0 ? t.warn : t.edge,
+      kmInput: S.kmSet ? fmt(S.km) : '',
+      kmErr: S.kmSet && S.km <= 0, kmBorder: S.kmSet && S.km <= 0 ? t.warn : t.edge,
       agencyKm: S.agencyKm, agencyTxt: S.agencyKm ? fmt(S.agencyKm) + ' كم' : 'مفيش',
       onAgency: function (e) { self.setState({ agencyKm: parseInt(e.target.value, 10) || 0 }); },
       agencyCount: Math.floor(S.agencyKm / 10000), serviceCount: services,
@@ -1215,12 +1248,18 @@ class Component extends React.Component {
           dc: m.up ? t.warn : '#5B9CF5', rot: m.up ? 0 : 180, aria: m.name + '، ' + m.kind + '، التفاصيل',
           go: function () { self.setState({ sheet: 'item', item: m }); } };
       }),
-      recent: [
-        { name: carShort + '، ' + fmt(S.km) + ' كم', range: fmt(finalLo) + ' – ' + fmt(finalHi), note: isSaved ? 'آخر تسعير ليك، محفوظة' : 'آخر تسعير ليك', noteFg: '#5B9CF5', go: function () { self.go('result', 'f'); } }
-      ].concat((me ? A.items || [] : []).filter(function (x) { return qKey(x.car, x.km, x.low, x.high) !== qKey(saveQ.car, S.km, finalLo, finalHi); }).map(function (x) {
+      recent: (S.hist || []).map(function (x, i) {
+        var cur = qKey(x.car, x.km, 0, 0) === qKey(car, S.km, 0, 0);
+        return { name: x.car.make + ' ' + x.car.model + ' ' + x.car.year + '، ' + fmt(x.km) + ' كم', range: cur ? fmt(finalLo) + ' – ' + fmt(finalHi) : 'افتحها',
+          note: (i === 0 ? 'آخر تسعير ليك' : ago(x.at)) + (cur && isSaved ? '، محفوظة' : ''), noteFg: i === 0 ? '#5B9CF5' : t.mute,
+          go: function () { if (cur) self.go('result', 'f'); else self.setCar(x.car, x.km, 'result'); } };
+      }).concat((me ? A.items || [] : []).filter(function (x) {
+        return !(S.hist || []).some(function (h) { return qKey(h.car, h.km, 0, 0) === qKey(x.car, x.km, 0, 0); });
+      }).map(function (x) {
         return { name: x.car.make + ' ' + x.car.model + ' ' + x.car.year + '، ' + fmt(x.km) + ' كم', range: fmt(x.low) + ' – ' + fmt(x.high), note: 'محفوظة ' + ago(x.at), noteFg: t.mute,
           go: function () { self.setCar({ make: x.car.make, model: x.car.model, year: x.car.year, trim: x.car.trim || '' }, x.km, 'result'); } };
       })).slice(0, S.more ? 30 : 4),
+      noRecent: !(S.hist || []).length && !(me && (A.items || []).length),
       recentLogin: !me && A.enabled !== false,
       openLogin: function () { needLogin('account', null); },
       doSave: doSave, savePressed: isSaved ? 'true' : 'false', saveFill: isSaved ? t.ink : 'none',
@@ -1468,7 +1507,8 @@ class Component extends React.Component {
       aiWarn: !live || !live.lines ? '' : (live.lines.filter(function (l) { return l.indexOf('الإعلانات القريبة') === 0 || l.indexOf('فاعتمدنا على الإعلانات') > 0; })[0] || ''),
       detectTxt: S.vis.busy ? 'بنبص على الصورة…' : S.vis.note ? S.vis.note : (S.shotsDone.front || S.shotsDone.back || S.shotsDone.side) ? 'الصور معاك في التسعيرة دي. اتأكد من الماركة والموديل والفئة تحت.' : 'صوّر قدام وورا والعداد، دوس على أي مربع وافتح الكاميرا أو اختار من الصور.',
       fields: [['make', 'الماركة', car.make], ['model', 'الموديل', car.model], ['year', 'السنة', String(car.year)], ['trim', 'الفئة', car.trim]].map(function (f) {
-        return { label: f[1], value: f[2], aria: f[1] + ': ' + f[2] + '، غيّر', open: function () { self.setState({ picker: f[0], pickOther: '', sheet: 'picker' }); } };
+        var shown = S.carSet ? f[2] : 'اختار';
+        return { label: f[1], value: shown, fg: S.carSet ? t.ink : t.mute, aria: f[1] + ': ' + shown + '، غيّر', open: function () { self.setState({ picker: f[0], pickOther: '', sheet: 'picker' }); } };
       }),
       shots: [['front', 'قدام'], ['back', 'ورا'], ['side', 'الجنب'], ['odo', 'العداد']].map(function (s2) {
         var d2 = !!S.shotsDone[s2[0]];
@@ -1691,6 +1731,9 @@ class Component extends React.Component {
 </section>
 <section aria-labelledby="mine" style={css("margin-top: 36px; display: flex; flex-direction: column")}>
 <h2 id="mine" style={css("margin: 0 0 4px; font-size: 17px; font-weight: 600")}>تسعيراتك</h2>
+{(v.noRecent) && (<>
+<p style={css(`margin: 6px 0 4px; font-size: 13px; line-height: 1.7; color: ${v.t.mute}`)}>لسه ماسعّرتش أي عربية. أول ما تسعّر، هتلاقيها هنا.</p>
+</>)}
 {(v.recent || []).map((rc, i5) => (<React.Fragment key={i5}>
 <button className="press" onClick={rc.go} style={css(`min-height: 68px; padding: 10px 0; display: flex; align-items: center; justify-content: space-between; gap: 12px; background: none; border: none; border-bottom: 1px solid ${v.t.line}; color: ${v.t.ink}; text-align: right`)}>
 <span style={css("display: flex; flex-direction: column; gap: 3px; min-width: 0")}>
@@ -1782,13 +1825,13 @@ class Component extends React.Component {
 <div style={css("display: flex; flex-direction: column; gap: 6px; min-width: 0")}>
 <span style={css(`font-size: 12px; color: ${v.t.mute}`)}>{fd.label}</span>
 <button className="press" onClick={fd.open} aria-haspopup="dialog" aria-label={fd.aria} style={css(`height: 46px; display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 0; border: none; border-bottom: 1px solid ${v.t.edge}; background: none; color: ${v.t.ink}; font-size: 16px; text-align: right; min-width: 0`)}>
-<span style={css("overflow: hidden; text-overflow: ellipsis; white-space: nowrap")}>{fd.value}</span>
+<span style={css(`overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: ${fd.fg}`)}>{fd.value}</span>
 <svg width="12" height="8" viewBox="0 0 12 8" aria-hidden="true" style={css("flex: none")}><path d="M1 1l5 5 5-5" stroke="currentColor" strokeWidth="1.4" fill="none"></path></svg>
 </button>
 </div>
 </React.Fragment>))}
 <label style={css(`grid-column: span 2; display: flex; flex-direction: column; gap: 6px; font-size: 12px; color: ${v.t.mute}`)}>العداد (كم)
-          <input name="km" autoComplete="off" inputMode="numeric" aria-invalid={v.kmErr} aria-describedby="kmErr" value={v.kmTxt} onChange={v.onKm} style={css(`height: 46px; background: ${v.t.bg}; color: ${v.t.ink}; border: none; border-bottom: 1px solid ${v.kmBorder}; font-family: 'Alexandria', sans-serif; font-size: 22px; font-weight: 300; padding: 0; direction: ltr; text-align: right`)} />
+          <input name="km" autoComplete="off" inputMode="numeric" aria-invalid={v.kmErr} aria-describedby="kmErr" value={v.kmInput} placeholder="مثلاً 85,000" onChange={v.onKm} style={css(`height: 46px; background: ${v.t.bg}; color: ${v.t.ink}; border: none; border-bottom: 1px solid ${v.kmBorder}; font-family: 'Alexandria', sans-serif; font-size: 22px; font-weight: 300; padding: 0; direction: ltr; text-align: right`)} />
 {(v.kmErr) && (<><span id="kmErr" role="alert" style={css(`font-size: 12px; color: ${v.t.warn}`)}>اكتب العداد بالكيلومتر، مثلاً 85,000. من غيره السعر مش هيبقى دقيق.</span></>)}
 </label>
 </div>
@@ -1802,7 +1845,7 @@ class Component extends React.Component {
 </div>
 </main>
 <footer style={css("flex: none; padding: 12px 20px 26px")}>
-<button className="press" onClick={v.goPaint} style={css(`width: 100%; height: 52px; border-radius: 999px; border: none; background: ${v.t.ink}; color: ${v.t.bg}; font-size: 15px; font-weight: 600`)}>التالي: الدهان</button>
+<button className="press" onClick={v.carNext} style={css(`width: 100%; height: 52px; border-radius: 999px; border: none; background: ${v.t.ink}; color: ${v.t.bg}; font-size: 15px; font-weight: 600; opacity: ${v.carNextOp}`)}>{v.carNextLabel}</button>
 </footer>
 </div>
 </>)}
@@ -1815,9 +1858,9 @@ class Component extends React.Component {
 </div>
 <p style={css(`margin: 0; font-size: 13px; color: ${v.t.mute}; line-height: 1.6`)}>لفّ العربية بصباعك، ودوس على أي جزء: فابريكا ثم رش ثم متغير.</p>
 {(v.gl) && (<>
-<div style={css("position: relative; align-self: center")}>
+<div style={css("position: relative; align-self: stretch; display: flex; justify-content: center")}>
 {(v.paintLoading) && (<><div style={css(`position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; color: ${v.t.mute}; pointer-events: none`)}><div className="ld" role="status"><svg width="132" height="40" viewBox="0 0 132 40" aria-hidden="true"><path className="wind" d="M112 13h18" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"></path><path className="wind b" d="M116 19h14" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"></path><path className="wind c" d="M110 25h18" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"></path><g className="body"><path d="M8 28V23Q10 19 18 18L32 16L44 9Q54 5.5 70 6.5Q82 7.5 90 15L104 17Q110 18 111 22V28" stroke="currentColor" strokeWidth="1.6" fill="none" strokeLinejoin="round"></path><path d="M8 28H17M37 28H82M102 28H111" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round"></path><path d="M47 15L52 10Q58 8 66 8.5V15ZM70 15V8.7Q79 9.5 84 15Z" fill="currentColor" opacity=".25"></path><circle className="lamp" cx="10.5" cy="21.5" r="1.8" fill="#F2A93B"></circle></g><g className="wh"><circle cx="27" cy="28" r="6.5" stroke="currentColor" strokeWidth="1.6" fill="none"></circle><path d="M27 22.5v11M21.5 28h11" stroke="currentColor" strokeWidth="1"></path></g><g className="wh"><circle cx="92" cy="28" r="6.5" stroke="currentColor" strokeWidth="1.6" fill="none"></circle><path d="M92 22.5v11M86.5 28h11" stroke="currentColor" strokeWidth="1"></path></g><path className="road" d="M0 37.5H132" stroke="#F2A93B" strokeWidth="1.4" strokeLinecap="round"></path></svg><span className="cap">بنجهّز العربية…</span></div></div></>)}
-<canvas ref={v.paintRef} width="350" height="240" role="img" aria-label="عربية 3D: لفّها بصباعك ودوس على أي جزء" style={css(`width: 350px; height: 240px; display: block; position: relative; flex: none; align-self: center; touch-action: none; cursor: grab; opacity: ${v.paintOp}; transition: opacity .4s ease`)}></canvas>
+<canvas ref={v.paintRef} width="350" height="240" role="img" aria-label="عربية 3D: لفّها بصباعك ودوس على أي جزء" style={css(`width: 100%; max-width: 560px; height: clamp(200px, 58vw, 300px); display: block; position: relative; flex: none; align-self: center; touch-action: none; cursor: grab; opacity: ${v.paintOp}; transition: opacity .4s ease`)}></canvas>
 </div>
 </>)}
 {(v.noGl) && (<>
@@ -2001,7 +2044,7 @@ class Component extends React.Component {
 <span id="hist" style={css(`font-size: 13px; color: ${v.t.mute}`)}>نص الرينج بالشهر</span>
 <span className="num" style={css("font-size: 13px; color: #5B9CF5; direction: ltr")}>{v.histChange}</span>
 </div>
-<svg width="350" height="150" viewBox="0 0 350 150" role="img" aria-label={v.histAria} style={css("display: block; overflow: visible")}>
+<svg width="100%" viewBox="0 0 350 150" role="img" aria-label={v.histAria} style={css("display: block; overflow: visible; max-width: 560px; height: auto")}>
 <path d="M0 120 H350" stroke={v.t.line} strokeWidth="1"></path>
 <path d="M0 70 H350" stroke={v.t.line} strokeWidth="1" strokeDasharray="2 4"></path>
 <path d={v.histArea} fill={v.t.soft}></path>
