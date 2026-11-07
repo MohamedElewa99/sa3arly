@@ -3,6 +3,7 @@ import { createRoot } from 'react-dom/client';
 import Component from './App.jsx';
 import { bindApp, loadCatalog, loadMarket } from './data.js';
 import { bindAuth, initAuth } from './auth.js';
+import { startScrollFx } from './scrollfx.js';
 import './app.css';
 import './shell.css';
 
@@ -66,6 +67,7 @@ window.addEventListener('beforeinstallprompt', (e) => { e.preventDefault(); defe
 window.addEventListener('appinstalled', () => { deferred = null; if (appRef) appRef.forceUpdate(); });
 
 createRoot(document.getElementById('root')).render(<Root />);
+startScrollFx();
 // keep the splash up until the first real data is in (no jumping content), at least 1.6s, at most 4s
 const started = Date.now();
 const firstData = Promise.allSettled([loadCatalog(), loadMarket(), initAuth()]);

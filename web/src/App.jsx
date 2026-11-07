@@ -2492,8 +2492,8 @@ class Component extends React.Component {
 {(v.desk) && (<>
 <div className="fu" key={v.deskKey} style={css("display: flex; flex-direction: column; gap: 88px; padding-bottom: 40px")}>
 {(v.deskHome) && (<>
-<section style={css("display: flex; flex-direction: column; align-items: center; text-align: center; gap: 22px; padding: 56px 0 8px")}>
-<span translate="no" className="wm" style={css("font-family: 'Aref Ruqaa', serif; font-size: 120px; font-weight: 700; line-height: 1.1")}>سعرلي</span>
+<section data-reveal="" style={css("display: flex; flex-direction: column; align-items: center; text-align: center; gap: 22px; padding: 56px 0 8px")}>
+<span translate="no" className="wm" data-parallax="" style={css("font-family: 'Aref Ruqaa', serif; font-size: 120px; font-weight: 700; line-height: 1.1")}>سعرلي</span>
 <h1 style={css("margin: 0; font-size: 48px; line-height: 1.3; font-weight: 600; max-width: 820px")}>اعرف تمن أي عربية مستعملة في مصر، قبل ما تدفع.</h1>
 <p style={css(`margin: 0; font-size: 18px; line-height: 1.8; color: ${v.t.mute}; max-width: 680px`)}>بنقارن العربية بإعلانات حقيقية شبهها من هتلاقي والسوق المفتوح وSylndr، ونخصم الرش والمتغير والميكانيكا، ونطلعلك رينج عادل وأقصى سعر تشتري بيه.</p>
 <div style={css("display: flex; gap: 12px; margin-top: 8px")}>
@@ -2503,13 +2503,13 @@ class Component extends React.Component {
 <div style={css("display: flex; gap: 64px; margin-top: 28px")}>
 {(v.deskStats || []).map((ds, i28) => (<React.Fragment key={i28}>
 <div style={css("display: flex; flex-direction: column; gap: 4px")}>
-<span className="num" style={css("font-size: 40px; font-weight: 200")}>{ds.n}</span>
+<span className="num" data-count={ds.n} style={css("font-size: 40px; font-weight: 200")}>{ds.n}</span>
 <span style={css(`font-size: 14px; color: ${v.t.mute}`)}>{ds.label}</span>
 </div>
 </React.Fragment>))}
 </div>
 </section>
-<section aria-labelledby="dk-q" style={css("display: flex; flex-direction: column; gap: 14px; max-width: 760px; width: 100%; margin: 0 auto")}>
+<section data-reveal="" aria-labelledby="dk-q" style={css("display: flex; flex-direction: column; gap: 14px; max-width: 760px; width: 100%; margin: 0 auto")}>
 <h2 id="dk-q" style={css("margin: 0; font-size: 26px; font-weight: 600")}>دوّر على عربية</h2>
 <div style={css(`display: flex; align-items: center; gap: 12px; height: 60px; padding: 0 22px; border-radius: 999px; background: ${v.t.soft}; border: 1px solid ${v.t.line}`)}>
 <svg width="18" height="18" viewBox="0 0 16 16" aria-hidden="true"><circle cx="7" cy="7" r="5.5" stroke={v.t.mute} strokeWidth="1.4" fill="none"></circle><path d="M11 11l4 4" stroke={v.t.mute} strokeWidth="1.4"></path></svg>
@@ -2534,14 +2534,14 @@ class Component extends React.Component {
 <button className="press" onClick={v.goCompare} style={css(`align-self: flex-start; height: 50px; padding: 0 28px; border-radius: 999px; border: none; background: ${v.t.ink}; color: ${v.t.bg}; font-size: 15px; font-weight: 600`)}>قارن الـ {v.trayCount} عربيات</button>
 </>)}
 </section>
-<section aria-labelledby="dk-mkt" style={css("display: flex; flex-direction: column; gap: 18px")}>
+<section data-reveal="" aria-labelledby="dk-mkt" style={css("display: flex; flex-direction: column; gap: 18px")}>
 <div style={css("display: flex; align-items: baseline; justify-content: space-between; gap: 16px")}>
 <h2 id="dk-mkt" style={css("margin: 0; font-size: 30px; font-weight: 600")}>السوق النهارده</h2>
 <span style={css(`font-size: 14px; color: ${v.t.mute}`)}>تغييرات أسعار الزيرو، ولقطات نزلت أرخص من السوق</span>
 </div>
 <div style={css("display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px")}>
 {(v.deskMarket || []).map((dm, i30) => (<React.Fragment key={i30}>
-<button className="press" onClick={dm.go} style={css(`min-height: 140px; padding: 20px; border-radius: 18px; border: 1px solid ${v.t.line}; background: ${v.t.soft}; color: ${v.t.ink}; text-align: right; display: flex; flex-direction: column; justify-content: space-between; gap: 14px`)}>
+<button data-reveal="" className="press" onClick={dm.go} style={css(`min-height: 140px; padding: 20px; border-radius: 18px; border: 1px solid ${v.t.line}; background: ${v.t.soft}; color: ${v.t.ink}; text-align: right; display: flex; flex-direction: column; justify-content: space-between; gap: 14px`)}>
 <span style={css("display: flex; flex-direction: column; gap: 6px")}>
 <span style={css("font-size: 16px; font-weight: 500; line-height: 1.5")}>{dm.name}</span>
 <span style={css(`font-size: 13px; color: ${v.t.mute}`)}>{dm.kind}، {dm.when}</span>
@@ -2554,14 +2554,14 @@ class Component extends React.Component {
 </React.Fragment>))}
 </div>
 </section>
-<section aria-labelledby="dk-zero" style={css("display: flex; flex-direction: column; gap: 12px")}>
+<section data-reveal="" aria-labelledby="dk-zero" style={css("display: flex; flex-direction: column; gap: 12px")}>
 <div style={css("display: flex; align-items: baseline; justify-content: space-between")}>
 <h2 id="dk-zero" style={css("margin: 0; font-size: 30px; font-weight: 600")}>أسعار الزيرو</h2>
 <button className="press" onClick={v.openZero} style={css(`background: none; border: none; color: ${v.t.ink}; font-size: 15px; padding: 0; min-height: 40px; text-decoration: underline`)}>كل الأسعار ←</button>
 </div>
 <div style={css("display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: 48px")}>
 {(v.deskZero || []).map((dz, i31) => (<React.Fragment key={i31}>
-<button className="press" onClick={dz.go} style={css(`min-height: 60px; display: flex; align-items: center; justify-content: space-between; gap: 12px; background: none; border: none; border-bottom: 1px solid ${v.t.line}; color: ${v.t.ink}; padding: 0; text-align: right`)}>
+<button data-reveal="" className="press" onClick={dz.go} style={css(`min-height: 60px; display: flex; align-items: center; justify-content: space-between; gap: 12px; background: none; border: none; border-bottom: 1px solid ${v.t.line}; color: ${v.t.ink}; padding: 0; text-align: right`)}>
 <span style={css("font-size: 15px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap")}>{dz.name}</span>
 <span className="num" style={css("flex: none; font-size: 16px; direction: ltr")}>{dz.price}</span>
 </button>
@@ -2569,7 +2569,7 @@ class Component extends React.Component {
 </div>
 </section>
 {(v.deskSaved) && (<>
-<section aria-labelledby="dk-mine" style={css("display: flex; flex-direction: column")}>
+<section data-reveal="" aria-labelledby="dk-mine" style={css("display: flex; flex-direction: column")}>
 <h2 id="dk-mine" style={css("margin: 0 0 10px; font-size: 30px; font-weight: 600")}>تسعيراتك</h2>
 {(v.recent || []).map((rc, i32) => (<React.Fragment key={i32}>
 <button className="press" onClick={rc.go} style={css(`min-height: 64px; display: flex; align-items: center; justify-content: space-between; gap: 16px; background: none; border: none; border-bottom: 1px solid ${v.t.line}; color: ${v.t.ink}; padding: 0; text-align: right`)}>
@@ -2579,11 +2579,11 @@ class Component extends React.Component {
 </React.Fragment>))}
 </section>
 </>)}
-<section aria-labelledby="dk-how" style={css("display: flex; flex-direction: column; gap: 22px")}>
+<section data-reveal="" aria-labelledby="dk-how" style={css("display: flex; flex-direction: column; gap: 22px")}>
 <h2 id="dk-how" style={css("margin: 0; font-size: 30px; font-weight: 600")}>بيشتغل إزاي</h2>
 <ol style={css("margin: 0; padding: 0; list-style: none; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px")}>
 {(v.deskHow || []).map((hw, i33) => (<React.Fragment key={i33}>
-<li style={css(`padding: 24px; border-radius: 18px; border: 1px solid ${v.t.line}; display: flex; flex-direction: column; gap: 10px`)}>
+<li data-reveal="" style={css(`padding: 24px; border-radius: 18px; border: 1px solid ${v.t.line}; display: flex; flex-direction: column; gap: 10px`)}>
 <span className="num" style={css("font-size: 15px; color: #F2A93B")}>{hw.n}</span>
 <span style={css("font-size: 18px; font-weight: 600")}>{hw.title}</span>
 <span style={css(`font-size: 14px; line-height: 1.8; color: ${v.t.mute}`)}>{hw.body}</span>
@@ -2593,7 +2593,7 @@ class Component extends React.Component {
 </section>
 </>)}
 {(v.deskZeroPage) && (<>
-<section aria-labelledby="dk-zp" style={css("display: flex; flex-direction: column; gap: 16px; padding-top: 40px")}>
+<section data-reveal="" aria-labelledby="dk-zp" style={css("display: flex; flex-direction: column; gap: 16px; padding-top: 40px")}>
 <h1 id="dk-zp" style={css("margin: 0; font-size: 44px; font-weight: 600")}>أسعار الزيرو النهارده</h1>
 <p style={css(`margin: 0; font-size: 16px; color: ${v.t.mute}`)}>أرخص فئة لكل موديل، من هتلاقي. دوس على أي عربية تسعّر مستعمل منها.</p>
 <input name="zero_filter" value={v.zq} onChange={v.onZq} aria-label="دوّر في أسعار الزيرو" placeholder="دوّر: كيا، تويوتا كامري…" autoComplete="off" style={css(`height: 56px; max-width: 520px; border-radius: 999px; border: 1px solid ${v.t.line}; background: ${v.t.soft}; color: ${v.t.ink}; padding: 0 22px; font-family: 'Alexandria', sans-serif; font-size: 16px`)} />
@@ -2615,7 +2615,7 @@ class Component extends React.Component {
 </section>
 </>)}
 {(v.deskFlow) && (<>
-<section aria-labelledby="dk-cmp" style={css("display: flex; flex-direction: column; max-width: 1000px; width: 100%; margin: 0 auto")}>
+<section data-reveal="" aria-labelledby="dk-cmp" style={css("display: flex; flex-direction: column; max-width: 1000px; width: 100%; margin: 0 auto")}>
 <div style={css("display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 8px")}>
 <h2 id="dk-cmp" style={css("margin: 0; font-size: 26px; font-weight: 600")}>العربيات اللي اتقارنت ({v.nComps})</h2>
 <span style={css(`font-size: 13px; color: ${v.t.mute}`)}>مقارنة بالرينج لعربية فابريكا</span>
@@ -2632,7 +2632,7 @@ class Component extends React.Component {
 </div>
 </section>
 </>)}
-<footer style={css(`display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 28px 0 8px; border-top: 1px solid ${v.t.line}; color: ${v.t.mute}; font-size: 13px`)}>
+<footer data-reveal="" style={css(`display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 28px 0 8px; border-top: 1px solid ${v.t.line}; color: ${v.t.mute}; font-size: 13px`)}>
 <span translate="no" style={css(`font-family: 'Aref Ruqaa', serif; font-size: 30px; font-weight: 700; color: ${v.t.ink}`)}>سعرلي</span>
 <span>الأسعار من إعلانات حقيقية بتتحدث كل يوم. السعر تقديري، اتأكد من العربية بنفسك قبل ما تشتري.</span>
 </footer>
