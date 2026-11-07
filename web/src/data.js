@@ -47,3 +47,21 @@ Component.remoteQuote = function (car, km) {
   }
   return null;
 };
+
+// zero prices: makes -> models -> trims (one request per level, cached)
+const zeros = new Map();
+Component.remoteZero = function (make, model) {
+  const key = (make || '') + '|' + (model || '');
+  const hit = zeros.get(key);
+  if (hit && typeof hit === 'object') return hit;
+  if (!hit) {
+    zeros.set(key, 'loading');
+    const q = new URLSearchParams();
+    if (make) q.set('make', make);
+    if (model) q.set('model', model);
+    getJSON('/api/zero?' + q.toString())
+      .then((d) => { zeros.set(key, d && d.items ? d : 'failed'); refresh(); })
+      .catch(() => { zeros.set(key, 'failed'); refresh(); });
+  }
+  return hit === 'failed' ? 'failed' : null;
+};

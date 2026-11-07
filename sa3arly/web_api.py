@@ -5,6 +5,7 @@ The Vercel functions in /api are thin wrappers around these, so they can be test
 """
 from __future__ import annotations
 
+import re
 import statistics
 from datetime import date, datetime, timezone
 from typing import Optional
@@ -180,3 +181,74 @@ def market(cx, limit: int = 12) -> dict:
                       "source": SOURCE_AR.get(src, src), "url": url, "city": city,
                       "car": {"make": mk, "model": mo, "year": y, "trim": (trim or "Standard").strip()}, "km": km or 0})
     return {"items": items[:limit]}
+
+
+# ---------------------------------------------------------------- zero prices: makes -> models -> trims -> one trim
+ZERO_SQL = """
+with latest as (
+  select distinct on (z.model_id, z.trim_name, z.model_year)
+         z.make_id, z.model_id, z.trim_name, z.model_year, z.price_egp, z.market_price_egp, z.source, z.source_url, z.effective_on
+  from zero_prices z
+  where z.model_id is not null and z.effective_on > now() - interval '120 days'
+  order by z.model_id, z.trim_name, z.model_year, z.effective_on desc, z.scraped_at desc
+)
+select mk.name_en, mo.name_en, l.trim_name, l.model_year, l.price_egp, l.market_price_egp, l.source, l.source_url, l.effective_on
+from latest l join makes mk on mk.id = l.make_id join models mo on mo.id = l.model_id
+"""
+
+
+def _trim_label(make: str, model: str, trim: str) -> str:
+    """Hatla2ee names a trim 'Kia Sportage 2025 A/T / Top Line'; keep just the trim part."""
+    t = trim or ""
+    for w in (make, model):
+        if w and t.lower().startswith(w.lower()):
+            t = t[len(w):].strip()
+    t = re.sub(r"^(19|20)\d\d\s+", "", t).strip(" -،,")
+    return t or "الفئة الأساسية"
+
+
+def zero(cx, make: str | None = None, model: str | None = None) -> dict:
+    rows = cx.execute(ZERO_SQL).fetchall()
+    newest = {}
+    for mk, mo, *_rest in rows:
+        y = _rest[1]
+        newest[(mk, mo)] = max(newest.get((mk, mo), 0), y)
+    # only the current model year(s): a model can still list last year's trims for a while
+    rows = [r for r in rows if r[3] >= newest[(r[0], r[1])] - 1]
+    if not make:
+        acc: dict = {}
+        for mk, mo, tr, y, p, *_ in rows:
+            a = acc.setdefault(mk, {"make": mk, "models": set(), "trims": 0, "from": p})
+            a["models"].add(mo)
+            a["trims"] += 1
+            a["from"] = min(a["from"], p)
+        out = [{"make": a["make"], "models": len(a["models"]), "trims": a["trims"], "from": a["from"]} for a in acc.values()]
+        return {"level": "makes", "items": sorted(out, key=lambda a: a["make"].lower())}
+    rows = [r for r in rows if r[0].lower() == make.lower()]
+    if not model:
+        acc = {}
+        for mk, mo, tr, y, p, *_ in rows:
+            a = acc.setdefault(mo, {"model": mo, "trims": 0, "from": p, "to": p, "year": y})
+            a["trims"] += 1
+            a["from"], a["to"], a["year"] = min(a["from"], p), max(a["to"], p), max(a["year"], y)
+        return {"level": "models", "make": rows[0][0] if rows else make, "items": sorted(acc.values(), key=lambda a: a["from"])}
+    rows = [r for r in rows if r[1].lower() == model.lower()]
+    hist = {}
+    if rows:
+        for tr, y, p, on in cx.execute("""
+                select z.trim_name, z.model_year, z.price_egp, z.effective_on from zero_prices z
+                join models mo on mo.id = z.model_id join makes mk on mk.id = z.make_id
+                where lower(mk.name_en) = lower(%s) and lower(mo.name_en) = lower(%s)
+                order by z.effective_on""", (make, model)):
+            h = hist.setdefault((tr, y), [])
+            if not h or h[-1]["price"] != p:
+                h.append({"date": on.isoformat(), "price": p})
+    items = []
+    for mk, mo, tr, y, p, mkt, src, url, on in rows:
+        h = hist.get((tr, y), [])
+        prev = h[-2]["price"] if len(h) >= 2 else None
+        items.append({"trim": _trim_label(mk, mo, tr), "full": tr, "year": y, "price": p, "market": mkt,
+                      "prev": prev, "change": (p - prev) if prev else None, "changed_on": h[-1]["date"] if h else on.isoformat(),
+                      "source": SOURCE_AR.get(src, src), "url": url, "history": h[-8:]})
+    items.sort(key=lambda a: (-a["year"], a["price"]))
+    return {"level": "trims", "make": rows[0][0] if rows else make, "model": rows[0][1] if rows else model, "items": items}

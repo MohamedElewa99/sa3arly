@@ -45,3 +45,27 @@ def test_market_shows_zero_changes_and_cheap_new_ads(db):
 def test_junk_names():
     from sa3arly.web_api import _junk
     assert _junk("Other") and _junk(" others ") and _junk("أخرى") and not _junk("Corolla")
+
+
+def test_zero_drilldown(db):
+    from datetime import date, timedelta
+    from sa3arly.common import ZeroPrice
+    from sa3arly.store import PgStore
+    from sa3arly.web_api import zero
+    s = PgStore(URL)
+    old = (date.today() - timedelta(days=20)).isoformat()
+    s.zero(ZeroPrice(source="hatla2ee", make_raw="Cupra", full_name="Cupra Formentor 2026 VZ", model_year=2026,
+                     price_egp=2_500_000, effective_on=old))
+    s.zero(ZeroPrice(source="hatla2ee", make_raw="Cupra", full_name="Cupra Formentor 2026 VZ", model_year=2026,
+                     price_egp=2_600_000, effective_on=date.today().isoformat()))
+    s.flush()
+    s.close()
+    makes = zero(db)
+    assert makes["level"] == "makes" and any(m["make"] == "Cupra" and m["from"] == 2_049_000 for m in makes["items"])
+    models = zero(db, "cupra")
+    assert models["items"][0]["model"] == "Formentor" and models["items"][0]["trims"] == 2
+    trims = zero(db, "Cupra", "Formentor")["items"]
+    assert [t["price"] for t in trims] == [2_049_000, 2_600_000]                     # cheapest first
+    vz = trims[1]
+    assert vz["trim"] == "VZ" and vz["prev"] == 2_500_000 and vz["change"] == 100_000 and len(vz["history"]) == 2
+    assert trims[0]["trim"] == "Automatic"

@@ -131,6 +131,14 @@ button:disabled{cursor:not-allowed}
       <label for="q" style="position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0)">دوّر على عربية تقارنها</label>
       <input id="q" name="search" value="{{ q }}" onChange="{{ onQ }}" placeholder="قارن عربيات… مثلاً: كورولا 2020" autocomplete="off" style="flex: 1; min-width: 0; height: 44px; border: none; background: transparent; color: {{ t.ink }}; caret-color: #F2A93B; font-family: 'Alexandria', sans-serif; font-size: 15px">
     </div>
+    <button class="press" onClick="{{ openZero }}" style="margin-top: 10px; width: 100%; min-height: 52px; padding: 0 16px; border-radius: 16px; border: 1px solid {{ t.line2 }}; background: none; color: {{ t.ink }}; display: flex; align-items: center; gap: 12px; text-align: right">
+      <svg width="20" height="20" viewBox="0 0 20 20" aria-hidden="true" style="flex: none"><path d="M2 9.5V2.5h7l9 9-7 7z" stroke="#F2A93B" stroke-width="1.5" fill="none" stroke-linejoin="round"></path><circle cx="6" cy="6" r="1.4" fill="#F2A93B"></circle></svg>
+      <span style="flex: 1; display: flex; flex-direction: column; gap: 2px">
+        <span style="font-size: 15px; font-weight: 600">سعر الزيرو</span>
+        <span style="font-size: 12px; color: {{ t.mute }}">كل الماركات والموديلات والفئات، بتتحدث كل يوم</span>
+      </span>
+      <span aria-hidden="true" style="font-size: 18px; color: {{ t.mute }}">←</span>
+    </button>
     <sc-if value="{{ hasResults }}" hint-placeholder-val="{{ false }}">
       <div class="fade" style="display: flex; flex-direction: column; margin-top: 4px">
         <sc-if value="{{ didYouMean }}" hint-placeholder-val="{{ false }}">
@@ -707,6 +715,89 @@ button:disabled{cursor:not-allowed}
 </div>
 </sc-if>
 
+<sc-if value="{{ zpOpen }}" hint-placeholder-val="{{ false }}">
+<div class="enter-f" key="{{ zpKey }}" role="dialog" aria-modal="true" aria-labelledby="zp-t" onKeyDown="{{ zpKeyDown }}" style="position: absolute; inset: 0; z-index: 11; background: {{ t.bg }}; color: {{ t.ink }}; display: flex; flex-direction: column">
+  <header style="flex: none; display: flex; align-items: center; gap: 6px; padding: 10px 10px 4px">
+    <button class="press" onClick="{{ zpBack }}" aria-label="{{ zpBackAria }}" style="width: 44px; height: 44px; border: none; background: none; color: {{ t.ink }}; display: flex; align-items: center; justify-content: center; padding: 0">
+      <svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true"><path d="M7 3l6 6-6 6" stroke="currentColor" stroke-width="1.6" fill="none"></path></svg>
+    </button>
+    <div style="flex: 1; min-width: 0; display: flex; flex-direction: column">
+      <span style="font-size: 12px; color: {{ t.mute }}; overflow: hidden; text-overflow: ellipsis; white-space: nowrap">{{ zpCrumb }}</span>
+      <h2 id="zp-t" style="margin: 0; font-size: 20px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap">{{ zpTitle }}</h2>
+    </div>
+    <button class="press" onClick="{{ zpClose }}" aria-label="اقفل أسعار الزيرو" style="width: 44px; height: 44px; border: none; background: none; color: {{ t.mute }}; display: flex; align-items: center; justify-content: center; padding: 0">
+      <svg width="14" height="14" viewBox="0 0 16 16" aria-hidden="true"><path d="M1 1l14 14M15 1L1 15" stroke="currentColor" stroke-width="1.6"></path></svg>
+    </button>
+  </header>
+  <div style="flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding: 6px 20px 28px; width: 100%; max-width: 760px; margin: 0 auto; box-sizing: border-box">
+    <sc-if value="{{ zpList }}" hint-placeholder-val="{{ true }}">
+      <div style="display: flex; align-items: center; gap: 10px; height: 46px; padding: 0 14px; border-radius: 999px; background: {{ t.soft }}; margin: 4px 0 8px">
+        <svg width="15" height="15" viewBox="0 0 16 16" aria-hidden="true"><circle cx="7" cy="7" r="5.5" stroke="{{ t.mute }}" stroke-width="1.4" fill="none"></circle><path d="M11 11l4 4" stroke="{{ t.mute }}" stroke-width="1.4"></path></svg>
+        <input name="zero_search" value="{{ zpQ }}" onChange="{{ onZpQ }}" aria-label="{{ zpSearchPh }}" placeholder="{{ zpSearchPh }}" autocomplete="off" style="flex: 1; min-width: 0; height: 42px; border: none; background: transparent; color: {{ t.ink }}; font-family: 'Alexandria', sans-serif; font-size: 15px">
+      </div>
+      <sc-if value="{{ zpLoading }}" hint-placeholder-val="{{ false }}">
+        <p role="status" style="margin: 18px 4px; font-size: 14px; color: {{ t.mute }}">بنجيب الأسعار…</p>
+      </sc-if>
+      <sc-for list="{{ zpRows }}" as="zr" hint-placeholder-count="6">
+        <button class="press" onClick="{{ zr.go }}" style="width: 100%; min-height: 64px; padding: 10px 0; display: flex; align-items: center; justify-content: space-between; gap: 12px; background: none; border: none; border-bottom: 1px solid {{ t.line }}; color: {{ t.ink }}; text-align: right">
+          <span style="min-width: 0; display: flex; flex-direction: column; gap: 3px">
+            <span style="font-size: 15px; font-weight: 500">{{ zr.title }}</span>
+            <span style="font-size: 12px; color: {{ t.mute }}">{{ zr.sub }}</span>
+          </span>
+          <span style="flex: none; display: flex; align-items: center; gap: 10px">
+            <span style="display: flex; flex-direction: column; align-items: flex-end; gap: 3px">
+              <span class="num" style="font-size: 15px; direction: ltr">{{ zr.right }}</span>
+              <span class="num" style="font-size: 12px; color: {{ zr.rsColor }}; direction: ltr">{{ zr.rightSub }}</span>
+            </span>
+            <span aria-hidden="true" style="color: {{ t.mute }}">‹</span>
+          </span>
+        </button>
+      </sc-for>
+      <sc-if value="{{ zpEmpty }}" hint-placeholder-val="{{ false }}">
+        <p style="margin: 18px 4px; font-size: 14px; color: {{ t.mute }}">{{ zpEmptyTxt }}</p>
+      </sc-if>
+    </sc-if>
+    <sc-if value="{{ zpDetail }}" hint-placeholder-val="{{ false }}">
+      <section class="fu" style="display: flex; flex-direction: column; gap: 18px; padding-top: 8px">
+        <div style="display: flex; flex-direction: column; gap: 6px">
+          <span style="font-size: 13px; color: {{ t.mute }}">سعر الزيرو، موديل {{ zdYear }}</span>
+          <span class="num" style="font-size: 44px; font-weight: 200; line-height: 1.15">{{ zdPrice }} <span style="font-size: 16px; color: {{ t.mute }}">جنيه</span></span>
+          <sc-if value="{{ zdHasChange }}" hint-placeholder-val="{{ false }}">
+            <span class="num" style="font-size: 14px; color: {{ zdChangeColor }}">{{ zdChange }}</span>
+          </sc-if>
+        </div>
+        <div style="display: flex; flex-direction: column">
+          <sc-for list="{{ zdRows }}" as="zd" hint-placeholder-count="3">
+            <div style="min-height: 50px; display: flex; align-items: center; justify-content: space-between; gap: 12px; border-bottom: 1px solid {{ t.line }}; font-size: 14px">
+              <span style="color: {{ t.mute }}">{{ zd.k }}</span>
+              <span class="num" style="text-align: left">{{ zd.v }}</span>
+            </div>
+          </sc-for>
+        </div>
+        <sc-if value="{{ zdHasHist }}" hint-placeholder-val="{{ false }}">
+          <div style="display: flex; flex-direction: column; gap: 4px">
+            <h3 style="margin: 0 0 4px; font-size: 15px; font-weight: 600">السعر اتغيّر إزاي</h3>
+            <sc-for list="{{ zdHist }}" as="zh" hint-placeholder-count="3">
+              <div style="min-height: 40px; display: flex; align-items: center; justify-content: space-between; font-size: 13px; border-bottom: 1px solid {{ t.line }}">
+                <span style="color: {{ t.mute }}">{{ zh.date }}</span>
+                <span class="num" style="direction: ltr">{{ zh.price }} <span style="color: {{ zh.c }}; margin-left: 8px">{{ zh.d }}</span></span>
+              </div>
+            </sc-for>
+          </div>
+        </sc-if>
+        <div style="display: flex; flex-direction: column; gap: 10px; margin-top: 4px">
+          <button class="press" onClick="{{ zdPrice2 }}" style="height: 52px; border-radius: 999px; border: none; background: {{ t.ink }}; color: {{ t.bg }}; font-size: 16px; font-weight: 600">سعّر مستعملة منها</button>
+          <sc-if value="{{ zdHasUrl }}" hint-placeholder-val="{{ false }}">
+            <a class="press" href="{{ zdUrl }}" target="_blank" rel="noopener" style="height: 52px; border-radius: 999px; border: 1px solid {{ t.ink }}; color: {{ t.ink }}; font-size: 15px; display: flex; align-items: center; justify-content: center; text-decoration: none">شوفها على {{ zdSource }}</a>
+          </sc-if>
+          <button class="press" onClick="{{ zdAlert }}" style="min-height: 44px; border: none; background: none; color: {{ t.mute }}; font-size: 14px">نبّهني لو سعرها اتغيّر</button>
+        </div>
+      </section>
+    </sc-if>
+  </div>
+</div>
+</sc-if>
+
 <sc-if value="{{ shotOpen }}" hint-placeholder-val="{{ false }}">
 <div style="position: absolute; inset: 0; z-index: 12">
   <button class="fade" onClick="{{ closeShot }}" aria-label="اقفل" style="position: absolute; inset: 0; border: none; background: rgba(0,0,0,0.6); padding: 0"></button>
@@ -1226,7 +1317,7 @@ class Component extends DCLogic {
       q: '', tray: [], km: 100000, agencyKm: 60000,
       paint: { bumperF: 2, doorRL: 1, fenderRR: 1 }, ex: {}, spin: true, angle: -35, dragging: false, last: '',
       mech: { shocksF: true, arms: true }, open: 'susp', k: 1,
-      gl: true, oth: {}, exOther: false, mo: {}, body: 'crossover', bodyAuto: true, heroOn: true, partsOpen: false, mf: 'all', paintReady: false, more: false, wm: 0, margin: 30000, receipt: false, hideBuy: false, copied: false, checked: {}, car: { make: 'كوبرا', model: 'فورمينتور', year: 2022, trim: 'VZ' }, picker: null, pickOther: '', sheet: null, login: null, loginSent: false, loginEmail: '', loginErr: '', loginBusy: false, saving: false, flash: '', profile: false, pf: null, pfBusy: false, pfErr: '', photoBusy: false, item: null, shotsDone: {}, extraShots: 0, shotPick: null, extras: [], deskPage: null, zq: '', vis: { busy: false, note: '' }
+      gl: true, oth: {}, exOther: false, mo: {}, body: 'crossover', bodyAuto: true, heroOn: true, partsOpen: false, mf: 'all', paintReady: false, more: false, wm: 0, margin: 30000, receipt: false, hideBuy: false, copied: false, checked: {}, car: { make: 'كوبرا', model: 'فورمينتور', year: 2022, trim: 'VZ' }, picker: null, pickOther: '', sheet: null, login: null, loginSent: false, loginEmail: '', loginErr: '', loginBusy: false, saving: false, flash: '', profile: false, pf: null, pfBusy: false, pfErr: '', photoBusy: false, item: null, shotsDone: {}, extraShots: 0, shotPick: null, extras: [], deskPage: null, zq: '', zp: null, zpq: '', vis: { busy: false, note: '' }
     };
     this._raf = null; this._paint = null; this._hero = null;
     var self = this;
@@ -2096,6 +2187,28 @@ class Component extends DCLogic {
     var setPf = function (k) { return function (e) { var n = Object.assign({}, pf); n[k] = e.target.value; self.setState({ pf: n, pfErr: '' }); }; };
     var displayName = P.name || (me && me.name) || '';
     var openAccount = function () { if (!me) return needLogin('account', null); self.setState({ profile: true, pf: null, pfErr: '', menu: false }); };
+    // ---------- zero prices: makes -> models -> trims -> one trim ----------
+    var ZP = S.zp, zpData = null, zpFail = false;
+    if (ZP) {
+      var key = ZP.model ? [ZP.make, ZP.model] : ZP.make ? [ZP.make] : [];
+      var got = Component.remoteZero ? Component.remoteZero(key[0], key[1]) : 'failed';
+      if (got && typeof got === 'object') zpData = got;
+      else if (got === 'failed') zpFail = true;
+      if (zpFail) {                                      // no API (design canvas / offline): from the catalog
+        var mks = Object.keys(CAT).filter(function (m) { return Object.keys(CAT[m]).some(function (md) { return CAT[m][md].zero; }); });
+        if (!ZP.make) zpData = { items: mks.map(function (m) { var zs = Object.keys(CAT[m]).map(function (md) { return CAT[m][md].zero; }).filter(Boolean); return { make: m, models: zs.length, trims: zs.length, from: Math.min.apply(null, zs) }; }) };
+        else if (!ZP.model) zpData = { items: Object.keys(CAT[ZP.make] || {}).filter(function (md) { return CAT[ZP.make][md].zero; }).map(function (md) { var c = CAT[ZP.make][md]; return { model: md, trims: c.trims.length, from: c.zero, to: Math.round(c.zero * 1.15), year: c.years[c.years.length - 1] }; }) };
+        else { var cc = (CAT[ZP.make] || {})[ZP.model]; zpData = { items: !cc ? [] : cc.trims.map(function (tr, i) { return { trim: tr, full: tr, year: cc.years[cc.years.length - 1], price: Math.round(cc.zero * (1 + i * 0.06) / 1000) * 1000, history: [] }; }) }; }
+      }
+    }
+    var zpItems = zpData ? zpData.items : [];
+    var zpQ = S.zpq.trim();
+    var zpKeyOf = function (it) { return it.trim ? it.trim + ' ' + it.year : it.model || it.make; };
+    if (zpQ && !(ZP && ZP.trim)) zpItems = Component.fuzzy(zpQ, zpItems, zpKeyOf).map(function (h) { return h.item; });
+    var zpTrim = ZP && ZP.trim ? (zpData ? zpData.items : []).filter(function (it) { return it.full + '|' + it.year === ZP.trim; })[0] : null;
+    var dmy = function (iso) { var d = new Date(iso); return isNaN(d) ? '' : d.getDate() + ' ' + ['يناير', 'فبراير', 'مارس', 'أبريل', 'مايو', 'يونيو', 'يوليو', 'أغسطس', 'سبتمبر', 'أكتوبر', 'نوفمبر', 'ديسمبر'][d.getMonth()] + ' ' + d.getFullYear(); };
+    var chg = function (c) { return c ? (c > 0 ? '▲ +' : '▼ −') + fmt(Math.abs(c)) : ''; };
+    var openZp = function () { self.setState({ zp: {}, zpq: '', menu: false, sheet: null }); };
     var siteUrl = typeof location !== 'undefined' && location.origin && location.origin.indexOf('http') === 0 ? location.origin : 'https://sa3arly-6c4z.vercel.app';
     var ago = function (iso) {
       var d = Math.floor((Date.now() - new Date(iso).getTime()) / 864e5);
@@ -2107,7 +2220,7 @@ class Component extends DCLogic {
          : { label: 'ادخل حسابك', sub: 'احفظ تسعيراتك وشغّل التنبيهات', go: function () { needLogin('account', null); }, soon: false },
       { label: 'سعّر عربية', sub: 'من الصور والشيك ليست', go: function () { self.go('car'); }, soon: false },
       { label: 'قارن عربيات', sub: 'الزيرو والمستعمل جنب بعض', go: function () { self.go('compare'); }, soon: false },
-      { label: 'أسعار الزيرو', sub: 'كل الماركات، بتتحدث كل يوم', go: function () { self.setState({ menu: false, sheet: 'zero' }); }, soon: false },
+      { label: 'سعر الزيرو', sub: 'كل الماركات والموديلات والفئات', go: function () { openZp(); }, soon: false },
       { label: 'تنبيهاتي', sub: 'لما الزيرو يتغير أو تنزل عربية رخيصة', go: function () { if (!me) return needLogin('alerts', { kind: 'alerts' }); self.setState({ menu: false, sheet: 'alerts' }); }, soon: false },
       { label: 'تسعيراتي', sub: 'كل العربيات اللي سعّرتها', go: function () { self.setState({ menu: false, more: true }); self.go('home', 'b'); }, soon: false }
     ].map(function (m, i) { m.delay = (0.08 + i * 0.05).toFixed(2); m.op = m.soon ? 0.55 : 1; return m; });
@@ -2196,6 +2309,53 @@ class Component extends DCLogic {
       closeLogin: function () { if (A.pending) A.pending(null); self.setState({ login: null }); },
       editEmail: function () { self.setState({ loginSent: false }); },
       hasFlash: !!S.flash, flash: S.flash,
+      zpOpen: !!S.zp, zpKey: !S.zp ? '' : [S.zp.make || '', S.zp.model || '', S.zp.trim || ''].join('|'),
+      zpBack: function () {
+        var z = self.state.zp || {};
+        self.setState({ zpq: '', zp: z.trim ? { make: z.make, model: z.model } : z.model ? { make: z.make } : z.make ? {} : null });
+      },
+      zpBackAria: !S.zp ? '' : S.zp.make ? 'ارجع' : 'اقفل',
+      zpClose: function () { self.setState({ zp: null, zpq: '' }); },
+      zpKeyDown: function (e) { if (e.key === 'Escape') self.setState({ zp: null, zpq: '' }); },
+      zpCrumb: !ZP ? '' : ['أسعار الزيرو'].concat(ZP.make ? [ZP.make] : [], ZP.model ? [ZP.model] : []).join(' › '),
+      zpTitle: !ZP ? '' : zpTrim ? zpTrim.trim : ZP.model ? ZP.model + ' — الفئات' : ZP.make ? ZP.make + ' — الموديلات' : 'سعر الزيرو',
+      zpList: !!ZP && !ZP.trim, zpDetail: !!zpTrim, zpLoading: !!ZP && !zpData,
+      zpSearchPh: !ZP ? '' : ZP.model ? 'دوّر في الفئات' : ZP.make ? 'دوّر في موديلات ' + ZP.make : 'دوّر على ماركة: تويوتا، كيا…',
+      zpEmpty: !!zpData && zpItems.length === 0, zpEmptyTxt: zpQ ? 'مفيش حاجة بالاسم ده.' : 'مفيش أسعار زيرو متسجلة هنا لسه.',
+      zpRows: !ZP || ZP.trim ? [] : zpItems.map(function (it) {
+        if (!ZP.make) return { title: it.make, sub: it.models + ' موديل، ' + it.trims + ' فئة', right: 'من ' + fmt(it.from), rightSub: '', rsColor: t.mute,
+          go: function () { self.setState({ zp: { make: it.make }, zpq: '' }); } };
+        if (!ZP.model) return { title: it.model + ' ' + it.year, sub: it.trims + (it.trims === 1 ? ' فئة' : ' فئات'), right: fmt(it.from), rightSub: it.to > it.from ? 'لحد ' + fmt(it.to) : '', rsColor: t.mute,
+          go: function () { self.setState({ zp: { make: ZP.make, model: it.model }, zpq: '' }); } };
+        return { title: it.trim, sub: 'موديل ' + it.year + (it.changed_on ? '، من ' + dmy(it.changed_on) : ''), right: fmt(it.price), rightSub: chg(it.change), rsColor: it.change > 0 ? t.warn : '#5B9CF5',
+          go: function () { self.setState({ zp: { make: ZP.make, model: ZP.model, trim: it.full + '|' + it.year }, zpq: '' }); } };
+      }),
+      zdYear: zpTrim ? zpTrim.year : '', zdPrice: zpTrim ? fmt(zpTrim.price) : '',
+      zdHasChange: !!(zpTrim && zpTrim.change), zdChange: zpTrim && zpTrim.change ? chg(zpTrim.change) + ' عن السعر اللي قبله (' + fmt(zpTrim.prev) + ')' : '',
+      zdChangeColor: zpTrim && zpTrim.change > 0 ? t.warn : '#5B9CF5',
+      zdRows: !zpTrim ? [] : [{ k: 'الماركة', v: ZP.make }, { k: 'الموديل', v: ZP.model }, { k: 'الفئة', v: zpTrim.trim }, { k: 'سنة الموديل', v: String(zpTrim.year) }]
+        .concat(zpTrim.market ? [{ k: 'سعر السوق (هتلاقي)', v: fmt(zpTrim.market) + (zpTrim.market > zpTrim.price ? ' (أوفر برايس ' + fmt(zpTrim.market - zpTrim.price) + ')' : '') }] : [])
+        .concat([{ k: 'آخر تحديث', v: dmy(zpTrim.changed_on) || '—' }, { k: 'المصدر', v: zpTrim.source || 'هتلاقي' }]),
+      zdHasHist: !!(zpTrim && zpTrim.history && zpTrim.history.length > 1),
+      zdHist: !zpTrim || !zpTrim.history ? [] : zpTrim.history.slice().reverse().map(function (h, i, arr) {
+        var nx = arr[i + 1], d = nx ? h.price - nx.price : 0;
+        return { date: dmy(h.date), price: fmt(h.price), d: d ? (d > 0 ? '+' : '−') + fmt(Math.abs(d)) : '', c: d > 0 ? t.warn : '#5B9CF5' };
+      }),
+      zdHasUrl: !!(zpTrim && zpTrim.url), zdUrl: zpTrim && zpTrim.url ? zpTrim.url : '', zdSource: zpTrim && zpTrim.source ? zpTrim.source : 'هتلاقي',
+      zdPrice2: function () {
+        var inf = (CAT[ZP.make] || {})[ZP.model];
+        var mk = inf ? ZP.make : (Component.fuzzy(ZP.make, Object.keys(CAT), String)[0] || {}).item;
+        var md = inf ? ZP.model : mk ? (Component.fuzzy(ZP.model, Object.keys(CAT[mk]), String)[0] || {}).item : null;
+        self.setState({ zp: null, zpq: '' });
+        if (!mk || !md) return self.flashMsg('مفيش إعلانات مستعمل كفاية للموديل ده لسه');
+        var c2 = CAT[mk][md], tr = (Component.fuzzy(zpTrim.trim, c2.trims, String)[0] || {}).item || c2.trims[0];
+        self.setCar({ make: mk, model: md, year: c2.years[c2.years.length - 1], trim: tr }, 60000);
+      },
+      zdAlert: function () {
+        if (!me) return needLogin('alerts', { kind: 'alerts' });
+        self.flashMsg('هنبعتلك لما سعر ' + ZP.model + ' ' + zpTrim.trim + ' يتغيّر');
+      },
+      zpQ: S.zpq, onZpQ: function (e) { self.setState({ zpq: e.target.value }); },
       installShow: !desk && !!Component.install && Component.install.show() && !S.installHidden,
       installSub: Component.install && Component.install.ios ? 'دوس مشاركة ⬆ وبعدين Add to Home Screen' : 'يفتح زي أي أبلكيشن، من غير ستور',
       installBtn: Component.install && Component.install.ios ? 'إزاي؟' : 'نزّله',
@@ -2209,9 +2369,9 @@ class Component extends DCLogic {
       shellStyle: desk ? 'height: 100dvh; overflow-y: auto; display: flex; flex-direction: column; background: ' + t.bg + '; color: ' + t.ink + '; font-family: Alexandria, sans-serif; transition: background .4s ease, color .4s ease' : 'display: contents',
       deskRow: desk ? 'width: 100%; max-width: 1200px; margin: 0 auto; padding: 32px 40px 0; box-sizing: border-box; display: flex; flex-direction: column; gap: 56px' : 'display: contents',
       deskLinks: [['الرئيسية', 'home'], ['سعّر عربية', 'car'], ['قارن عربيات', 'compare'], ['أسعار الزيرو', 'zero']].map(function (l) {
-        var on = l[1] === 'zero' ? S.deskPage === 'zero' : (l[1] === 'car' ? idx >= 0 : S.screen === l[1]) && S.deskPage !== 'zero';
+        var on = l[1] === 'zero' ? !!S.zp : (l[1] === 'car' ? idx >= 0 : S.screen === l[1]) && S.deskPage !== 'zero';
         return { label: l[0], cur: on ? 'page' : 'false', bg: on ? t.soft : 'transparent', fg: on ? t.ink : t.mute,
-          go: function () { if (l[1] === 'zero') { if (self.state.screen !== 'home') self.go('home', 'f'); self.setState({ deskPage: 'zero', sheet: null }); } else { self.setState({ sheet: null }); self.go(l[1], 'f'); } } };
+          go: function () { if (l[1] === 'zero') { if (self.state.screen !== 'home') self.go('home', 'f'); openZp(); } else { self.setState({ sheet: null, zp: null }); self.go(l[1], 'f'); } } };
       }),
       deskAccount: me ? (P.showroom || displayName || 'حسابك') : 'ادخل',
       deskKey: S.deskPage === 'zero' ? 'zero' : idx >= 0 ? 'flow' : S.screen, deskHome: S.screen === 'home' && S.deskPage !== 'zero', deskFlow: idx >= 0, deskZeroPage: S.deskPage === 'zero',
@@ -2233,7 +2393,7 @@ class Component extends DCLogic {
         return { name: m.name, kind: m.kind, when: m.when, price: fmt(m.price), delta: dtxt, dc: m.up ? t.warn : '#5B9CF5',
           go: function () { self.setState({ sheet: 'item', item: m }); } };
       }),
-      openZero: function () { if (desk) self.setState({ deskPage: 'zero', sheet: null }); else self.setState({ sheet: 'zero' }); },
+      openZero: function () { openZp(); },
       zeroAll: !desk || S.deskPage !== 'zero' ? [] : (function () {
         var out = [];
         Object.keys(CAT).forEach(function (mk) { Object.keys(CAT[mk]).forEach(function (md) { var c = CAT[mk][md]; if (c.zero) out.push({ mk: mk, md: md, c: c, name: mk + ' ' + md }); }); });

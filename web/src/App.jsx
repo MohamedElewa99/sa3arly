@@ -195,7 +195,7 @@ class Component extends React.Component {
       q: '', tray: [], km: 100000, agencyKm: 60000,
       paint: { bumperF: 2, doorRL: 1, fenderRR: 1 }, ex: {}, spin: true, angle: -35, dragging: false, last: '',
       mech: { shocksF: true, arms: true }, open: 'susp', k: 1,
-      gl: true, oth: {}, exOther: false, mo: {}, body: 'crossover', bodyAuto: true, heroOn: true, partsOpen: false, mf: 'all', paintReady: false, more: false, wm: 0, margin: 30000, receipt: false, hideBuy: false, copied: false, checked: {}, car: { make: 'كوبرا', model: 'فورمينتور', year: 2022, trim: 'VZ' }, picker: null, pickOther: '', sheet: null, login: null, loginSent: false, loginEmail: '', loginErr: '', loginBusy: false, saving: false, flash: '', profile: false, pf: null, pfBusy: false, pfErr: '', photoBusy: false, item: null, shotsDone: {}, extraShots: 0, shotPick: null, extras: [], deskPage: null, zq: '', vis: { busy: false, note: '' }
+      gl: true, oth: {}, exOther: false, mo: {}, body: 'crossover', bodyAuto: true, heroOn: true, partsOpen: false, mf: 'all', paintReady: false, more: false, wm: 0, margin: 30000, receipt: false, hideBuy: false, copied: false, checked: {}, car: { make: 'كوبرا', model: 'فورمينتور', year: 2022, trim: 'VZ' }, picker: null, pickOther: '', sheet: null, login: null, loginSent: false, loginEmail: '', loginErr: '', loginBusy: false, saving: false, flash: '', profile: false, pf: null, pfBusy: false, pfErr: '', photoBusy: false, item: null, shotsDone: {}, extraShots: 0, shotPick: null, extras: [], deskPage: null, zq: '', zp: null, zpq: '', vis: { busy: false, note: '' }
     };
     this._raf = null; this._paint = null; this._hero = null;
     var self = this;
@@ -1065,6 +1065,28 @@ class Component extends React.Component {
     var setPf = function (k) { return function (e) { var n = Object.assign({}, pf); n[k] = e.target.value; self.setState({ pf: n, pfErr: '' }); }; };
     var displayName = P.name || (me && me.name) || '';
     var openAccount = function () { if (!me) return needLogin('account', null); self.setState({ profile: true, pf: null, pfErr: '', menu: false }); };
+    // ---------- zero prices: makes -> models -> trims -> one trim ----------
+    var ZP = S.zp, zpData = null, zpFail = false;
+    if (ZP) {
+      var key = ZP.model ? [ZP.make, ZP.model] : ZP.make ? [ZP.make] : [];
+      var got = Component.remoteZero ? Component.remoteZero(key[0], key[1]) : 'failed';
+      if (got && typeof got === 'object') zpData = got;
+      else if (got === 'failed') zpFail = true;
+      if (zpFail) {                                      // no API (design canvas / offline): from the catalog
+        var mks = Object.keys(CAT).filter(function (m) { return Object.keys(CAT[m]).some(function (md) { return CAT[m][md].zero; }); });
+        if (!ZP.make) zpData = { items: mks.map(function (m) { var zs = Object.keys(CAT[m]).map(function (md) { return CAT[m][md].zero; }).filter(Boolean); return { make: m, models: zs.length, trims: zs.length, from: Math.min.apply(null, zs) }; }) };
+        else if (!ZP.model) zpData = { items: Object.keys(CAT[ZP.make] || {}).filter(function (md) { return CAT[ZP.make][md].zero; }).map(function (md) { var c = CAT[ZP.make][md]; return { model: md, trims: c.trims.length, from: c.zero, to: Math.round(c.zero * 1.15), year: c.years[c.years.length - 1] }; }) };
+        else { var cc = (CAT[ZP.make] || {})[ZP.model]; zpData = { items: !cc ? [] : cc.trims.map(function (tr, i) { return { trim: tr, full: tr, year: cc.years[cc.years.length - 1], price: Math.round(cc.zero * (1 + i * 0.06) / 1000) * 1000, history: [] }; }) }; }
+      }
+    }
+    var zpItems = zpData ? zpData.items : [];
+    var zpQ = S.zpq.trim();
+    var zpKeyOf = function (it) { return it.trim ? it.trim + ' ' + it.year : it.model || it.make; };
+    if (zpQ && !(ZP && ZP.trim)) zpItems = Component.fuzzy(zpQ, zpItems, zpKeyOf).map(function (h) { return h.item; });
+    var zpTrim = ZP && ZP.trim ? (zpData ? zpData.items : []).filter(function (it) { return it.full + '|' + it.year === ZP.trim; })[0] : null;
+    var dmy = function (iso) { var d = new Date(iso); return isNaN(d) ? '' : d.getDate() + ' ' + ['يناير', 'فبراير', 'مارس', 'أبريل', 'مايو', 'يونيو', 'يوليو', 'أغسطس', 'سبتمبر', 'أكتوبر', 'نوفمبر', 'ديسمبر'][d.getMonth()] + ' ' + d.getFullYear(); };
+    var chg = function (c) { return c ? (c > 0 ? '▲ +' : '▼ −') + fmt(Math.abs(c)) : ''; };
+    var openZp = function () { self.setState({ zp: {}, zpq: '', menu: false, sheet: null }); };
     var siteUrl = typeof location !== 'undefined' && location.origin && location.origin.indexOf('http') === 0 ? location.origin : 'https://sa3arly-6c4z.vercel.app';
     var ago = function (iso) {
       var d = Math.floor((Date.now() - new Date(iso).getTime()) / 864e5);
@@ -1076,7 +1098,7 @@ class Component extends React.Component {
          : { label: 'ادخل حسابك', sub: 'احفظ تسعيراتك وشغّل التنبيهات', go: function () { needLogin('account', null); }, soon: false },
       { label: 'سعّر عربية', sub: 'من الصور والشيك ليست', go: function () { self.go('car'); }, soon: false },
       { label: 'قارن عربيات', sub: 'الزيرو والمستعمل جنب بعض', go: function () { self.go('compare'); }, soon: false },
-      { label: 'أسعار الزيرو', sub: 'كل الماركات، بتتحدث كل يوم', go: function () { self.setState({ menu: false, sheet: 'zero' }); }, soon: false },
+      { label: 'سعر الزيرو', sub: 'كل الماركات والموديلات والفئات', go: function () { openZp(); }, soon: false },
       { label: 'تنبيهاتي', sub: 'لما الزيرو يتغير أو تنزل عربية رخيصة', go: function () { if (!me) return needLogin('alerts', { kind: 'alerts' }); self.setState({ menu: false, sheet: 'alerts' }); }, soon: false },
       { label: 'تسعيراتي', sub: 'كل العربيات اللي سعّرتها', go: function () { self.setState({ menu: false, more: true }); self.go('home', 'b'); }, soon: false }
     ].map(function (m, i) { m.delay = (0.08 + i * 0.05).toFixed(2); m.op = m.soon ? 0.55 : 1; return m; });
@@ -1165,6 +1187,53 @@ class Component extends React.Component {
       closeLogin: function () { if (A.pending) A.pending(null); self.setState({ login: null }); },
       editEmail: function () { self.setState({ loginSent: false }); },
       hasFlash: !!S.flash, flash: S.flash,
+      zpOpen: !!S.zp, zpKey: !S.zp ? '' : [S.zp.make || '', S.zp.model || '', S.zp.trim || ''].join('|'),
+      zpBack: function () {
+        var z = self.state.zp || {};
+        self.setState({ zpq: '', zp: z.trim ? { make: z.make, model: z.model } : z.model ? { make: z.make } : z.make ? {} : null });
+      },
+      zpBackAria: !S.zp ? '' : S.zp.make ? 'ارجع' : 'اقفل',
+      zpClose: function () { self.setState({ zp: null, zpq: '' }); },
+      zpKeyDown: function (e) { if (e.key === 'Escape') self.setState({ zp: null, zpq: '' }); },
+      zpCrumb: !ZP ? '' : ['أسعار الزيرو'].concat(ZP.make ? [ZP.make] : [], ZP.model ? [ZP.model] : []).join(' › '),
+      zpTitle: !ZP ? '' : zpTrim ? zpTrim.trim : ZP.model ? ZP.model + ' — الفئات' : ZP.make ? ZP.make + ' — الموديلات' : 'سعر الزيرو',
+      zpList: !!ZP && !ZP.trim, zpDetail: !!zpTrim, zpLoading: !!ZP && !zpData,
+      zpSearchPh: !ZP ? '' : ZP.model ? 'دوّر في الفئات' : ZP.make ? 'دوّر في موديلات ' + ZP.make : 'دوّر على ماركة: تويوتا، كيا…',
+      zpEmpty: !!zpData && zpItems.length === 0, zpEmptyTxt: zpQ ? 'مفيش حاجة بالاسم ده.' : 'مفيش أسعار زيرو متسجلة هنا لسه.',
+      zpRows: !ZP || ZP.trim ? [] : zpItems.map(function (it) {
+        if (!ZP.make) return { title: it.make, sub: it.models + ' موديل، ' + it.trims + ' فئة', right: 'من ' + fmt(it.from), rightSub: '', rsColor: t.mute,
+          go: function () { self.setState({ zp: { make: it.make }, zpq: '' }); } };
+        if (!ZP.model) return { title: it.model + ' ' + it.year, sub: it.trims + (it.trims === 1 ? ' فئة' : ' فئات'), right: fmt(it.from), rightSub: it.to > it.from ? 'لحد ' + fmt(it.to) : '', rsColor: t.mute,
+          go: function () { self.setState({ zp: { make: ZP.make, model: it.model }, zpq: '' }); } };
+        return { title: it.trim, sub: 'موديل ' + it.year + (it.changed_on ? '، من ' + dmy(it.changed_on) : ''), right: fmt(it.price), rightSub: chg(it.change), rsColor: it.change > 0 ? t.warn : '#5B9CF5',
+          go: function () { self.setState({ zp: { make: ZP.make, model: ZP.model, trim: it.full + '|' + it.year }, zpq: '' }); } };
+      }),
+      zdYear: zpTrim ? zpTrim.year : '', zdPrice: zpTrim ? fmt(zpTrim.price) : '',
+      zdHasChange: !!(zpTrim && zpTrim.change), zdChange: zpTrim && zpTrim.change ? chg(zpTrim.change) + ' عن السعر اللي قبله (' + fmt(zpTrim.prev) + ')' : '',
+      zdChangeColor: zpTrim && zpTrim.change > 0 ? t.warn : '#5B9CF5',
+      zdRows: !zpTrim ? [] : [{ k: 'الماركة', v: ZP.make }, { k: 'الموديل', v: ZP.model }, { k: 'الفئة', v: zpTrim.trim }, { k: 'سنة الموديل', v: String(zpTrim.year) }]
+        .concat(zpTrim.market ? [{ k: 'سعر السوق (هتلاقي)', v: fmt(zpTrim.market) + (zpTrim.market > zpTrim.price ? ' (أوفر برايس ' + fmt(zpTrim.market - zpTrim.price) + ')' : '') }] : [])
+        .concat([{ k: 'آخر تحديث', v: dmy(zpTrim.changed_on) || '—' }, { k: 'المصدر', v: zpTrim.source || 'هتلاقي' }]),
+      zdHasHist: !!(zpTrim && zpTrim.history && zpTrim.history.length > 1),
+      zdHist: !zpTrim || !zpTrim.history ? [] : zpTrim.history.slice().reverse().map(function (h, i, arr) {
+        var nx = arr[i + 1], d = nx ? h.price - nx.price : 0;
+        return { date: dmy(h.date), price: fmt(h.price), d: d ? (d > 0 ? '+' : '−') + fmt(Math.abs(d)) : '', c: d > 0 ? t.warn : '#5B9CF5' };
+      }),
+      zdHasUrl: !!(zpTrim && zpTrim.url), zdUrl: zpTrim && zpTrim.url ? zpTrim.url : '', zdSource: zpTrim && zpTrim.source ? zpTrim.source : 'هتلاقي',
+      zdPrice2: function () {
+        var inf = (CAT[ZP.make] || {})[ZP.model];
+        var mk = inf ? ZP.make : (Component.fuzzy(ZP.make, Object.keys(CAT), String)[0] || {}).item;
+        var md = inf ? ZP.model : mk ? (Component.fuzzy(ZP.model, Object.keys(CAT[mk]), String)[0] || {}).item : null;
+        self.setState({ zp: null, zpq: '' });
+        if (!mk || !md) return self.flashMsg('مفيش إعلانات مستعمل كفاية للموديل ده لسه');
+        var c2 = CAT[mk][md], tr = (Component.fuzzy(zpTrim.trim, c2.trims, String)[0] || {}).item || c2.trims[0];
+        self.setCar({ make: mk, model: md, year: c2.years[c2.years.length - 1], trim: tr }, 60000);
+      },
+      zdAlert: function () {
+        if (!me) return needLogin('alerts', { kind: 'alerts' });
+        self.flashMsg('هنبعتلك لما سعر ' + ZP.model + ' ' + zpTrim.trim + ' يتغيّر');
+      },
+      zpQ: S.zpq, onZpQ: function (e) { self.setState({ zpq: e.target.value }); },
       installShow: !desk && !!Component.install && Component.install.show() && !S.installHidden,
       installSub: Component.install && Component.install.ios ? 'دوس مشاركة ⬆ وبعدين Add to Home Screen' : 'يفتح زي أي أبلكيشن، من غير ستور',
       installBtn: Component.install && Component.install.ios ? 'إزاي؟' : 'نزّله',
@@ -1178,9 +1247,9 @@ class Component extends React.Component {
       shellStyle: desk ? 'height: 100dvh; overflow-y: auto; display: flex; flex-direction: column; background: ' + t.bg + '; color: ' + t.ink + '; font-family: Alexandria, sans-serif; transition: background .4s ease, color .4s ease' : 'display: contents',
       deskRow: desk ? 'width: 100%; max-width: 1200px; margin: 0 auto; padding: 32px 40px 0; box-sizing: border-box; display: flex; flex-direction: column; gap: 56px' : 'display: contents',
       deskLinks: [['الرئيسية', 'home'], ['سعّر عربية', 'car'], ['قارن عربيات', 'compare'], ['أسعار الزيرو', 'zero']].map(function (l) {
-        var on = l[1] === 'zero' ? S.deskPage === 'zero' : (l[1] === 'car' ? idx >= 0 : S.screen === l[1]) && S.deskPage !== 'zero';
+        var on = l[1] === 'zero' ? !!S.zp : (l[1] === 'car' ? idx >= 0 : S.screen === l[1]) && S.deskPage !== 'zero';
         return { label: l[0], cur: on ? 'page' : 'false', bg: on ? t.soft : 'transparent', fg: on ? t.ink : t.mute,
-          go: function () { if (l[1] === 'zero') { if (self.state.screen !== 'home') self.go('home', 'f'); self.setState({ deskPage: 'zero', sheet: null }); } else { self.setState({ sheet: null }); self.go(l[1], 'f'); } } };
+          go: function () { if (l[1] === 'zero') { if (self.state.screen !== 'home') self.go('home', 'f'); openZp(); } else { self.setState({ sheet: null, zp: null }); self.go(l[1], 'f'); } } };
       }),
       deskAccount: me ? (P.showroom || displayName || 'حسابك') : 'ادخل',
       deskKey: S.deskPage === 'zero' ? 'zero' : idx >= 0 ? 'flow' : S.screen, deskHome: S.screen === 'home' && S.deskPage !== 'zero', deskFlow: idx >= 0, deskZeroPage: S.deskPage === 'zero',
@@ -1202,7 +1271,7 @@ class Component extends React.Component {
         return { name: m.name, kind: m.kind, when: m.when, price: fmt(m.price), delta: dtxt, dc: m.up ? t.warn : '#5B9CF5',
           go: function () { self.setState({ sheet: 'item', item: m }); } };
       }),
-      openZero: function () { if (desk) self.setState({ deskPage: 'zero', sheet: null }); else self.setState({ sheet: 'zero' }); },
+      openZero: function () { openZp(); },
       zeroAll: !desk || S.deskPage !== 'zero' ? [] : (function () {
         var out = [];
         Object.keys(CAT).forEach(function (mk) { Object.keys(CAT[mk]).forEach(function (md) { var c = CAT[mk][md]; if (c.zero) out.push({ mk: mk, md: md, c: c, name: mk + ' ' + md }); }); });
@@ -1504,6 +1573,14 @@ class Component extends React.Component {
 <label htmlFor="q" style={css("position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0)")}>دوّر على عربية تقارنها</label>
 <input id="q" name="search" value={v.q} onChange={v.onQ} placeholder="قارن عربيات… مثلاً: كورولا 2020" autoComplete="off" style={css(`flex: 1; min-width: 0; height: 44px; border: none; background: transparent; color: ${v.t.ink}; caret-color: #F2A93B; font-family: 'Alexandria', sans-serif; font-size: 15px`)} />
 </div>
+<button className="press" onClick={v.openZero} style={css(`margin-top: 10px; width: 100%; min-height: 52px; padding: 0 16px; border-radius: 16px; border: 1px solid ${v.t.line2}; background: none; color: ${v.t.ink}; display: flex; align-items: center; gap: 12px; text-align: right`)}>
+<svg width="20" height="20" viewBox="0 0 20 20" aria-hidden="true" style={css("flex: none")}><path d="M2 9.5V2.5h7l9 9-7 7z" stroke="#F2A93B" strokeWidth="1.5" fill="none" strokeLinejoin="round"></path><circle cx="6" cy="6" r="1.4" fill="#F2A93B"></circle></svg>
+<span style={css("flex: 1; display: flex; flex-direction: column; gap: 2px")}>
+<span style={css("font-size: 15px; font-weight: 600")}>سعر الزيرو</span>
+<span style={css(`font-size: 12px; color: ${v.t.mute}`)}>كل الماركات والموديلات والفئات، بتتحدث كل يوم</span>
+</span>
+<span aria-hidden="true" style={css(`font-size: 18px; color: ${v.t.mute}`)}>←</span>
+</button>
 {(v.hasResults) && (<>
 <div className="fade" style={css("display: flex; flex-direction: column; margin-top: 4px")}>
 {(v.didYouMean) && (<>
@@ -2056,6 +2133,88 @@ class Component extends React.Component {
 </section>
 </div>
 </>)}
+{(v.zpOpen) && (<>
+<div className="enter-f" key={v.zpKey} role="dialog" aria-modal="true" aria-labelledby="zp-t" onKeyDown={v.zpKeyDown} style={css(`position: absolute; inset: 0; z-index: 11; background: ${v.t.bg}; color: ${v.t.ink}; display: flex; flex-direction: column`)}>
+<header style={css("flex: none; display: flex; align-items: center; gap: 6px; padding: 10px 10px 4px")}>
+<button className="press" onClick={v.zpBack} aria-label={v.zpBackAria} style={css(`width: 44px; height: 44px; border: none; background: none; color: ${v.t.ink}; display: flex; align-items: center; justify-content: center; padding: 0`)}>
+<svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true"><path d="M7 3l6 6-6 6" stroke="currentColor" strokeWidth="1.6" fill="none"></path></svg>
+</button>
+<div style={css("flex: 1; min-width: 0; display: flex; flex-direction: column")}>
+<span style={css(`font-size: 12px; color: ${v.t.mute}; overflow: hidden; text-overflow: ellipsis; white-space: nowrap`)}>{v.zpCrumb}</span>
+<h2 id="zp-t" style={css("margin: 0; font-size: 20px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap")}>{v.zpTitle}</h2>
+</div>
+<button className="press" onClick={v.zpClose} aria-label="اقفل أسعار الزيرو" style={css(`width: 44px; height: 44px; border: none; background: none; color: ${v.t.mute}; display: flex; align-items: center; justify-content: center; padding: 0`)}>
+<svg width="14" height="14" viewBox="0 0 16 16" aria-hidden="true"><path d="M1 1l14 14M15 1L1 15" stroke="currentColor" strokeWidth="1.6"></path></svg>
+</button>
+</header>
+<div style={css("flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding: 6px 20px 28px; width: 100%; max-width: 760px; margin: 0 auto; box-sizing: border-box")}>
+{(v.zpList) && (<>
+<div style={css(`display: flex; align-items: center; gap: 10px; height: 46px; padding: 0 14px; border-radius: 999px; background: ${v.t.soft}; margin: 4px 0 8px`)}>
+<svg width="15" height="15" viewBox="0 0 16 16" aria-hidden="true"><circle cx="7" cy="7" r="5.5" stroke={v.t.mute} strokeWidth="1.4" fill="none"></circle><path d="M11 11l4 4" stroke={v.t.mute} strokeWidth="1.4"></path></svg>
+<input name="zero_search" value={v.zpQ} onChange={v.onZpQ} aria-label={v.zpSearchPh} placeholder={v.zpSearchPh} autoComplete="off" style={css(`flex: 1; min-width: 0; height: 42px; border: none; background: transparent; color: ${v.t.ink}; font-family: 'Alexandria', sans-serif; font-size: 15px`)} />
+</div>
+{(v.zpLoading) && (<>
+<p role="status" style={css(`margin: 18px 4px; font-size: 14px; color: ${v.t.mute}`)}>بنجيب الأسعار…</p>
+</>)}
+{(v.zpRows || []).map((zr, i23) => (<React.Fragment key={i23}>
+<button className="press" onClick={zr.go} style={css(`width: 100%; min-height: 64px; padding: 10px 0; display: flex; align-items: center; justify-content: space-between; gap: 12px; background: none; border: none; border-bottom: 1px solid ${v.t.line}; color: ${v.t.ink}; text-align: right`)}>
+<span style={css("min-width: 0; display: flex; flex-direction: column; gap: 3px")}>
+<span style={css("font-size: 15px; font-weight: 500")}>{zr.title}</span>
+<span style={css(`font-size: 12px; color: ${v.t.mute}`)}>{zr.sub}</span>
+</span>
+<span style={css("flex: none; display: flex; align-items: center; gap: 10px")}>
+<span style={css("display: flex; flex-direction: column; align-items: flex-end; gap: 3px")}>
+<span className="num" style={css("font-size: 15px; direction: ltr")}>{zr.right}</span>
+<span className="num" style={css(`font-size: 12px; color: ${zr.rsColor}; direction: ltr`)}>{zr.rightSub}</span>
+</span>
+<span aria-hidden="true" style={css(`color: ${v.t.mute}`)}>‹</span>
+</span>
+</button>
+</React.Fragment>))}
+{(v.zpEmpty) && (<>
+<p style={css(`margin: 18px 4px; font-size: 14px; color: ${v.t.mute}`)}>{v.zpEmptyTxt}</p>
+</>)}
+</>)}
+{(v.zpDetail) && (<>
+<section className="fu" style={css("display: flex; flex-direction: column; gap: 18px; padding-top: 8px")}>
+<div style={css("display: flex; flex-direction: column; gap: 6px")}>
+<span style={css(`font-size: 13px; color: ${v.t.mute}`)}>سعر الزيرو، موديل {v.zdYear}</span>
+<span className="num" style={css("font-size: 44px; font-weight: 200; line-height: 1.15")}>{v.zdPrice} <span style={css(`font-size: 16px; color: ${v.t.mute}`)}>جنيه</span></span>
+{(v.zdHasChange) && (<>
+<span className="num" style={css(`font-size: 14px; color: ${v.zdChangeColor}`)}>{v.zdChange}</span>
+</>)}
+</div>
+<div style={css("display: flex; flex-direction: column")}>
+{(v.zdRows || []).map((zd, i24) => (<React.Fragment key={i24}>
+<div style={css(`min-height: 50px; display: flex; align-items: center; justify-content: space-between; gap: 12px; border-bottom: 1px solid ${v.t.line}; font-size: 14px`)}>
+<span style={css(`color: ${v.t.mute}`)}>{zd.k}</span>
+<span className="num" style={css("text-align: left")}>{zd.v}</span>
+</div>
+</React.Fragment>))}
+</div>
+{(v.zdHasHist) && (<>
+<div style={css("display: flex; flex-direction: column; gap: 4px")}>
+<h3 style={css("margin: 0 0 4px; font-size: 15px; font-weight: 600")}>السعر اتغيّر إزاي</h3>
+{(v.zdHist || []).map((zh, i25) => (<React.Fragment key={i25}>
+<div style={css(`min-height: 40px; display: flex; align-items: center; justify-content: space-between; font-size: 13px; border-bottom: 1px solid ${v.t.line}`)}>
+<span style={css(`color: ${v.t.mute}`)}>{zh.date}</span>
+<span className="num" style={css("direction: ltr")}>{zh.price} <span style={css(`color: ${zh.c}; margin-left: 8px`)}>{zh.d}</span></span>
+</div>
+</React.Fragment>))}
+</div>
+</>)}
+<div style={css("display: flex; flex-direction: column; gap: 10px; margin-top: 4px")}>
+<button className="press" onClick={v.zdPrice2} style={css(`height: 52px; border-radius: 999px; border: none; background: ${v.t.ink}; color: ${v.t.bg}; font-size: 16px; font-weight: 600`)}>سعّر مستعملة منها</button>
+{(v.zdHasUrl) && (<>
+<a className="press" href={v.zdUrl} target="_blank" rel="noopener" style={css(`height: 52px; border-radius: 999px; border: 1px solid ${v.t.ink}; color: ${v.t.ink}; font-size: 15px; display: flex; align-items: center; justify-content: center; text-decoration: none`)}>شوفها على {v.zdSource}</a>
+</>)}
+<button className="press" onClick={v.zdAlert} style={css(`min-height: 44px; border: none; background: none; color: ${v.t.mute}; font-size: 14px`)}>نبّهني لو سعرها اتغيّر</button>
+</div>
+</section>
+</>)}
+</div>
+</div>
+</>)}
 {(v.shotOpen) && (<>
 <div style={css("position: absolute; inset: 0; z-index: 12")}>
 <button className="fade" onClick={v.closeShot} aria-label="اقفل" style={css("position: absolute; inset: 0; border: none; background: rgba(0,0,0,0.6); padding: 0")}></button>
@@ -2162,7 +2321,7 @@ class Component extends React.Component {
 <label style={css(`display: flex; flex-direction: column; gap: 6px; font-size: 13px; color: ${v.t.mute}`)}>المدينة
         <select name="city" value={v.pfCity} onChange={v.onPfCity} style={css(`height: 50px; border-radius: 12px; border: 1px solid ${v.t.line2}; background: ${v.t.soft}; color: ${v.t.ink}; padding: 0 12px; font-family: 'Alexandria', sans-serif; font-size: 16px`)}>
 <option value="">اختار مدينتك</option>
-{(v.cities || []).map((ct, i23) => (<React.Fragment key={i23}>
+{(v.cities || []).map((ct, i26) => (<React.Fragment key={i26}>
 <option value={ct}>{ct}</option>
 </React.Fragment>))}
 </select>
@@ -2195,7 +2354,7 @@ class Component extends React.Component {
 </button>
 </div>
 <div style={css("margin-top: 18px; display: flex; flex-direction: column")}>
-{(v.menuItems || []).map((m, i24) => (<React.Fragment key={i24}>
+{(v.menuItems || []).map((m, i27) => (<React.Fragment key={i27}>
 <button className="press fu" onClick={m.go} disabled={m.soon} style={css(`min-height: 64px; display: flex; align-items: center; justify-content: space-between; gap: 10px; background: none; border: none; border-bottom: 1px solid ${v.t.line}; color: ${v.t.ink}; text-align: right; padding: 0; animation-delay: ${m.delay}s; opacity: ${m.op}`)}>
 <span style={css("display: flex; flex-direction: column; gap: 3px")}>
 <span style={css("font-size: 16px; font-weight: 500")}>{m.label}</span>
@@ -2227,7 +2386,7 @@ class Component extends React.Component {
 <button className="press" onClick={v.goCompare} style={css(`height: 56px; padding: 0 30px; border-radius: 999px; border: 1px solid ${v.t.ink}; background: none; color: ${v.t.ink}; font-size: 17px; font-weight: 500`)}>قارن عربيات</button>
 </div>
 <div style={css("display: flex; gap: 64px; margin-top: 28px")}>
-{(v.deskStats || []).map((ds, i25) => (<React.Fragment key={i25}>
+{(v.deskStats || []).map((ds, i28) => (<React.Fragment key={i28}>
 <div style={css("display: flex; flex-direction: column; gap: 4px")}>
 <span className="num" style={css("font-size: 40px; font-weight: 200")}>{ds.n}</span>
 <span style={css(`font-size: 14px; color: ${v.t.mute}`)}>{ds.label}</span>
@@ -2244,7 +2403,7 @@ class Component extends React.Component {
 {(v.didYouMean) && (<>
 <p aria-live="polite" style={css(`margin: 0 8px; font-size: 14px; color: ${v.t.mute}`)}>قصدك <span style={css(`color: ${v.t.ink}`)}>{v.didYouMean}</span>؟</p>
 </>)}
-{(v.results || []).map((r, i26) => (<React.Fragment key={i26}>
+{(v.results || []).map((r, i29) => (<React.Fragment key={i29}>
 <div style={css(`min-height: 68px; display: flex; align-items: center; justify-content: space-between; gap: 16px; border-bottom: 1px solid ${v.t.line}`)}>
 <div style={css("display: flex; flex-direction: column; gap: 3px")}>
 <span style={css("font-size: 16px")}>{r.name}</span>
@@ -2266,7 +2425,7 @@ class Component extends React.Component {
 <span style={css(`font-size: 14px; color: ${v.t.mute}`)}>تغييرات أسعار الزيرو، ولقطات نزلت أرخص من السوق</span>
 </div>
 <div style={css("display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px")}>
-{(v.deskMarket || []).map((dm, i27) => (<React.Fragment key={i27}>
+{(v.deskMarket || []).map((dm, i30) => (<React.Fragment key={i30}>
 <button className="press" onClick={dm.go} style={css(`min-height: 140px; padding: 20px; border-radius: 18px; border: 1px solid ${v.t.line}; background: ${v.t.soft}; color: ${v.t.ink}; text-align: right; display: flex; flex-direction: column; justify-content: space-between; gap: 14px`)}>
 <span style={css("display: flex; flex-direction: column; gap: 6px")}>
 <span style={css("font-size: 16px; font-weight: 500; line-height: 1.5")}>{dm.name}</span>
@@ -2286,7 +2445,7 @@ class Component extends React.Component {
 <button className="press" onClick={v.openZero} style={css(`background: none; border: none; color: ${v.t.ink}; font-size: 15px; padding: 0; min-height: 40px; text-decoration: underline`)}>كل الأسعار ←</button>
 </div>
 <div style={css("display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: 48px")}>
-{(v.deskZero || []).map((dz, i28) => (<React.Fragment key={i28}>
+{(v.deskZero || []).map((dz, i31) => (<React.Fragment key={i31}>
 <button className="press" onClick={dz.go} style={css(`min-height: 60px; display: flex; align-items: center; justify-content: space-between; gap: 12px; background: none; border: none; border-bottom: 1px solid ${v.t.line}; color: ${v.t.ink}; padding: 0; text-align: right`)}>
 <span style={css("font-size: 15px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap")}>{dz.name}</span>
 <span className="num" style={css("flex: none; font-size: 16px; direction: ltr")}>{dz.price}</span>
@@ -2297,7 +2456,7 @@ class Component extends React.Component {
 {(v.deskSaved) && (<>
 <section aria-labelledby="dk-mine" style={css("display: flex; flex-direction: column")}>
 <h2 id="dk-mine" style={css("margin: 0 0 10px; font-size: 30px; font-weight: 600")}>تسعيراتك</h2>
-{(v.recent || []).map((rc, i29) => (<React.Fragment key={i29}>
+{(v.recent || []).map((rc, i32) => (<React.Fragment key={i32}>
 <button className="press" onClick={rc.go} style={css(`min-height: 64px; display: flex; align-items: center; justify-content: space-between; gap: 16px; background: none; border: none; border-bottom: 1px solid ${v.t.line}; color: ${v.t.ink}; padding: 0; text-align: right`)}>
 <span style={css("font-size: 15px")}>{rc.name} <span style={css(`color: ${rc.noteFg}; font-size: 13px; margin-right: 10px`)}>{rc.note}</span></span>
 <span className="num" style={css("font-size: 16px; direction: ltr")}>{rc.range}</span>
@@ -2308,7 +2467,7 @@ class Component extends React.Component {
 <section aria-labelledby="dk-how" style={css("display: flex; flex-direction: column; gap: 22px")}>
 <h2 id="dk-how" style={css("margin: 0; font-size: 30px; font-weight: 600")}>بيشتغل إزاي</h2>
 <ol style={css("margin: 0; padding: 0; list-style: none; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px")}>
-{(v.deskHow || []).map((hw, i30) => (<React.Fragment key={i30}>
+{(v.deskHow || []).map((hw, i33) => (<React.Fragment key={i33}>
 <li style={css(`padding: 24px; border-radius: 18px; border: 1px solid ${v.t.line}; display: flex; flex-direction: column; gap: 10px`)}>
 <span className="num" style={css("font-size: 15px; color: #F2A93B")}>{hw.n}</span>
 <span style={css("font-size: 18px; font-weight: 600")}>{hw.title}</span>
@@ -2327,7 +2486,7 @@ class Component extends React.Component {
 <div role="row" style={css(`display: grid; grid-template-columns: minmax(0, 1fr) 160px 160px; gap: 16px; padding: 0 0 10px; border-bottom: 1px solid ${v.t.line2}; font-size: 13px; color: ${v.t.mute}`)}>
 <span role="columnheader">العربية</span><span role="columnheader">الإعلانات المستعملة</span><span role="columnheader" style={css("text-align: left")}>سعر الزيرو</span>
 </div>
-{(v.zeroAll || []).map((za, i31) => (<React.Fragment key={i31}>
+{(v.zeroAll || []).map((za, i34) => (<React.Fragment key={i34}>
 <button className="press" role="row" onClick={za.go} style={css(`min-height: 58px; display: grid; grid-template-columns: minmax(0, 1fr) 160px 160px; align-items: center; gap: 16px; background: none; border: none; border-bottom: 1px solid ${v.t.line}; color: ${v.t.ink}; padding: 0; text-align: right`)}>
 <span role="cell" style={css("font-size: 15px")}>{za.name}</span>
 <span role="cell" className="num" style={css(`font-size: 14px; color: ${v.t.mute}`)}>{za.n}</span>
@@ -2347,7 +2506,7 @@ class Component extends React.Component {
 <span style={css(`font-size: 13px; color: ${v.t.mute}`)}>مقارنة بالرينج لعربية فابريكا</span>
 </div>
 <div role="table" aria-labelledby="dk-cmp" style={css("display: flex; flex-direction: column")}>
-{(v.deskComps || []).map((dc, i32) => (<React.Fragment key={i32}>
+{(v.deskComps || []).map((dc, i35) => (<React.Fragment key={i35}>
 <button className="press" role="row" onClick={dc.go} style={css(`min-height: 58px; display: grid; grid-template-columns: minmax(0, 1fr) 180px 130px 90px; align-items: center; gap: 16px; background: none; border: none; border-bottom: 1px solid ${v.t.line}; color: ${v.t.ink}; padding: 0; text-align: right`)}>
 <span role="cell" style={css("font-size: 15px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap")}>{dc.name}</span>
 <span role="cell" style={css(`font-size: 13px; color: ${v.t.mute}; overflow: hidden; text-overflow: ellipsis; white-space: nowrap`)}>{dc.sub}</span>
