@@ -131,7 +131,7 @@ where l.price_egp between 50000 and 50000000 and l.year between 1990 and %s
 """
 
 
-def load_rows(cx, days: int = 180) -> list[tuple[dict, float]]:
+def load_rows(cx, days: int = 365) -> list[tuple[dict, float]]:
     from .pricing import EXCLUDE_BADGES
     today = date.today().year
     out = []
@@ -348,7 +348,7 @@ VARIANTS = {
 }
 
 
-def comps_error(cx, n: int = 300, seed: int = 5) -> dict:
+def comps_error(cx, n: int = 300, seed: int = 5, wide: bool = True) -> dict:
     """The comparables engine on its own, measured the same way: price random recent ads with that ad left out."""
     import random
     import statistics
@@ -358,7 +358,7 @@ def comps_error(cx, n: int = 300, seed: int = 5) -> dict:
                         where l.price_egp between 50000 and 50000000 and l.km is not null
                           and l.last_seen > now() - interval '60 days'""").fetchall()
     random.Random(seed).shuffle(ads)
-    pr = Pricer(cx, use_ai=False)
+    pr = Pricer(cx, use_ai=False, wide=wide)
     errs, priced = [], 0
     for mk, mo, y, km, trim, url, price in ads[:n]:
         pr.exclude_url = url
@@ -428,7 +428,8 @@ def experiment(rows, cx=None) -> dict:
     """Train every variant on the same split and return their test metrics (for choosing the setup)."""
     out = {}
     if cx is not None:
-        out["comps engine (no AI)"] = comps_error(cx)
+        out["comps narrow (before)"] = comps_error(cx, wide=False)
+        out["comps wide (now)"] = comps_error(cx, wide=True)
     for name, kw in VARIANTS.items():
         _, m = train(rows, **kw)
         out[name] = {k: m.get(k) for k in ("median_ape", "mape", "within_10pct", "clean_median_ape", "clean_within_10pct", "range_hit", "dropped_outliers")}

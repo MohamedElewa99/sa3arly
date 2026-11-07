@@ -172,7 +172,7 @@ def main(argv=None):
     im = sub.add_parser("import", help="import pages saved with the Sa3arly browser button")
     im.add_argument("--folder", default=str(Path.home() / "Downloads"))
     tn = sub.add_parser("train", help="train the AI price model on recent ads and store it in the database")
-    tn.add_argument("--days", type=int, default=180)
+    tn.add_argument("--days", type=int, default=365)
     tn.add_argument("--min-rows", type=int, default=500)
     tn.add_argument("--experiment", action="store_true", help="compare model setups on the same split, save nothing")
     dl = sub.add_parser("daily")

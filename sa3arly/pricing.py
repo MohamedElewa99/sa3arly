@@ -1,7 +1,7 @@
 """Sa3arly pricing engine — fair market range for one used car, explained line by line.
 
 Method (matches the spec):
- 1. comparables: same make + model, model year ±1 (±2 when thin), listed in the last 60 days,
+ 1. comparables: same make + model, model year ±1, widened (±2, then 120 / 180 days, ±3) until 15 ads,
     not customs-exempt ('Disabled'), not zero-km stock;
  2. keep the closest cars: same trim and a similar odometer when there are enough of them;
     clean: drop asking prices that are impossible next to today's zero price (down-payment ads,
@@ -143,6 +143,10 @@ def _paint_weight(part: str) -> float:
     return 0.015
 
 
+WANT_COMPS = 15                                    # aim for at least this many ads
+WIDE_STEPS = ((1, 60), (2, 60), (2, 120), (3, 180))  # (model years either side, days back)
+
+
 def _ai_weight(n: int, known_model: bool, has_zero: bool, error: float = 0.0, learned: Optional[dict] = None) -> float:
     """How much the learned model counts next to n close comparables (checked on held-out cars, see tests).
     A model whose held-out error is above 6 % counts proportionally less."""
@@ -159,8 +163,9 @@ def _ai_weight(n: int, known_model: bool, has_zero: bool, error: float = 0.0, le
 
 
 class Pricer:
-    def __init__(self, cx, use_ai: bool = True):
+    def __init__(self, cx, use_ai: bool = True, wide: bool = True):
         self.cx = cx
+        self.wide = wide
         self.use_ai = use_ai
         self.exclude_url = None          # leave one ad out (for measuring the error on that ad)
 
@@ -229,10 +234,12 @@ class Pricer:
     def quote(self, make: str, model: str, year: int, km: int, paint: Optional[dict] = None,
               repairs: Optional[list[tuple[int, int]]] = None, trim: Optional[str] = None) -> Quote:
         lines = []
-        comps = self.comparables(make, model, year, 1)
-        spread = 1
-        if len(comps) < 8:
-            comps, spread = self.comparables(make, model, year, 2), 2
+        # widen step by step until there are enough ads to compare with (years and km are adjusted below)
+        steps = WIDE_STEPS if self.wide else ((1, 60), (2, 60))
+        for spread, days in steps:
+            comps = self.comparables(make, model, year, spread, days)
+            if len(comps) >= (WANT_COMPS if self.wide else 8):
+                break
         zero, zero_year = self.zero_price(make, model)
         found = len(comps)
         if zero:
@@ -254,7 +261,7 @@ class Pricer:
         if found - n:
             lines.append(f"اتشال {found - n} إعلان سعره شاذ أو بعيد عن العربية دي")
         conf = "عالية" if n >= 20 else "متوسطة" if n >= 8 else "منخفضة"
-        lines.append(f"{n} عربية شبهها اتقارنت (سنة {year - spread}–{year + spread}، آخر ٦٠ يوم، "
+        lines.append(f"{n} عربية شبهها اتقارنت (سنة {year - spread}–{year + spread}، آخر {days} يوم، "
                      f"مصادر: {', '.join(sorted({c.source for c in comps})) or '—'})")
         lines.append(f"تظبيط السنة والعداد: {y_rate:.1%} لكل سنة و{k_rate:.1%} لكل ١٠ آلاف كم "
                      f"({'محسوبة من السوق' if how == 'fitted' else 'قيم افتراضية'})")
