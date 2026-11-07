@@ -268,6 +268,10 @@ class Component extends React.Component {
         self[slot + 'El'] = el;
         if (!window.THREE) { self.setState({ gl: false }); return; }
         var reduce = !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+        // build the 3D car after the screen has slid in, so the tap itself stays instant
+        clearTimeout(self[slot + 'B']);
+        self[slot + 'B'] = setTimeout(function () {
+        if (self[slot + 'El'] !== el || self[slot]) return;
         try {
           self[slot] = self.sa3Scene(window.THREE, el, {
             hero: hero, look: { paint: self.paintHex() }, body: hero ? 'crossover' : self.state.body,
@@ -282,6 +286,7 @@ class Component extends React.Component {
             self._cycle = setInterval(function () { ix = (ix + 1) % order.length; if (self._hero) self._hero.setBody(order[ix]); }, 4500);
           }
         } catch (e) { self.setState({ gl: false }); }
+        }, reduce ? 0 : 300);
       };
     };
     this._paintRef = mk('_paint', false);
@@ -461,7 +466,7 @@ class Component extends React.Component {
       body.lineTo(T.wf + T.ar + 0.05, T.yb);
       body.lineTo(T.xf - 0.1, T.yb);
       body.quadraticCurveTo(T.xf - 0.01, T.yb, T.xf, T.yb + 0.02);
-      var bodyGeo = track(new THREE.ExtrudeGeometry(body, { depth: D, bevelEnabled: true, bevelThickness: BT, bevelSize: 0.05, bevelSegments: OUT ? 1 : 6, curveSegments: 28, steps: 1 }));
+      var bodyGeo = track(new THREE.ExtrudeGeometry(body, { depth: D, bevelEnabled: true, bevelThickness: BT, bevelSize: 0.05, bevelSegments: OUT ? 1 : 3, curveSegments: 16, steps: 1 }));
       bodyGeo.translate(0, 0, -D / 2);
       if (bodyGeo.index) bodyGeo = bodyGeo.toNonIndexed();
   
@@ -544,7 +549,7 @@ class Component extends React.Component {
       else gh.quadraticCurveTo(T.gx3 + (T.gx4 - T.gx3) * 0.45, T.yr - 0.05, T.gx4, T.belt - 0.03);
       gh.lineTo(T.gx1, T.yh - 0.03);
       var GD = D - 0.16;
-      var ghGeo = track(new THREE.ExtrudeGeometry(gh, { depth: GD, bevelEnabled: true, bevelThickness: 0.07, bevelSize: 0.05, bevelSegments: OUT ? 1 : 6, curveSegments: 24, steps: 1 }));
+      var ghGeo = track(new THREE.ExtrudeGeometry(gh, { depth: GD, bevelEnabled: true, bevelThickness: 0.07, bevelSize: 0.05, bevelSegments: OUT ? 1 : 3, curveSegments: 14, steps: 1 }));
       ghGeo.translate(0, 0, -GD / 2);
       if (ghGeo.index) ghGeo = ghGeo.toNonIndexed();
       (function () {   // tumblehome: the glasshouse leans in towards the roof
@@ -613,8 +618,8 @@ class Component extends React.Component {
         var tl = new THREE.Mesh(tlGeo, tailMat); tl.position.set(T.xr - 0.01, T.deck - 0.14, z); g.add(tl);
       });
       var R = T.wr0;
-      var tireGeo = track(new THREE.CylinderGeometry(R, R, 0.27, 48)); tireGeo.rotateX(Math.PI / 2);
-      var rimGeo = track(new THREE.CylinderGeometry(R * 0.65, R * 0.65, 0.275, 40)); rimGeo.rotateX(Math.PI / 2);
+      var tireGeo = track(new THREE.CylinderGeometry(R, R, 0.27, 32)); tireGeo.rotateX(Math.PI / 2);
+      var rimGeo = track(new THREE.CylinderGeometry(R * 0.65, R * 0.65, 0.275, 28)); rimGeo.rotateX(Math.PI / 2);
       var hubGeo = track(new THREE.CylinderGeometry(0.06, 0.06, 0.29, 20)); hubGeo.rotateX(Math.PI / 2);
       var tireMat = track(new THREE.MeshStandardMaterial({ color: 0x050506, roughness: 0.95, envMapIntensity: 0.2 }));
       var rimMat = track(new THREE.MeshStandardMaterial({ color: 0x3a3d42, metalness: 1, roughness: 0.3 }));
@@ -1507,7 +1512,7 @@ class Component extends React.Component {
       pickOtherKey: function (e) { if (e.key === 'Enter') { e.preventDefault(); useOther(); } },
       usePickOther: function () { useOther(); },
       sheetRows: sheetRows,
-      paintLoading: !S.paintReady,
+      paintLoading: !S.paintReady, paintOp: S.paintReady ? 1 : 0,
       wmKey: 'w' + S.wm, penKey: 'p' + S.wm,
       rewrite: function () { self.setState({ wm: self.state.wm + 1 }); },
       moreOpen: S.more, moreLabel: S.more ? 'أقل' : 'كل التغييرات',
@@ -1821,7 +1826,7 @@ class Component extends React.Component {
 {(v.gl) && (<>
 <div style={css("position: relative; align-self: center")}>
 {(v.paintLoading) && (<><span aria-hidden="true" style={css(`position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-size: 13px; color: ${v.t.mute}`)}>بنجهّز العربية…</span></>)}
-<canvas ref={v.paintRef} width="350" height="240" role="img" aria-label="عربية 3D: لفّها بصباعك ودوس على أي جزء" style={css("width: 350px; height: 240px; display: block; position: relative; flex: none; align-self: center; touch-action: none; cursor: grab")}></canvas>
+<canvas ref={v.paintRef} width="350" height="240" role="img" aria-label="عربية 3D: لفّها بصباعك ودوس على أي جزء" style={css(`width: 350px; height: 240px; display: block; position: relative; flex: none; align-self: center; touch-action: none; cursor: grab; opacity: ${v.paintOp}; transition: opacity .4s ease`)}></canvas>
 </div>
 </>)}
 {(v.noGl) && (<>
