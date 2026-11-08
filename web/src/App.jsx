@@ -246,7 +246,7 @@ class Component extends React.Component {
       q: '', tray: [], km: 100000, agencyKm: 60000,
       paint: {}, ex: {}, spin: true, angle: -35, dragging: false, last: '',
       mech: {}, open: null, k: 1, carSet: false, kmSet: false, hist: [], picked: {},
-      gl: true, oth: {}, exOther: false, mo: {}, body: 'crossover', bodyAuto: true, heroOn: true, partsOpen: false, mf: 'all', paintReady: false, more: false, wm: 0, margin: 30000, receipt: false, hideBuy: false, copied: false, checked: {}, car: { make: 'كوبرا', model: 'فورمينتور', year: 2022, trim: 'VZ' }, picker: null, pickOther: '', sheet: null, login: null, loginSent: false, loginEmail: '', loginErr: '', loginBusy: false, saving: false, flash: '', profile: false, pf: null, pfBusy: false, pfErr: '', photoBusy: false, item: null, shotsDone: {}, extraShots: 0, shotPick: null, extras: [], deskPage: null, zq: '', zp: null, zpq: '', vis: { busy: false, note: '' }, folds: {},
+      gl: true, oth: {}, exOther: false, mo: {}, body: 'crossover', bodyAuto: true, heroOn: true, partsOpen: false, mf: 'all', paintReady: false, more: false, wm: 0, margin: 30000, receipt: false, hideBuy: false, copied: false, checked: {}, car: { make: 'كوبرا', model: 'فورمينتور', year: 2022, trim: 'VZ' }, picker: null, pickOther: '', sheet: null, login: null, wa: null, loginSent: false, loginEmail: '', loginErr: '', loginBusy: false, saving: false, flash: '', profile: false, pf: null, pfBusy: false, pfErr: '', photoBusy: false, item: null, shotsDone: {}, extraShots: 0, shotPick: null, extras: [], deskPage: null, zq: '', zp: null, zpq: '', vis: { busy: false, note: '' }, folds: {},
       mine: null, my: { price: '', status: 'available', notes: '' }, myBusy: false, myF: 'all', myOpen: null, myDel: false
     };
     // what this person did last time (car, km, paint, mechanics, margin, compare list, history) comes back
@@ -452,7 +452,7 @@ class Component extends React.Component {
     if (S.shotPick) { this.setState({ shotPick: null }); return true; }
     if (S.myOpen) { this.setState({ myOpen: null, myDel: false }); return true; }
     if (S.sheet) { this.setState({ sheet: null, picker: null, item: null }); return true; }
-    if (S.login) { this.setState({ login: null }); return true; }
+    if (S.login) { if (this._waCtl) this._waCtl.stop = true; this.setState({ login: null, wa: null }); return true; }
     if (S.profile) { this.setState({ profile: false, pf: null }); return true; }
     if (S.receipt) { this.setState({ receipt: false }); return true; }
     if (S.menu) { this.setState({ menu: false }); return true; }
@@ -1212,6 +1212,20 @@ class Component extends React.Component {
         function () { self.setState({ saving: false }); self.flashMsg('ماتحفظتش، جرّب تاني'); });
     };
     var mailOk = /^[^@\s]+@[^@\s]+\.[^@\s]{2,}$/.test(S.loginEmail.trim());
+    var waGo = function () {
+      if (!A.waStart || (self.state.wa && self.state.wa.busy)) return;
+      if (self._waCtl) self._waCtl.stop = true;
+      var ctl = self._waCtl = { stop: false };
+      self.setState({ wa: { busy: true }, loginErr: '' });
+      A.waStart().then(function (d) {
+        if (ctl.stop) return;
+        self.setState({ wa: { code: d.code, link: d.wa } });
+        return A.waWait(d.nonce, ctl).then(function (r) {
+          if (r === 'ok') { if (!self.state.login) self.flashMsg('أهلاً، دخلت'); self.setState({ wa: null }); }
+          else if (r === 'expired') self.setState({ wa: null, loginErr: 'الكود خلص وقته. دوس "ادخل بالواتساب" تاني.' });
+        });
+      }).catch(function () { if (!ctl.stop) self.setState({ wa: null, loginErr: 'حصلت مشكلة، جرّب تاني.' }); });
+    };
     var sendLink = function () {
       var m = self.state.loginEmail.trim();
       if (!/^[^@\s]+@[^@\s]+\.[^@\s]{2,}$/.test(m)) return self.setState({ loginErr: 'اكتب إيميل صح، مثلاً name@gmail.com' });
@@ -1400,6 +1414,9 @@ class Component extends React.Component {
       loginEmail: S.loginEmail, onLoginEmail: function (e) { self.setState({ loginEmail: e.target.value, loginErr: '' }); },
       emailBtn: S.loginBusy ? 'بيتبعت…' : 'ابعتلي لينك الدخول', emailDisabled: S.loginBusy || !mailOk, emailOp: S.loginBusy || !mailOk ? 0.45 : 1,
       sendLink: sendLink, loginErr: S.loginErr, hasLoginErr: !!S.loginErr,
+      waOn: !!A.waOn, waIdle: !!A.waOn && !S.wa, waWaiting: !!(S.wa && S.wa.code), waBusy: !!(S.wa && S.wa.busy),
+      waGo: waGo, waCode: S.wa && S.wa.code ? S.wa.code.slice(0, 3) + ' ' + S.wa.code.slice(3) : '', waLink: (S.wa && S.wa.link) || '',
+      waCancel: function () { if (self._waCtl) self._waCtl.stop = true; self.setState({ wa: null }); },
       loginKey: function (e) {
         if (e.key === 'Escape') { if (A.pending) A.pending(null); self.setState({ login: null }); }
         else if (e.key === 'Enter' && e.target && e.target.name === 'email') { e.preventDefault(); sendLink(); }
@@ -1411,7 +1428,7 @@ class Component extends React.Component {
       },
       googleOn: A.googleOn !== false,
       mailBg: A.googleOn === false ? t.ink : 'transparent', mailFg: A.googleOn === false ? t.bg : t.ink,
-      closeLogin: function () { if (A.pending) A.pending(null); self.setState({ login: null }); },
+      closeLogin: function () { if (A.pending) A.pending(null); if (self._waCtl) self._waCtl.stop = true; self.setState({ login: null, wa: null }); },
       editEmail: function () { self.setState({ loginSent: false }); },
       hasFlash: !!S.flash, flash: S.flash,
       goHomeTop: function () { self.setState({ sheet: null, zp: null, menu: false, myOpen: null }); self.go('home', 'b'); },
@@ -2733,6 +2750,29 @@ class Component extends React.Component {
 </>)}
 {(v.loginAsk) && (<>
 <div className="fu" style={css("display: flex; flex-direction: column; gap: 10px; animation-delay: .1s")}>
+{(v.waOn) && (<>
+{(v.waIdle) && (<>
+<button className="press" onClick={v.waGo} style={css("height: 54px; border-radius: 999px; border: none; background: #25D366; color: #000000; font-size: 16px; font-weight: 600; display: flex; align-items: center; justify-content: center; gap: 10px")}>
+<svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 2a10 10 0 0 0-8.6 15.1L2 22l5-1.3A10 10 0 1 0 12 2zm0 18.2a8.2 8.2 0 0 1-4.2-1.2l-.3-.2-3 .8.8-2.9-.2-.3A8.2 8.2 0 1 1 12 20.2zm4.5-6.1c-.2-.1-1.5-.7-1.7-.8s-.4-.1-.6.1-.6.8-.8 1c-.1.2-.3.2-.5.1a6.7 6.7 0 0 1-3.3-2.9c-.3-.4.3-.4.7-1.4.1-.2 0-.3 0-.4l-.8-1.8c-.2-.5-.4-.4-.6-.4h-.5a1 1 0 0 0-.7.3 3 3 0 0 0-.9 2.2 5.2 5.2 0 0 0 1.1 2.8 11.9 11.9 0 0 0 4.6 4c1.7.7 2.4.8 3.2.7a2.8 2.8 0 0 0 1.8-1.3 2.3 2.3 0 0 0 .2-1.3c-.1-.1-.2-.2-.5-.3z"></path></svg>
+              ادخل برقمك على الواتساب
+            </button>
+</>)}
+{(v.waBusy) && (<>
+<div style={css(`height: 54px; display: flex; align-items: center; justify-content: center; color: ${v.t.mute}; font-size: 14px`)}>لحظة…</div>
+</>)}
+{(v.waWaiting) && (<>
+<div className="fu" role="status" style={css("display: flex; flex-direction: column; gap: 12px; padding: 16px; border-radius: 16px; border: 1px solid #25D366")}>
+<span style={css(`font-size: 13px; color: ${v.t.mute}`)}>ابعت الكود ده من الواتساب بتاعك:</span>
+<span className="num" dir="ltr" style={css("font-size: 34px; font-weight: 600; letter-spacing: 4px; text-align: center")}>{v.waCode}</span>
+<a href={v.waLink} target="_blank" rel="noopener" className="press" style={css("height: 50px; border-radius: 999px; background: #25D366; color: #000000; display: flex; align-items: center; justify-content: center; font-size: 15px; font-weight: 600; text-decoration: none")}>افتح الواتساب وابعته</a>
+<span style={css(`font-size: 12px; line-height: 1.8; color: ${v.t.mute}`)}>الرسالة هتتكتب لوحدها، دوس إرسال وارجع هنا. أول ما توصلنا هتدخل على طول برقمك. الكود شغال 10 دقايق.</span>
+<button className="press" onClick={v.waCancel} style={css(`align-self: flex-start; min-height: 36px; padding: 0; background: none; border: none; color: ${v.t.mute}; font-size: 13px; text-decoration: underline`)}>إلغاء</button>
+</div>
+</>)}
+<div aria-hidden="true" style={css(`display: flex; align-items: center; gap: 12px; color: ${v.t.mute}; font-size: 12px; margin: 4px 0`)}>
+<span style={css(`flex: 1; height: 1px; background: ${v.t.line}`)}></span>أو<span style={css(`flex: 1; height: 1px; background: ${v.t.line}`)}></span>
+</div>
+</>)}
 {(v.googleOn) && (<>
 <button className="press" onClick={v.goGoogle} style={css(`height: 54px; border-radius: 999px; border: none; background: ${v.t.ink}; color: ${v.t.bg}; font-size: 16px; font-weight: 600; display: flex; align-items: center; justify-content: center; gap: 10px`)}>
 <svg width="20" height="20" viewBox="0 0 48 48" aria-hidden="true"><path fill="#EA4335" d="M24 9.5c3.5 0 6.6 1.2 9.1 3.6l6.8-6.8C35.8 2.4 30.3 0 24 0 14.6 0 6.6 5.4 2.6 13.3l7.9 6.2C12.4 13.6 17.7 9.5 24 9.5z"></path><path fill="#4285F4" d="M46.1 24.5c0-1.6-.1-3.1-.4-4.5H24v9h12.4c-.5 2.9-2.2 5.3-4.6 6.9l7.4 5.7c4.3-4 6.9-9.9 6.9-17.1z"></path><path fill="#FBBC05" d="M10.5 28.6c-.5-1.4-.8-3-.8-4.6s.3-3.2.8-4.6l-7.9-6.2C1 16.5 0 20.1 0 24s1 7.5 2.6 10.8l7.9-6.2z"></path><path fill="#34A853" d="M24 48c6.5 0 11.9-2.1 15.9-5.8l-7.4-5.7c-2.1 1.4-4.8 2.2-8.5 2.2-6.3 0-11.6-4.1-13.5-9.9l-7.9 6.2C6.6 42.6 14.6 48 24 48z"></path></svg>

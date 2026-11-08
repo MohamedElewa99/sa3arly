@@ -11,6 +11,7 @@ const auth = {
   ready: false,       // config loaded
   enabled: false,     // Supabase keys configured on the server
   googleOn: false,    // Google provider switched on in Supabase
+  waOn: false,        // sign in with WhatsApp set up on the server
   user: null,         // { id, email, name }
   items: [],          // saved pricings, newest first
   profile: null,      // { name, showroom, phone, city, avatar }
@@ -18,7 +19,7 @@ const auth = {
   garage: [],         // عربياتي: the user's own cars (list rows: cover photo only)
   garageReady: false,
   google, email, signOut, save, remove, pending, takePending, saveProfile, photo,
-  carGet, carAdd, carEdit, carRemove, carPhotos,
+  carGet, carAdd, carEdit, carRemove, carPhotos, waStart, waWait,
 };
 Component.auth = auth;
 
@@ -30,6 +31,7 @@ export async function initAuth() {
   try {
     const cfg = await fetch(API + '/api/config').then((r) => r.json());
     auth.enabled = !!cfg.auth;
+    auth.waOn = !!(cfg.auth && cfg.whatsapp);
     if (cfg.vision) Component.readPhoto = readPhoto;
     if (auth.enabled) {
       fetch(cfg.supabaseUrl + '/auth/v1/settings', { headers: { apikey: cfg.anonKey } })
@@ -48,7 +50,8 @@ export async function initAuth() {
 async function setUser(session) {
   const u = session && session.user;
   const was = auth.user && auth.user.id;
-  auth.user = u ? { id: u.id, email: u.email, name: (u.user_metadata && (u.user_metadata.full_name || u.user_metadata.name)) || '' } : null;
+  const viaPhone = u && /@phone\.sa3arly\.app$/.test(u.email || '');
+  auth.user = u ? { id: u.id, email: viaPhone ? ((u.user_metadata && u.user_metadata.phone) || '') : u.email, name: (u.user_metadata && (u.user_metadata.full_name || u.user_metadata.name)) || '' } : null;
   auth.token = session ? session.access_token : null;
   if (!auth.user) { auth.items = []; auth.profile = null; auth.garage = []; auth.garageReady = false; refresh(); return; }
   if (was === auth.user.id) return;
@@ -168,6 +171,34 @@ async function remove(id) {
   await call('DELETE', '/api/saved?id=' + id);
   auth.items = auth.items.filter((x) => x.id !== id);
   refresh();
+}
+
+// ---------- sign in with WhatsApp: the user sends us the code from his own WhatsApp (free) ----------
+async function waStart() {
+  const res = await fetch(API + '/api/phone', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'start' }) });
+  if (!res.ok) throw new Error('phone ' + res.status);
+  return res.json();      // { code, wa, nonce, ttl }
+}
+// polls until the message arrives; resolves 'ok' (signed in), 'expired' or 'stopped' (ctl.stop = true)
+async function waWait(nonce, ctl) {
+  const until = Date.now() + 10 * 60 * 1000;
+  while (!ctl.stop && Date.now() < until) {
+    await new Promise((r) => setTimeout(r, 2000));
+    if (ctl.stop) break;
+    let d = null;
+    try {
+      const res = await fetch(API + '/api/phone', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'check', nonce }) });
+      d = res.ok ? await res.json() : null;
+    } catch (e) { d = null; }
+    if (!d || d.state === 'waiting' || d.state === 'error') continue;
+    if (d.state !== 'ok') return 'expired';
+    const { error } = await sb.auth.verifyOtp({ token_hash: d.token_hash, type: 'magiclink' });
+    if (error) throw error;
+    // the number he signed in with becomes his profile phone, if he hasn't set one
+    setTimeout(() => { if (auth.profile && !auth.profile.phone && d.phone && /^01/.test(d.phone)) saveProfile({ phone: d.phone }).catch(() => {}); }, 1500);
+    return 'ok';
+  }
+  return ctl.stop ? 'stopped' : 'expired';
 }
 
 // remember an action across the Google / email-link redirect
