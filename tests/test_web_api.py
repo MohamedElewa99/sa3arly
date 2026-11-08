@@ -78,3 +78,17 @@ def test_official_trims_lowest_first_and_per_year():
     assert per[2025] == ["Base", "Mid", "Top"] and per[2019] == ["Base", "Old Luxury"]
     assert allt.index("Base") == 0 and allt.index("Old Luxury") > allt.index("Mid")
     assert _merge_case(["1st Category", "1st category", "1st Category"]) == {"1st category": "1st Category"}
+
+
+def test_catalog_lists_models_with_no_ads(db):
+    from sa3arly.web_api import catalog, _trims_by_level
+    assert _trims_by_level([]) == []
+    db.execute("create table if not exists model_catalog (model_id int primary key references models(id), source text not null, seen_on date not null default current_date)")
+    mk = db.execute("insert into makes (slug, name_en) values ('alfa-romeo', 'Alfa Romeo') on conflict (slug) do update set slug = excluded.slug returning id").fetchone()[0]
+    mo = db.execute("insert into models (make_id, slug, name_en) values (%s, 'giulietta', 'Giulietta') on conflict (make_id, slug) do update set slug = excluded.slug returning id", (mk,)).fetchone()[0]
+    db.execute("insert into model_catalog (model_id, source) values (%s, 'hatla2ee') on conflict do nothing", (mo,))
+    try:
+        g = catalog(db)["makes"]["Alfa Romeo"]["Giulietta"]
+        assert g["trims"] == ["Standard"] and g["n"] == 0 and g["years"]
+    finally:
+        db.execute("drop table model_catalog")

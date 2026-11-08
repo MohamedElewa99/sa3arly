@@ -61,6 +61,8 @@ def _trims_by_level(rs, zero_trims: Optional[dict] = None) -> list:
     get a level from their used ads: price brought to the same model year (9 %/year) and the same km (1 % per 10k),
     pulled toward the model's middle when a trim has few ads, then put on the zero scale with the ratio measured on
     the matched trims. zero_trims: {trim name: newest zero price}."""
+    if not rs:
+        return []
     by: dict[str, list] = {}
     newest = max(r[2] for r in rs)
     kms = sorted(r[3] for r in rs if r[3] is not None)
