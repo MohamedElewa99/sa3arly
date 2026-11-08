@@ -16,6 +16,9 @@ _NOT = {"prices", "search", "compare", "reviews", "news", "dealers", "offers", "
         "best", "upcoming", "latest", "used-cars", "new-cars", "specs", "photos", "videos", "ar", "en"}
 
 
+_debug = [0]
+
+
 class TrimPrice(NamedTuple):
     make_raw: str
     model_raw: str
@@ -77,8 +80,13 @@ def parse_year_page(text: str, make_slug: str, url: str) -> list[TrimPrice]:
             if ls[j].startswith(prefix):
                 break
             pm = _PRICE.match(ls[j])
-            if pm:
-                price = int((pm.group(1) or pm.group(2)).replace(",", ""))
+            amt = (pm.group(1) or pm.group(2)) if pm else None
+            if not amt and j + 1 < len(ls) and re.fullmatch(r"(EGP|ج\.م)", ls[j]) and re.fullmatch(r"[\d,]{5,}", ls[j + 1]):
+                amt = ls[j + 1]
+            if not amt and j + 1 < len(ls) and re.fullmatch(r"[\d,]{5,}", ls[j]) and re.fullmatch(r"(EGP|ج\.م)", ls[j + 1]):
+                amt = ls[j]
+            if amt:
+                price = int(amt.replace(",", ""))
                 if 20_000 <= price <= 200_000_000:
                     out.append(TrimPrice(make_raw, model_raw, year, trim, price, url))
                     seen.add(trim)
@@ -133,6 +141,65 @@ def scrape(f: Fetcher, done: Optional[set] = None, max_pages: int = 1500, makes:
                     continue
                 rows = parse_year_page(text, mk, url)
                 yield from rows
+                if not rows and _debug[0] < 2:
+                    _debug[0] += 1
+                    print(f"[yallamotor] CHECK no versions parsed on {url}:\n" + "\n".join(text.split("\n")[:80]))
                 if not rows:
                     yield TrimPrice("", "", y, "", 0, url)          # marks the page as read (no prices on it)
                 todo.extend(x for x in year_links(more, mk, mo) if x not in seen_years)
+
+
+class HttpFetcher:
+    """Plain HTTP with a real browser's TLS fingerprint (curl_cffi): YallaMotor answers 403 to headless Chromium."""
+
+    def __init__(self, min_gap: float = 1.5, max_gap: float = 3.5):
+        from curl_cffi import requests as creq
+        self.s = creq.Session(impersonate="chrome")
+        self.min_gap, self.max_gap = min_gap, max_gap
+        self._last, self.pages, self.blocked = 0.0, 0, False
+
+    def get(self, url: str, **_) -> tuple[str, str, list[str]]:
+        import random
+        import time
+        wait = self.min_gap + random.random() * (self.max_gap - self.min_gap) - (time.time() - self._last)
+        if wait > 0:
+            time.sleep(wait)
+        r = None
+        for attempt in range(3):
+            try:
+                r = self.s.get(url, timeout=30, headers={"Accept-Language": "en-US,en;q=0.9"})
+            except Exception as e:                        # network hiccup: try again
+                if attempt == 2:
+                    raise RuntimeError(f"{e} at {url}")
+                time.sleep(3)
+                continue
+            if r.status_code in (429, 503):
+                time.sleep(10 * (attempt + 1))
+                continue
+            break
+        self._last = time.time()
+        self.pages += 1
+        if r.status_code == 403:
+            self.blocked = True
+            raise RuntimeError(f"blocked (403) at {url}")
+        if r.status_code != 200:
+            raise RuntimeError(f"HTTP {r.status_code} at {url}")
+        html = r.text
+        return html, html_text(html), html_links(html, url)
+
+    def close(self):
+        self.s.close()
+
+
+def html_links(html: str, base: str) -> list[str]:
+    from urllib.parse import urljoin
+    return [urljoin(base, h) for h in re.findall(r'href="([^"#]+)', html)]
+
+
+def html_text(html: str) -> str:
+    """Visible text, one line per block, close enough to innerText for the line parser above."""
+    import html as H
+    html = re.sub(r"(?is)<(script|style|noscript|svg)[^>]*>.*?</\1>", " ", html)
+    html = re.sub(r"(?i)<br\s*/?>|</?(p|div|li|ul|ol|tr|td|th|h[1-6]|section|article|span|a|button|header|footer|table)[^>]*>", "\n", html)
+    text = H.unescape(re.sub(r"<[^>]+>", " ", html))
+    return "\n".join(re.sub(r"[ \t ]+", " ", l).strip() for l in text.split("\n") if l.strip())

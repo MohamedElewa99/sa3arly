@@ -314,7 +314,12 @@ def main(argv=None):
         elif a.cmd == "models":
             run_models(f, store)
         elif a.cmd == "trims":
-            run_trims(f, store, a.max_pages)
+            from .scrapers.yallamotor_trims import HttpFetcher
+            hf = HttpFetcher()
+            try:
+                run_trims(hf, store, a.max_pages)
+            finally:
+                hf.close()
         elif a.cmd == "used":
             if a.source in BLOCKED:
                 print(f"[{a.source}] warning: {BLOCKED[a.source]} at last probe — expect few or no results")
