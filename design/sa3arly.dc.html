@@ -255,7 +255,7 @@ button:disabled{cursor:not-allowed}
     <button class="press" onClick="{{ back }}" aria-label="رجوع" style="width: 44px; height: 44px; background: none; border: none; color: {{ t.ink }}; display: flex; align-items: center; justify-content: center; padding: 0">
       <svg width="10" height="18" viewBox="0 0 10 18" aria-hidden="true"><path d="M1 1l8 8-8 8" stroke="currentColor" stroke-width="1.4" fill="none"></path></svg>
     </button>
-    <span style="font-family: 'Aref Ruqaa', serif; font-size: 26px; font-weight: 700" translate="no">سعرلي</span>
+    <button onClick="{{ goHomeTop }}" aria-label="سعرلي، الرئيسية" translate="no" style="background: none; border: none; padding: 0 8px; color: {{ t.ink }}; cursor: pointer; font-family: 'Aref Ruqaa', serif; font-size: 26px; font-weight: 700; line-height: 1.4">سعرلي</button>
     <span style="width: 44px" aria-hidden="true"></span>
   </header>
   <ol aria-label="{{ flowAria }}" style="list-style: none; margin: 0; padding: 2px 20px 0; flex: none; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px">
@@ -646,7 +646,7 @@ button:disabled{cursor:not-allowed}
     <button class="press" onClick="{{ goHomeBack }}" aria-label="رجوع" style="width: 44px; height: 44px; background: none; border: none; color: {{ t.ink }}; display: flex; align-items: center; justify-content: center; padding: 0">
       <svg width="10" height="18" viewBox="0 0 10 18" aria-hidden="true"><path d="M1 1l8 8-8 8" stroke="currentColor" stroke-width="1.4" fill="none"></path></svg>
     </button>
-    <span style="font-family: 'Aref Ruqaa', serif; font-size: 26px; font-weight: 700" translate="no">سعرلي</span>
+    <button onClick="{{ goHomeTop }}" aria-label="سعرلي، الرئيسية" translate="no" style="background: none; border: none; padding: 0 8px; color: {{ t.ink }}; cursor: pointer; font-family: 'Aref Ruqaa', serif; font-size: 26px; font-weight: 700; line-height: 1.4">سعرلي</button>
     <span style="width: 44px"></span>
   </header>
   <main style="flex: 1; min-height: 0; overflow-y: auto; padding: 14px 20px 24px; display: flex; flex-direction: column; gap: 18px">
@@ -676,7 +676,7 @@ button:disabled{cursor:not-allowed}
     <button class="press" onClick="{{ goHomeBack }}" aria-label="رجوع" style="width: 44px; height: 44px; background: none; border: none; color: {{ t.ink }}; display: flex; align-items: center; justify-content: center; padding: 0">
       <svg width="10" height="18" viewBox="0 0 10 18" aria-hidden="true"><path d="M1 1l8 8-8 8" stroke="currentColor" stroke-width="1.4" fill="none"></path></svg>
     </button>
-    <span style="font-family: 'Aref Ruqaa', serif; font-size: 26px; font-weight: 700" translate="no">سعرلي</span>
+    <button onClick="{{ goHomeTop }}" aria-label="سعرلي، الرئيسية" translate="no" style="background: none; border: none; padding: 0 8px; color: {{ t.ink }}; cursor: pointer; font-family: 'Aref Ruqaa', serif; font-size: 26px; font-weight: 700; line-height: 1.4">سعرلي</button>
     <span style="width: 44px"></span>
   </header>
   <main style="flex: 1; min-height: 0; overflow-y: auto; padding: 10px 20px 24px; display: flex; flex-direction: column; gap: 14px">
@@ -1126,7 +1126,7 @@ button:disabled{cursor:not-allowed}
   <button class="fade" onClick="{{ closeMenu }}" aria-label="اقفل القائمة" style="position: absolute; inset: 0; border: none; background: rgba(0,0,0,0.55); padding: 0"></button>
   <nav class="sheet" role="dialog" aria-modal="true" aria-label="القائمة" onKeyDown="{{ menuKey }}" style="position: absolute; top: 0; bottom: 0; right: 0; width: 300px; background: {{ t.bg }}; border-left: 1px solid {{ t.line }}; display: flex; flex-direction: column; padding: 18px 22px 26px; box-sizing: border-box">
     <div style="display: flex; align-items: center; justify-content: space-between">
-      <span style="font-family: 'Aref Ruqaa', serif; font-size: 34px; font-weight: 700" translate="no">سعرلي</span>
+      <button onClick="{{ goHomeTop }}" aria-label="سعرلي، الرئيسية" translate="no" style="background: none; border: none; padding: 0; color: {{ t.ink }}; cursor: pointer; font-family: 'Aref Ruqaa', serif; font-size: 34px; font-weight: 700; line-height: 1.4">سعرلي</button>
       <button class="press" onClick="{{ closeMenu }}" aria-label="اقفل" style="width: 44px; height: 44px; background: none; border: none; color: {{ t.ink }}; padding: 0; display: flex; align-items: center; justify-content: center">
         <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><path d="M1 1l14 14M15 1L1 15" stroke="currentColor" stroke-width="1.4"></path></svg>
       </button>
@@ -1740,7 +1740,41 @@ class Component extends DCLogic {
     this.setState({ paint: n, spin: false, last: (names[k] || k) + ': ' + st[n[k]] });
     if (this._paint) { this._paint.update(n); this._paint.setSpin(false); }
   }
-  componentDidMount() { if (this.state.screen === 'result' || this.state.screen === 'home') this.count(); }
+  componentDidMount() {
+    if (this.state.screen === 'result' || this.state.screen === 'home') this.count();
+    // the phone's back button steps back inside the app (closes what's open, then the previous screen);
+    // on the home screen with nothing open it asks for a second press before leaving
+    var self = this;
+    try {
+      if (!(history.state && history.state.sa3)) history.pushState({ sa3: 1 }, '');
+      this._onPop = function () {
+        if (self.backStep()) { history.pushState({ sa3: 1 }, ''); return; }
+        if (Date.now() - (self._backAt || 0) > 2500) {
+          self._backAt = Date.now();
+          history.pushState({ sa3: 1 }, '');
+          self.flashMsg('دوس رجوع تاني عشان تخرج');
+        } else history.back();
+      };
+      window.addEventListener('popstate', this._onPop);
+    } catch (e) { /* design canvas */ }
+  }
+  componentWillUnmount() { if (this._onPop) window.removeEventListener('popstate', this._onPop); }
+  backStep() {
+    var S = this.state;
+    if (S.shotPick) { this.setState({ shotPick: null }); return true; }
+    if (S.myOpen) { this.setState({ myOpen: null, myDel: false }); return true; }
+    if (S.sheet) { this.setState({ sheet: null, picker: null, item: null }); return true; }
+    if (S.login) { this.setState({ login: null }); return true; }
+    if (S.profile) { this.setState({ profile: false, pf: null }); return true; }
+    if (S.receipt) { this.setState({ receipt: false }); return true; }
+    if (S.menu) { this.setState({ menu: false }); return true; }
+    if (S.zp) { var z = S.zp; this.setState({ zpq: '', zp: z.trim ? { make: z.make, model: z.model } : z.model ? { make: z.make } : z.make ? {} : null }); return true; }
+    if (S.deskPage) { this.setState({ deskPage: null }); return true; }
+    if (S.screen === 'home') return false;
+    var order = S.mine ? ['car', 'paint', 'mech', 'mysave'] : ['car', 'paint', 'mech', 'result'], i = order.indexOf(S.screen);
+    this.go(i > 0 ? order[i - 1] : (S.mine ? 'garage' : 'home'), 'b');
+    return true;
+  }
   static get KEEP() { return ['car', 'carSet', 'picked', 'km', 'kmSet', 'agencyKm', 'paint', 'ex', 'exOther', 'mech', 'mo', 'oth', 'margin', 'tray', 'hist', 'checked', 'body', 'bodyAuto', 'hideBuy']; }
   static get KEEP_KEY() { return 'sa3.mine'; }
   componentDidUpdate(pp, ps) {
@@ -2692,6 +2726,7 @@ class Component extends DCLogic {
       closeLogin: function () { if (A.pending) A.pending(null); self.setState({ login: null }); },
       editEmail: function () { self.setState({ loginSent: false }); },
       hasFlash: !!S.flash, flash: S.flash,
+      goHomeTop: function () { self.setState({ sheet: null, zp: null, menu: false, myOpen: null }); self.go('home', 'b'); },
       isGarage: S.screen === 'garage', isMySave: S.screen === 'mysave', openGarage: openGarage,
       startMine: function () { self.startMine(null); },
       myTotal: myCount.all, myHasAny: myCount.all > 0, myEmpty: !!A.garageReady && myCount.all === 0, myLoadingList: !A.garageReady && !!me,
