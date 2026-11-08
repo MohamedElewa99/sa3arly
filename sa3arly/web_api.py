@@ -44,9 +44,48 @@ def _ref_price(rows: list[tuple[int, Optional[int], int]]) -> Optional[int]:
 JUNK = {"other", "others", "أخرى", "اخرى", "غير ذلك", "unknown", ""}
 
 
+NOT_MODELS = {"automatic", "manual", "diesel", "gas", "natural-gas", "natural gas", "electric", "hybrid", "plug-in-hybrid",
+              "plug in hybrid", "taxi", "classic", "disabled", "kasr-zero"}
+
+
 def _junk(name) -> bool:
     """Catch-all buckets from the listing sites ("Other") aren't a car anyone can pick."""
-    return (name or "").strip().lower() in JUNK
+    n = (name or "").strip().lower()
+    return n in JUNK or n in NOT_MODELS or n.startswith("other-") or n.startswith("other ")
+
+
+def _pretty(name: str) -> str:
+    """A model only known from a link ('giulietta-quadrifoglio-verde', 'creta-su2') -> 'Giulietta Quadrifoglio Verde', 'Creta SU2'."""
+    if " " in name or name != name.lower():
+        return name
+    return " ".join(w.upper() if re.search(r"\d", w) and re.search(r"[a-z]", w) else w.capitalize() for w in re.split(r"[-_]+", name) if w)
+
+
+_CAT = re.compile(r"^(\d)(?:st|nd|rd|th)\s+category$", re.I)
+
+
+def _listing_trims(rs: list, zero_trims: dict) -> list:
+    """Trims as written in the ads, cleaned and lowest first: one spelling per trim, typos seen once dropped,
+    the site's 'Nth Category' classes kept in their order (4th < 3rd < 2nd < 1st), 'Standard' only when alone."""
+    spell = _merge_case([_clean_trim(r[5]) for r in rs if _clean_trim(r[5])])
+    def ok(t):
+        return t and not re.search(r"\b(19|20)\d{2}\b", t) and len(t) <= 40
+    merged = [r[:5] + (spell.get(_clean_trim(r[5]).lower(), ""),) + r[6:] for r in rs]
+    merged = [r for r in merged if ok(r[5])]
+    counts: dict[str, int] = {}
+    for r in merged:
+        counts[r[5]] = counts.get(r[5], 0) + 1
+    if sum(1 for c in counts.values() if c >= 2) >= 2:
+        merged = [r for r in merged if counts[r[5]] >= 2]
+    ordered = list(reversed(_trims_by_level(merged, zero_trims)))
+    cats = sorted([t for t in ordered if _CAT.match(t)], key=lambda t: -int(_CAT.match(t).group(1)))
+    if cats:                                   # keep the classes in their own order, where the first one sat
+        at = min(ordered.index(t) for t in cats)
+        rest = [t for t in ordered if not _CAT.match(t)]
+        ordered = rest[:at] + cats + rest[at:]
+    if len(ordered) > 1:
+        ordered = [t for t in ordered if t.lower() not in ("standard", "عادية")] or ordered
+    return ordered
 
 
 def _tnorm(t: str) -> set:
@@ -132,7 +171,7 @@ def _merge_case(names: list[str]) -> dict[str, str]:
     for n in names:
         cnt.setdefault(n.lower(), {}).setdefault(n, 0)
         cnt[n.lower()][n] += 1
-    return {k: max(v, key=v.get) for k, v in cnt.items()}
+    return {k: max(v, key=lambda n: (v[n], n[:1].isupper())) for k, v in cnt.items()}
 
 
 def catalog(cx, days: int = 90, min_ads: int = 1) -> dict:
@@ -185,12 +224,13 @@ def catalog(cx, days: int = 90, min_ads: int = 1) -> dict:
         if len(official) >= 2 or (official and not rs_all):
             trims, trims_by_year = official, {str(y): ts for y, ts in per_year.items() if ts}
         else:
-            spell = _merge_case([_clean_trim(r[5]) for r in rs_all if _clean_trim(r[5])])
-            merged = [r[:5] + (spell.get(_clean_trim(r[5]).lower(), ""),) + r[6:] for r in rs_all]
-            trims = list(reversed(_trims_by_level(merged, {t: p for _, p, t in sorted((y, p, t) for y, p, t, _ in z) if t})))
+            trims = _listing_trims(rs_all, {t: p for _, p, t in sorted((y, p, t) for y, p, t, _ in z) if t})
             trims = trims or official or ["Standard"]
             trims_by_year = {}
-        makes.setdefault(mk, {})[mo] = {
+        mo_name = _pretty(mo)
+        if mo_name != mo and mo_name in makes.get(mk, {}):
+            continue
+        makes.setdefault(mk, {})[mo_name] = {
             "body": _body([r[6] for r in rs_all]),
             "trims": trims,
             "trimsByYear": trims_by_year,
@@ -204,8 +244,8 @@ def catalog(cx, days: int = 90, min_ads: int = 1) -> dict:
             for r in rs:
                 year_counts[r[2]] = year_counts.get(r[2], 0) + 1
             best_n = len(rs)
-            best = {"make": mk, "model": mo, "year": max(year_counts, key=year_counts.get), "trim": trims[0],
-                    "body": makes[mk][mo]["body"]}
+            best = {"make": mk, "model": mo_name, "year": max(year_counts, key=year_counts.get), "trim": trims[0],
+                    "body": makes[mk][mo_name]["body"]}
     return {"makes": makes, "default": best, "generated": datetime.now(timezone.utc).isoformat()}
 
 

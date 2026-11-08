@@ -188,7 +188,9 @@ def scrape_zero(f: Fetcher, brands: Optional[list[str]] = None, max_change_pages
 # ------------------------------------------------------------------ every model of every brand
 
 _NOT_MODEL = {"year", "body", "city", "info", "fuel", "transmission", "color", "page", "price", "km", "new", "used",
-              "search", "compare", "showrooms", "maintenance"}
+              "search", "compare", "showrooms", "maintenance", "automatic", "manual", "diesel", "gas", "natural-gas",
+              "natural gas", "electric", "hybrid", "plug-in-hybrid", "plug in hybrid", "taxi", "classic", "disabled",
+              "kasr-zero", "kasr zero", "all-prices", "all prices"}
 
 
 def used_brand_slugs(f: Fetcher) -> list[str]:
@@ -213,7 +215,7 @@ def parse_brand_models(text: str, links: list[str], slug: str) -> tuple[str, lis
         if not mm:
             continue
         name = unquote(mm.group(1)).replace("+", " ").strip()
-        if name.lower() in _NOT_MODEL or name in models:
+        if name.lower() in _NOT_MODEL or name.lower().startswith("other") or name in models:
             continue
         models.append(name)
     return brand, models
