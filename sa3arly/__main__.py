@@ -165,6 +165,8 @@ def main(argv=None):
     z.add_argument("--source", choices=ZERO, required=True)
     z.add_argument("--brands", help="comma-separated slugs, e.g. hyundai,kia (default: all)")
     sub.add_parser("models", help="every model of every brand on Hatla2ee (old ones too), for the app's pickers")
+    cc = sub.add_parser("catalog", help="print what the app's pickers show for some makes")
+    cc.add_argument("--makes", default="Alfa Romeo,Proton,Hyundai")
     u = sub.add_parser("used")
     u.add_argument("--source", choices=USED, required=True)
     u.add_argument("--max-pages", type=int, default=60,
@@ -193,6 +195,20 @@ def main(argv=None):
 
     if a.cmd == "probe":
         return probe(headless=not a.show)
+
+    if a.cmd == "catalog":
+        import os
+        import time
+        import psycopg
+        from .web_api import catalog
+        cx = psycopg.connect(os.environ["DATABASE_URL"])
+        t0 = time.time()
+        c = catalog(cx)
+        print(f"[catalog] {len(c['makes'])} makes, {sum(len(v) for v in c['makes'].values())} models in {time.time() - t0:.1f}s")
+        for mk in a.makes.split(","):
+            for mo, info in sorted((c["makes"].get(mk.strip()) or {}).items()):
+                print(f"[catalog] {mk} | {mo} | years {info['years'][0]}-{info['years'][-1]} | ads {info['n']} | trims: {' < '.join(info['trims'][:8])}")
+        return 0
 
     if a.cmd == "train":
         import os
