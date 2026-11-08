@@ -15,7 +15,10 @@ const auth = {
   items: [],          // saved pricings, newest first
   profile: null,      // { name, showroom, phone, city, avatar }
   cities: [],
+  garage: [],         // عربياتي: the user's own cars (list rows: cover photo only)
+  garageReady: false,
   google, email, signOut, save, remove, pending, takePending, saveProfile, photo,
+  carGet, carAdd, carEdit, carRemove, carPhotos,
 };
 Component.auth = auth;
 
@@ -47,7 +50,7 @@ async function setUser(session) {
   const was = auth.user && auth.user.id;
   auth.user = u ? { id: u.id, email: u.email, name: (u.user_metadata && (u.user_metadata.full_name || u.user_metadata.name)) || '' } : null;
   auth.token = session ? session.access_token : null;
-  if (!auth.user) { auth.items = []; auth.profile = null; refresh(); return; }
+  if (!auth.user) { auth.items = []; auth.profile = null; auth.garage = []; auth.garageReady = false; refresh(); return; }
   if (was === auth.user.id) return;
   // clean the auth code out of the address bar after a redirect
   if (/[?&](code|error)=/.test(location.search)) history.replaceState(null, '', location.pathname);
@@ -69,6 +72,7 @@ async function call(method, path, body) {
 async function load() {
   await Promise.all([
     call('GET', '/api/saved').then((d) => { auth.items = d.items || []; }).catch(() => {}),
+    call('GET', '/api/garage').then((d) => { auth.garage = d.items || []; auth.garageReady = true; }).catch(() => {}),
     call('GET', '/api/profile').then((d) => { auth.profile = d.profile || {}; auth.cities = d.cities || []; }).catch(() => {}),
   ]);
 }
@@ -112,7 +116,45 @@ function email(address) {
 
 async function signOut() {
   if (sb) await sb.auth.signOut();
-  auth.user = null; auth.items = []; auth.profile = null; refresh();
+  auth.user = null; auth.items = []; auth.profile = null; auth.garage = []; auth.garageReady = false; refresh();
+}
+
+// ---------- عربياتي ----------
+const rowOf = (item) => { const r = Object.assign({}, item); delete r.photos; r.nPhotos = (item.photos || []).length; return r; };
+const putRow = (item) => {
+  const r = rowOf(item);
+  auth.garage = [r].concat(auth.garage.filter((x) => x.id !== r.id));
+};
+
+async function carGet(id) {
+  const { item } = await call('GET', '/api/garage?id=' + id);
+  return item;
+}
+async function carAdd(body) {
+  const { item } = await call('POST', '/api/garage', body);
+  putRow(item); refresh();
+  return item;
+}
+async function carEdit(id, fields) {
+  const { item } = await call('PUT', '/api/garage?id=' + id, fields);
+  putRow(item); refresh();
+  return item;
+}
+async function carRemove(id) {
+  await call('DELETE', '/api/garage?id=' + id);
+  auth.garage = auth.garage.filter((x) => x.id !== id);
+  refresh();
+}
+// photos picked in the app (blob: or data: URLs) -> { photos: up to 8 JPEGs ~800px, cover: one ~240px thumbnail }
+async function carPhotos(urls) {
+  const list = (urls || []).filter(Boolean).slice(0, 8);
+  const photos = [];
+  for (const u of list) {
+    try { photos.push(await shrinkUrl(u, 800, 0.72)); } catch (e) { /* unreadable: skip it */ }
+  }
+  let cover = null;
+  if (photos.length) { try { cover = await shrinkUrl(photos[0], 240, 0.7); } catch (e) { cover = null; } }
+  return { photos, cover };
 }
 
 async function save(q) {
@@ -149,18 +191,21 @@ async function readPhoto(kind, file, makes) {
 }
 
 function shrink(file, max, q) {
+  const url = URL.createObjectURL(file);
+  return shrinkUrl(url, max, q).finally(() => URL.revokeObjectURL(url));
+}
+
+function shrinkUrl(url, max, q) {
   return new Promise((resolve, reject) => {
-    const url = URL.createObjectURL(file);
     const img = new Image();
     img.onload = () => {
       const k = Math.min(1, max / Math.max(img.width, img.height));
       const c = document.createElement('canvas');
       c.width = Math.round(img.width * k); c.height = Math.round(img.height * k);
       c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
-      URL.revokeObjectURL(url);
       resolve(c.toDataURL('image/jpeg', q));
     };
-    img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('read')); };
+    img.onerror = () => reject(new Error('read'));
     img.src = url;
   });
 }
