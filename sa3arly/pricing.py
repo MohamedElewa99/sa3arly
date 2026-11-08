@@ -285,8 +285,10 @@ class Pricer:
 
         # the learned model: blends in by how few close ads there are, and prices cars with none
         ai, info = self._ai(make, model, year, km, trim, zero)
+        if ai and not 30_000 <= ai["mid"] <= 100_000_000:
+            ai = None                     # not a car price (a model trained without such cars): don't show it
         ai_out = None
-        if ai and (mid is not None or info["known"]["model"] or zero):
+        if ai:
             met = info["metrics"]
             w = _ai_weight(n, info["known"]["model"], bool(zero), met.get("median_ape") or 0.0, info.get("blend"))
             ai_out = {"mid": _round(ai["mid"]), "low": _round(ai["lo"]), "high": _round(ai["hi"]), "weight": round(w, 2),
@@ -295,11 +297,20 @@ class Pricer:
                 # no close ads: the model's own middle; the range is as wide as its measured error on such cars
                 err = (info.get("blend") or {}).get("no_ads_error") or 0.15
                 half = min(0.30, max(0.10, err))
+                kn = info["known"]
+                if not kn["model"] and not zero:
+                    # a model it never saw: it goes by the make, the year and the km, so the range is wider
+                    half = max(half, 0.30 if not kn["make"] else 0.22)
                 mid = ai["mid"]
                 low, high = mid * (1 - half), mid * (1 + half)
                 conf = "منخفضة"
-                lines.append("مفيش عربيات شبهها كفاية، فده تقدير تقريبي من الذكاء الاصطناعي اللي اتعلّم من كل الإعلانات "
-                             f"(غلطه في الحالات دي حوالي {err:.0%})")
+                if kn["model"] or zero:
+                    lines.append("مفيش عربيات شبهها كفاية، فده تقدير تقريبي من الذكاء الاصطناعي اللي اتعلّم من كل الإعلانات "
+                                 f"(غلطه في الحالات دي حوالي {err:.0%})")
+                else:
+                    lines.append("الموديل ده مفيش عليه إعلانات خالص، فده تخمين من الذكاء الاصطناعي على حسب "
+                                 + ("الماركة والسنة والعداد" if kn["make"] else "السنة والعداد ونوع العربية")
+                                 + f"، والمدى واسع (±{half:.0%}). اتأكد من السعر قبل ما تقرر")
             else:
                 gap = (ai["mid"] - mid) / mid
                 if abs(gap) > 0.20 and n >= 5:
