@@ -185,6 +185,58 @@ def scrape_zero(f: Fetcher, brands: Optional[list[str]] = None, max_change_pages
                 yield r
 
 
+# ------------------------------------------------------------------ every model of every brand
+
+_NOT_MODEL = {"year", "body", "city", "info", "fuel", "transmission", "color", "page", "price", "km", "new", "used",
+              "search", "compare", "showrooms", "maintenance"}
+
+
+def used_brand_slugs(f: Fetcher) -> list[str]:
+    _, _, links = f.get(f"{BASE}/en/car")
+    out = set()
+    for l in links:
+        m = re.fullmatch(r"https://eg\.hatla2ee\.com/en/car/([A-Za-z0-9\-]+)/?", l.split("?")[0].split("#")[0])
+        if m and m.group(1).lower() not in _NOT_MODEL and m.group(1).lower() not in _SKIP_BRAND:
+            out.add(m.group(1))
+    return sorted(out)
+
+
+def parse_brand_models(text: str, links: list[str], slug: str) -> tuple[str, list[str]]:
+    """A used-cars brand page (/en/car/<brand>) -> (brand name, every model it lists, old ones included)."""
+    from urllib.parse import unquote
+    m = re.search(r"^Used (.+?) (?:Cars )?for Sale in Egypt", text, re.M)
+    brand = m.group(1).strip() if m else _brand_name(text, slug)
+    models = []
+    for l in links:
+        u = l.split("#")[0].split("?")[0].rstrip("/")
+        mm = re.fullmatch(rf"https://eg\.hatla2ee\.com/en/car/{re.escape(slug)}/([^/]+)", u, re.I)
+        if not mm:
+            continue
+        name = unquote(mm.group(1)).replace("+", " ").strip()
+        if name.lower() in _NOT_MODEL or name in models:
+            continue
+        models.append(name)
+    return brand, models
+
+
+def scrape_models(f: Fetcher) -> Iterator[tuple[str, str]]:
+    """(brand, model) for every model Hatla2ee knows, new or discontinued."""
+    slugs = sorted(set(used_brand_slugs(f)) | set(brand_slugs(f)))
+    print(f"[hatla2ee] {len(slugs)} brands")
+    for slug in slugs:
+        try:
+            _, text, links = f.get(f"{BASE}/en/car/{slug}")
+        except RuntimeError as e:
+            if f.blocked:
+                raise
+            print(f"[hatla2ee] skip brand {slug}: {e}")
+            continue
+        brand, models = parse_brand_models(text, links, slug)
+        print(f"[hatla2ee] {brand}: {len(models)} models")
+        for m in models:
+            yield brand, m
+
+
 # ------------------------------------------------------------------ used listings
 
 

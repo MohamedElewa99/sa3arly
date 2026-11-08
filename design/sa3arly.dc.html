@@ -1633,6 +1633,12 @@ class Component extends DCLogic {
     this._paintRef = mk('_paint', false);
     this._heroRef = mk('_hero', true);
   }
+  // a model's trims, lowest first: that model year's official classes when we have them, else all of them
+  static trimsOf(inf, year) {
+    if (!inf) return [];
+    var y = inf.trimsByYear && inf.trimsByYear[String(year)];
+    return y && y.length ? y : inf.trims;
+  }
   // the user picks make, then model, then year, then trim: each pick opens the next list
   pickField(k, v) {
     var CAT = Component.remoteCat || Component.CAT, c = Object.assign({}, this.state.car), patch = {};
@@ -1644,10 +1650,14 @@ class Component extends DCLogic {
     if (k === 'year') { picked.trim = false; }
     if (k === 'make' || k === 'model') {
       var inf = (CAT[c.make] || {})[c.model];
-      if (inf) { if (inf.years.indexOf(c.year) < 0) c.year = inf.years[inf.years.length - 2] || inf.years[0]; c.trim = inf.trims[0]; patch.body = inf.body; patch.bodyAuto = true; }
+      if (inf) { if (inf.years.indexOf(c.year) < 0) c.year = inf.years[inf.years.length - 2] || inf.years[0]; c.trim = Component.trimsOf(inf, c.year)[0]; patch.body = inf.body; patch.bodyAuto = true; }
     }
     var inf2 = (CAT[c.make] || {})[c.model];
-    if (k === 'year' && inf2 && inf2.trims.length <= 1) picked.trim = true;      // one trim: nothing to choose
+    if (k === 'year' && inf2) {
+      var yt = Component.trimsOf(inf2, c.year);
+      if (yt.indexOf(c.trim) < 0) c.trim = yt[0];
+      if (yt.length <= 1) picked.trim = true;      // one trim: nothing to choose
+    }
     var next = !picked.model ? 'model' : !picked.year ? 'year' : !picked.trim ? 'trim' : null;
     patch.car = c; patch.picked = picked; patch.pickOther = ""; patch.checked = this.state.checked;
     patch.carSet = !!(picked.make && picked.model && picked.year && picked.trim);
@@ -2322,7 +2332,7 @@ class Component extends DCLogic {
     var car = S.car, info = (CAT[car.make] && CAT[car.make][car.model]) || null;
     var known = !!info;
     if (!info) info = { body: S.body || 'sedan', trims: [car.trim || 'عادية'], years: [], ref: 900000, zero: 0, n: 4 };
-    var trimIx = Math.max(0, info.trims.indexOf(car.trim));
+    var trimIx = Math.max(0, Component.trimsOf(info, car.year).indexOf(car.trim));
     var trimF = 1 + 0.035 * trimIx;
     var refMid = info.ref * Math.pow(1.07, (car.year || 2022) - 2022) * Math.pow(0.992, (S.km - 60000) / 10000) * trimF;
     if (info.zero) refMid = Math.min(refMid, info.zero * 0.95);   // a used car never prices above a new one
@@ -2428,16 +2438,18 @@ class Component extends DCLogic {
       var list = S.picker === 'make' ? Object.keys(CAT).sort()
         : S.picker === 'model' ? Object.keys(CAT[car.make] || {}).sort()
         : S.picker === 'year' ? (known ? info.years.slice().reverse() : [2026, 2025, 2024, 2023, 2022, 2021, 2020, 2019, 2018])
-        : info.trims;
+        : Component.trimsOf(info, car.year);
       var pq = S.pickOther.trim();
       if (pq) list = Component.fuzzy(pq, list, String).map(function (h) { return h.item; });
-      var RANK = ['الفئة الأولى (الأعلى)', 'الفئة التانية', 'الفئة التالتة', 'الفئة الرابعة', 'الفئة الخامسة', 'الفئة السادسة', 'الفئة السابعة', 'الفئة التامنة'];
-      var allTrims = S.picker === 'trim' && known ? info.trims : [];
+      // lowest first: the first is the base trim, the last the top one
+      var RANK = ['الفئة الأولى', 'الفئة التانية', 'الفئة التالتة', 'الفئة الرابعة', 'الفئة الخامسة', 'الفئة السادسة', 'الفئة السابعة', 'الفئة التامنة', 'الفئة التاسعة', 'الفئة العاشرة'];
+      var allTrims = S.picker === 'trim' && known ? Component.trimsOf(info, car.year) : [];
+      var rankOf = function (i, n) { var r = RANK[i] || ('الفئة ' + (i + 1)); return n > 1 && i === 0 ? r + ' (الأقل)' : n > 1 && i === n - 1 ? r + ' (الأعلى)' : r; };
       pickOpts = list.map(function (v) {
         var on = String(car[S.picker]) === String(v) && (S.carSet || (S.picked || {})[S.picker]);
         var rk = allTrims.indexOf(v);
         var lg = S.picker === 'make' ? logo(v) : '';
-        return { label: String(v), logo: lg, hasLogo: !!lg, sub: rk >= 0 && allTrims.length > 1 ? RANK[rk] || '' : '', sel: on ? 'true' : 'false', bg: on ? t.ink : 'transparent', fg: on ? t.bg : t.ink, bd: on ? t.ink : t.line2,
+        return { label: String(v), logo: lg, hasLogo: !!lg, sub: rk >= 0 && allTrims.length > 1 ? rankOf(rk, allTrims.length) : '', sel: on ? 'true' : 'false', bg: on ? t.ink : 'transparent', fg: on ? t.bg : t.ink, bd: on ? t.ink : t.line2,
           pick: function () { self.pickField(S.picker, v); } };
       });
     }

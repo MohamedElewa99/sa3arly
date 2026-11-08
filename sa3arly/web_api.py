@@ -99,44 +99,101 @@ def _trims_by_level(rs, zero_trims: Optional[dict] = None) -> list:
     return sorted(common, key=lambda t: -level[t])
 
 
-def catalog(cx, days: int = 90, min_ads: int = 3) -> dict:
+def _clean_trim(t) -> str:
+    t = re.sub(r"\s+", " ", (t or "").strip())
+    return "" if _junk(t) or t in {"-", "--", "."} else t
+
+
+def _official_trims(z: list[tuple]) -> tuple[list, dict]:
+    """Official (zero) prices -> (all trims lowest first, {model year: trims lowest first}).
+
+    Within a year trims are ordered by their price. Across years a trim is placed by where it sat in its own
+    year's list (0 = cheapest, 1 = top), so a 2019-only trim falls in its right place among the 2025 ones."""
+    by_year: dict[int, dict[str, int]] = {}
+    for y, p, tn in z:
+        tn = _clean_trim(tn)
+        if tn and p:
+            d = by_year.setdefault(y, {})
+            d[tn] = p if tn not in d else min(d[tn], p)       # price changes: the year's price list, lowest
+    per_year = {y: sorted(d, key=lambda t: d[t]) for y, d in by_year.items()}
+    pos: dict[str, list] = {}
+    for y, ts in per_year.items():
+        for i, t in enumerate(ts):
+            pos.setdefault(t.lower(), []).append((i / (len(ts) - 1) if len(ts) > 1 else 0.5, y, t))
+    order = sorted(pos.values(), key=lambda v: (statistics.mean(x[0] for x in v), -max(x[1] for x in v)))
+    return [max(v, key=lambda x: x[1])[2] for v in order], per_year
+
+
+def _merge_case(names: list[str]) -> dict[str, str]:
+    """'1st Category' and '1st category' are one trim: lower name -> the spelling used most."""
+    cnt: dict[str, dict[str, int]] = {}
+    for n in names:
+        cnt.setdefault(n.lower(), {}).setdefault(n, 0)
+        cnt[n.lower()][n] += 1
+    return {k: max(v, key=v.get) for k, v in cnt.items()}
+
+
+def catalog(cx, days: int = 90, min_ads: int = 1) -> dict:
+    """Every make and model we know: the ones with ads (any time), the ones with official prices, and the full
+    model list read from the listing sites (model_catalog). Trims lowest first: official classes ordered by their
+    price when the model has them (also per model year), else the trims written in the ads, cheapest first."""
     rows = cx.execute("""
-        select mk.name_en, mo.name_en, l.year, l.km, l.price_egp, l.trim_raw, l.body_type
+        select mk.name_en, mo.name_en, l.year, l.km, l.price_egp, l.trim_raw, l.body_type,
+               l.last_seen > now() - make_interval(days => %s)
         from listings l join makes mk on mk.id = l.make_id join models mo on mo.id = l.model_id
         where l.price_egp is not null and l.year is not null
-          and l.last_seen > now() - make_interval(days => %s)
     """, (days,)).fetchall()
     zero = cx.execute("""
-        select mk.name_en, mo.name_en, z.model_year, z.price_egp, z.trim_name
+        select mk.name_en, mo.name_en, z.model_year, z.price_egp, z.trim_name, z.effective_on > now() - interval '45 days'
         from zero_prices z join makes mk on mk.id = z.make_id join models mo on mo.id = z.model_id
-        where z.effective_on > now() - interval '45 days'
     """).fetchall()
+    listed = []
+    if cx.execute("select to_regclass('model_catalog')").fetchone()[0]:
+        listed = cx.execute("""select mk.name_en, mo.name_en from model_catalog c
+                               join models mo on mo.id = c.model_id join makes mk on mk.id = mo.make_id""").fetchall()
+    listed_set = {tuple(x) for x in listed}
     zmap: dict[tuple, list] = {}
-    for mk, mo, y, p, tn in zero:
-        zmap.setdefault((mk, mo), []).append((y, p, tn))
+    for mk, mo, y, p, tn, fresh in zero:
+        zmap.setdefault((mk, mo), []).append((y, p, tn, fresh))
 
     groups: dict[tuple, list] = {}
     for r in rows:
         groups.setdefault((r[0], r[1]), []).append(r)
+    keys = set(groups) | set(zmap) | listed_set
     makes: dict[str, dict] = {}
     best, best_n = None, 0
     this_year = date.today().year
-    for (mk, mo), rs in groups.items():
-        if len(rs) < min_ads or _junk(mk) or _junk(mo):
+    for (mk, mo) in keys:
+        if _junk(mk) or _junk(mo):
             continue
-        years = sorted({r[2] for r in rs if 1990 <= r[2] <= this_year + 1})
+        rs_all = groups.get((mk, mo), [])
+        rs = [r for r in rs_all if r[7]] or rs_all            # recent ads when there are any
         z = zmap.get((mk, mo), [])
-        zero_price, zero_trims = None, {}
-        if z:
-            newest = max(y for y, _, _ in z)
-            zero_price = int(statistics.median(p for y, p, _ in z if y == newest))
-            zero_trims = {tn: p for y, p, tn in sorted(z) if tn}          # newest year wins
-        top_trims = _trims_by_level(rs, zero_trims) or ["Standard"]
+        if len(rs_all) < min_ads and not z and (mk, mo) not in listed_set:
+            continue
+        years = sorted({r[2] for r in rs_all if 1980 <= r[2] <= this_year + 1} | {y for y, _, _, _ in z if 1980 <= y <= this_year + 1})
+        if not years:
+            years = list(range(this_year - 15, this_year + 1))
+        zero_price = None
+        fresh = [(y, p) for y, p, _, f in z if f]
+        if fresh:
+            newest = max(y for y, _ in fresh)
+            zero_price = int(statistics.median(p for y, p in fresh if y == newest))
+        official, per_year = _official_trims([(y, p, tn) for y, p, tn, _ in z])
+        if len(official) >= 2 or (official and not rs_all):
+            trims, trims_by_year = official, {str(y): ts for y, ts in per_year.items() if ts}
+        else:
+            spell = _merge_case([_clean_trim(r[5]) for r in rs_all if _clean_trim(r[5])])
+            merged = [r[:5] + (spell.get(_clean_trim(r[5]).lower(), ""),) + r[6:] for r in rs_all]
+            trims = list(reversed(_trims_by_level(merged, {t: p for _, p, t in sorted((y, p, t) for y, p, t, _ in z) if t})))
+            trims = trims or official or ["Standard"]
+            trims_by_year = {}
         makes.setdefault(mk, {})[mo] = {
-            "body": _body([r[6] for r in rs]),
-            "trims": top_trims,
+            "body": _body([r[6] for r in rs_all]),
+            "trims": trims,
+            "trimsByYear": trims_by_year,
             "years": years,
-            "ref": _ref_price([(r[2], r[3], r[4]) for r in rs]),
+            "ref": _ref_price([(r[2], r[3], r[4]) for r in rs]) if rs else None,
             "zero": zero_price or 0,
             "n": len(rs),
         }
@@ -145,7 +202,7 @@ def catalog(cx, days: int = 90, min_ads: int = 3) -> dict:
             for r in rs:
                 year_counts[r[2]] = year_counts.get(r[2], 0) + 1
             best_n = len(rs)
-            best = {"make": mk, "model": mo, "year": max(year_counts, key=year_counts.get), "trim": top_trims[0],
+            best = {"make": mk, "model": mo, "year": max(year_counts, key=year_counts.get), "trim": trims[0],
                     "body": makes[mk][mo]["body"]}
     return {"makes": makes, "default": best, "generated": datetime.now(timezone.utc).isoformat()}
 

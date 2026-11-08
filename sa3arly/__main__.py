@@ -44,6 +44,17 @@ def run_zero(f, store, source, brands=None):
     return n
 
 
+def run_models(f, store):
+    n = 0
+    for brand, model in hatla2ee.scrape_models(f):
+        if hasattr(store, "catalog_model"):
+            store.catalog_model(brand, model, "hatla2ee")
+        n += 1
+    print(f"[hatla2ee] models listed: {n}")
+    store.run("hatla2ee:models", pages=f.pages, items=n)
+    return n
+
+
 def run_used(f, store, source, max_pages, max_details=300):
     mod = USED[source]
     known = store.known_ids(source)
@@ -153,6 +164,7 @@ def main(argv=None):
     z = sub.add_parser("zero")
     z.add_argument("--source", choices=ZERO, required=True)
     z.add_argument("--brands", help="comma-separated slugs, e.g. hyundai,kia (default: all)")
+    sub.add_parser("models", help="every model of every brand on Hatla2ee (old ones too), for the app's pickers")
     u = sub.add_parser("used")
     u.add_argument("--source", choices=USED, required=True)
     u.add_argument("--max-pages", type=int, default=60,
@@ -259,6 +271,8 @@ def main(argv=None):
     try:
         if a.cmd == "zero":
             run_zero(f, store, a.source, a.brands.split(",") if a.brands else None)
+        elif a.cmd == "models":
+            run_models(f, store)
         elif a.cmd == "used":
             if a.source in BLOCKED:
                 print(f"[{a.source}] warning: {BLOCKED[a.source]} at last probe — expect few or no results")

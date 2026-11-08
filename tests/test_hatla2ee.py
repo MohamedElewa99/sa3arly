@@ -46,3 +46,14 @@ def test_card_with_trim_and_badge():
     txt2 = "Hyundai Elantra AD 2016\n2016\n72,000 KM\nAutomatic\nGas\n900,000\nEGP\nZagazig, Sharqia\nHyundai\nElantra AD\nDisabled\nCall"
     l2 = h.parse_card(txt2, "https://eg.hatla2ee.com/en/car/hyundai/Elantra-AD/7000002")
     assert l2.raw["badges"] == ["Disabled"] and l2.trim_raw is None and l2.governorate == "Sharqia"
+
+
+def test_brand_page_lists_every_model():
+    from sa3arly.scrapers.hatla2ee import parse_brand_models
+    text = "Used Alfa Romeo for Sale in Egypt\nOther Models\nStelvio\n(6)\n156\n(5)"
+    links = ["https://eg.hatla2ee.com/en/car/alpha-romeo/Stelvio", "https://eg.hatla2ee.com/en/car/alpha-romeo/156",
+             "https://eg.hatla2ee.com/en/car/alpha-romeo/Giulietta%20Quadrifoglio%20Verde",
+             "https://eg.hatla2ee.com/en/car/alpha-romeo/year/2020", "https://eg.hatla2ee.com/en/car/alpha-romeo/body",
+             "https://eg.hatla2ee.com/en/car/alpha-romeo/Stelvio/year/2026", "https://eg.hatla2ee.com/en/car/kia/Rio"]
+    brand, models = parse_brand_models(text, links, "alpha-romeo")
+    assert brand == "Alfa Romeo" and models == ["Stelvio", "156", "Giulietta Quadrifoglio Verde"]

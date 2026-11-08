@@ -14,7 +14,7 @@ def test_catalog_lists_models_with_enough_ads(db):
     assert elantra["body"] == "sedan" and elantra["trims"]
     # anchor price = asking price at 2022 / 60,000 km, close to the known market
     assert abs(elantra["ref"] / (true_price(2022, 60_000) / 0.95) - 1) < 0.15
-    assert "Cupra" not in c["makes"]                      # 2 ads only: not enough to list
+    assert "Formentor" in c["makes"]["Cupra"]             # few ads still listed: every model we know is pickable
     assert c["default"]["make"] == "Hyundai" and c["default"]["model"] == "Elantra AD"
 
 
@@ -69,3 +69,12 @@ def test_zero_drilldown(db):
     vz = trims[1]
     assert vz["trim"] == "VZ" and vz["prev"] == 2_500_000 and vz["change"] == 100_000 and len(vz["history"]) == 2
     assert trims[0]["trim"] == "Automatic"
+
+
+def test_official_trims_lowest_first_and_per_year():
+    from sa3arly.web_api import _official_trims, _merge_case
+    allt, per = _official_trims([(2025, 900, "Top"), (2025, 700, "Base"), (2025, 800, "Mid"), (2025, 820, "Mid"),
+                                 (2019, 300, "Base"), (2019, 380, "Old Luxury")])
+    assert per[2025] == ["Base", "Mid", "Top"] and per[2019] == ["Base", "Old Luxury"]
+    assert allt.index("Base") == 0 and allt.index("Old Luxury") > allt.index("Mid")
+    assert _merge_case(["1st Category", "1st category", "1st Category"]) == {"1st category": "1st Category"}

@@ -9,7 +9,7 @@ on:
     - cron: "17 3 * * 5"
   workflow_dispatch:
     inputs:
-      job: { description: "daily or weekly", default: "daily" }
+      job: { description: "daily, weekly, or one command (e.g. models)", default: "daily" }
 
 concurrency: { group: scrape, cancel-in-progress: false }
 
@@ -22,7 +22,8 @@ jobs:
       max-parallel: 1          # one request stream at a time to Hatla2ee
       matrix:
         job: ${{ (github.event.schedule == '17 3 * * 5' || inputs.job == 'weekly')
-                 && fromJSON('["used --source hatla2ee --max-pages 800 --max-details 0"]')
+                 && fromJSON('["used --source hatla2ee --max-pages 800 --max-details 0", "models"]')
+                 || (inputs.job && inputs.job != 'daily') && fromJSON(format('["{0}"]', inputs.job))
                  || fromJSON('["zero --source hatla2ee", "used --source hatla2ee --max-pages 60 --max-details 300", "used --source opensooq --max-pages 60", "used --source sylndr --max-pages 40"]') }}
     steps:
       - uses: actions/checkout@v4

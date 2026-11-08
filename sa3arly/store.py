@@ -115,6 +115,19 @@ class PgStore:
                 self._model_names[make_id].append(raw.strip())
         return self._models[key]
 
+    def catalog_model(self, make_raw, model_raw, source):
+        """A model the listing sites list for a brand (even with no ads now), so the app can offer it."""
+        if not getattr(self, "_catalog_ready", False):
+            self.cx.execute("""create table if not exists model_catalog (
+                                 model_id int primary key references models(id), source text not null,
+                                 seen_on date not null default current_date)""")
+            self._catalog_ready = True
+        md = self.model_id(self.make_id(make_raw), model_raw)
+        if md:
+            self.cx.execute("""insert into model_catalog (model_id, source) values (%s, %s)
+                               on conflict (model_id) do update set seen_on = current_date""", (md, source))
+        return md
+
     def models_of(self, make_id):
         """Model names of a make, read once per make per run and kept up to date as models are added."""
         if make_id not in self._model_names:
