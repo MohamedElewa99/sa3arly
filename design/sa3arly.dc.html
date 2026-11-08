@@ -739,23 +739,93 @@ button:disabled{cursor:not-allowed}
       <span style="font-size: 12px; color: {{ t.mute }}">{{ sheetNote }}</span>
     </div>
     <sc-if value="{{ isPicker }}" hint-placeholder-val="{{ false }}">
-      <div style="display: flex; gap: 8px; align-items: center">
-        <input value="{{ pickOther }}" onChange="{{ onPickOther }}" onKeyDown="{{ pickOtherKey }}" name="other_value" autocomplete="off" aria-label="{{ pickOtherAria }}" placeholder="{{ pickOtherPh }}" style="flex: 1; min-width: 0; height: 48px; background: {{ t.soft }}; color: {{ t.ink }}; border: none; border-radius: 12px; padding: 0 12px; font-family: 'Alexandria', sans-serif; font-size: 15px">
-        <button class="press" onClick="{{ usePickOther }}" disabled="{{ pickOtherEmpty }}" style="flex: none; height: 48px; padding: 0 18px; border-radius: 12px; border: none; background: {{ t.ink }}; color: {{ t.bg }}; font-size: 14px; font-weight: 600; opacity: {{ pickOtherOp }}">استخدمها</button>
+      <sc-if value="{{ pickShowCrumbs }}" hint-placeholder-val="{{ true }}">
+      <nav aria-label="خطوات اختيار العربية" style="display: flex; align-items: center; gap: 6px; overflow-x: auto; margin: -4px 0 2px; scrollbar-width: none">
+        <sc-for list="{{ pickCrumbs }}" as="pc" hint-placeholder-count="4">
+          <button class="press" onClick="{{ pc.go }}" disabled="{{ pc.off }}" aria-current="{{ pc.cur }}" style="flex: none; height: 32px; padding: 0 12px; border-radius: 999px; border: 1px solid {{ pc.bd }}; background: {{ pc.bg }}; color: {{ pc.fg }}; font-size: 12px; display: flex; align-items: center; gap: 6px; transition: background .25s ease, color .25s ease">
+            <span style="opacity: .6">{{ pc.k }}</span><span style="font-weight: 600; max-width: 110px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap">{{ pc.v }}</span>
+          </button>
+        </sc-for>
+      </nav>
+      </sc-if>
+      <div style="display: flex; align-items: center; gap: 8px; height: 48px; padding: 0 14px; border-radius: 14px; background: {{ t.soft }}">
+        <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true" style="flex: none"><circle cx="7" cy="7" r="5.5" stroke="{{ t.mute }}" stroke-width="1.4" fill="none"></circle><path d="M11 11l4 4" stroke="{{ t.mute }}" stroke-width="1.4"></path></svg>
+        <input value="{{ pickOther }}" onChange="{{ onPickOther }}" onKeyDown="{{ pickOtherKey }}" name="other_value" autocomplete="off" aria-label="{{ pickOtherAria }}" placeholder="{{ pickOtherPh }}" style="flex: 1; min-width: 0; height: 44px; background: transparent; color: {{ t.ink }}; caret-color: #F2A93B; border: none; font-family: 'Alexandria', sans-serif; font-size: 15px">
+        <sc-if value="{{ pickTyped }}" hint-placeholder-val="{{ false }}">
+          <button class="press pop" onClick="{{ usePickOther }}" style="flex: none; height: 34px; padding: 0 14px; border-radius: 999px; border: none; background: {{ t.ink }}; color: {{ t.bg }}; font-size: 13px; font-weight: 600">استخدمها</button>
+        </sc-if>
       </div>
       <sc-if value="{{ pickNone }}" hint-placeholder-val="{{ false }}">
         <p aria-live="polite" style="margin: 0 4px; font-size: 13px; color: {{ t.mute }}">مش لاقيها في القايمة. دوس "استخدمها" وهنسعّر بالاسم ده.</p>
       </sc-if>
-      <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px">
-        <sc-for list="{{ pickOpts }}" as="po" hint-placeholder-count="4">
-          <button class="press" onClick="{{ po.pick }}" aria-pressed="{{ po.sel }}" style="min-height: 52px; padding: 6px 12px; border-radius: 12px; border: 1px solid {{ po.bd }}; background: {{ po.bg }}; color: {{ po.fg }}; font-size: 15px; text-align: right; display: flex; align-items: center; gap: 10px; min-width: 0">
-            <sc-if value="{{ po.hasLogo }}" hint-placeholder-val="{{ false }}"><span aria-hidden="true" style="flex: none; width: 40px; height: 30px; border-radius: 8px; background: #FFFFFF; display: flex; align-items: center; justify-content: center"><img src="{{ po.logo }}" alt="" loading="lazy" style="max-width: 32px; max-height: 22px; object-fit: contain"></span></sc-if>
-            <span style="flex: 1; min-width: 0; display: flex; flex-direction: column; justify-content: center; gap: 2px">
-              <span style="font-size: 11px; opacity: .65">{{ po.sub }}</span>
-              <span style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap">{{ po.label }}</span>
-            </span>
-          </button>
-        </sc-for>
+      <div key="{{ pickKey }}" class="{{ pickAnim }}" style="display: flex; flex-direction: column; gap: 14px">
+        <sc-if value="{{ pickIsMake }}" hint-placeholder-val="{{ true }}">
+          <sc-if value="{{ pickHasTop }}" hint-placeholder-val="{{ true }}">
+            <span style="font-size: 12px; color: {{ t.mute }}">الأكتر انتشاراً</span>
+            <div style="display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px">
+              <sc-for list="{{ pickTop }}" as="pt" hint-placeholder-count="8">
+                <button class="press fu" onClick="{{ pt.pick }}" aria-pressed="{{ pt.sel }}" aria-label="{{ pt.label }}" style="animation-delay: {{ pt.delay }}s; min-height: 84px; padding: 10px 4px 8px; border-radius: 16px; border: 1px solid {{ pt.bd }}; background: {{ pt.bg }}; color: {{ pt.fg }}; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; min-width: 0">
+                  <sc-if value="{{ pt.hasLogo }}" hint-placeholder-val="{{ true }}"><span aria-hidden="true" style="width: 46px; height: 34px; border-radius: 10px; background: #FFFFFF; display: flex; align-items: center; justify-content: center"><img src="{{ pt.logo }}" alt="" loading="lazy" style="max-width: 38px; max-height: 24px; object-fit: contain"></span></sc-if>
+                  <sc-if value="{{ pt.noLogo }}" hint-placeholder-val="{{ false }}"><span aria-hidden="true" style="width: 46px; height: 34px; border-radius: 10px; background: {{ t.line }}; color: {{ t.ink }}; display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 700; letter-spacing: .5px">{{ pt.mono }}</span></sc-if>
+                  <span style="font-size: 12px; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap">{{ pt.label }}</span>
+                </button>
+              </sc-for>
+            </div>
+            <span style="font-size: 12px; color: {{ t.mute }}; margin-top: 4px">كل الماركات</span>
+          </sc-if>
+          <ul style="list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column">
+            <sc-for list="{{ pickOpts }}" as="po" hint-placeholder-count="6">
+              <li class="fu" style="animation-delay: {{ po.delay }}s; border-bottom: 1px solid {{ t.line }}">
+                <button class="press" onClick="{{ po.pick }}" aria-pressed="{{ po.sel }}" style="width: 100%; min-height: 56px; padding: 6px 4px; display: flex; align-items: center; gap: 12px; background: none; border: none; color: {{ t.ink }}; text-align: right">
+                  <sc-if value="{{ po.hasLogo }}" hint-placeholder-val="{{ true }}"><span aria-hidden="true" style="flex: none; width: 42px; height: 30px; border-radius: 8px; background: #FFFFFF; display: flex; align-items: center; justify-content: center"><img src="{{ po.logo }}" alt="" loading="lazy" style="max-width: 34px; max-height: 21px; object-fit: contain"></span></sc-if>
+                  <sc-if value="{{ po.noLogo }}" hint-placeholder-val="{{ false }}"><span aria-hidden="true" style="flex: none; width: 42px; height: 30px; border-radius: 8px; background: {{ t.line }}; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700">{{ po.mono }}</span></sc-if>
+                  <span style="flex: 1; min-width: 0; font-size: 15px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap">{{ po.label }}</span>
+                  <span class="num" style="flex: none; font-size: 12px; color: {{ t.mute }}">{{ po.count }}</span>
+                  <sc-if value="{{ po.on }}" hint-placeholder-val="{{ false }}"><svg width="16" height="12" viewBox="0 0 16 12" aria-hidden="true" style="flex: none"><path d="M1 6l5 5L15 1" stroke="#F2A93B" stroke-width="2" fill="none"></path></svg></sc-if>
+                </button>
+              </li>
+            </sc-for>
+          </ul>
+        </sc-if>
+        <sc-if value="{{ pickIsModel }}" hint-placeholder-val="{{ false }}">
+          <ul style="list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column">
+            <sc-for list="{{ pickOpts }}" as="po" hint-placeholder-count="6">
+              <li class="fu" style="animation-delay: {{ po.delay }}s; border-bottom: 1px solid {{ t.line }}">
+                <button class="press" onClick="{{ po.pick }}" aria-pressed="{{ po.sel }}" style="width: 100%; min-height: 56px; padding: 6px 4px; display: flex; align-items: center; gap: 12px; background: none; border: none; color: {{ t.ink }}; text-align: right">
+                  <span style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px">
+                    <span style="font-size: 15px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap">{{ po.label }}</span>
+                    <span class="num" style="font-size: 12px; color: {{ t.mute }}">{{ po.sub }}</span>
+                  </span>
+                  <sc-if value="{{ po.on }}" hint-placeholder-val="{{ false }}"><svg width="16" height="12" viewBox="0 0 16 12" aria-hidden="true" style="flex: none"><path d="M1 6l5 5L15 1" stroke="#F2A93B" stroke-width="2" fill="none"></path></svg></sc-if>
+                  <span aria-hidden="true" style="flex: none; color: {{ t.mute }}">‹</span>
+                </button>
+              </li>
+            </sc-for>
+          </ul>
+        </sc-if>
+        <sc-if value="{{ pickIsYear }}" hint-placeholder-val="{{ false }}">
+          <div style="display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px">
+            <sc-for list="{{ pickOpts }}" as="po" hint-placeholder-count="8">
+              <button class="press num fu" onClick="{{ po.pick }}" aria-pressed="{{ po.sel }}" style="animation-delay: {{ po.delay }}s; height: 50px; border-radius: 14px; border: 1px solid {{ po.bd }}; background: {{ po.bg }}; color: {{ po.fg }}; font-size: 16px">{{ po.label }}</button>
+            </sc-for>
+          </div>
+        </sc-if>
+        <sc-if value="{{ pickIsTrim }}" hint-placeholder-val="{{ false }}">
+          <ol style="list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px">
+            <sc-for list="{{ pickOpts }}" as="po" hint-placeholder-count="4">
+              <li class="fu" style="animation-delay: {{ po.delay }}s">
+                <button class="press" onClick="{{ po.pick }}" aria-pressed="{{ po.sel }}" style="width: 100%; min-height: 62px; padding: 10px 14px; border-radius: 16px; border: 1px solid {{ po.bd }}; background: {{ po.bg }}; color: {{ po.fg }}; display: flex; align-items: center; gap: 12px; text-align: right">
+                  <span class="num" aria-hidden="true" style="flex: none; width: 28px; height: 28px; border-radius: 50%; border: 1px solid currentColor; display: flex; align-items: center; justify-content: center; font-size: 13px; opacity: .8">{{ po.n }}</span>
+                  <span style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px">
+                    <span style="font-size: 15px; font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap">{{ po.label }}</span>
+                    <span style="font-size: 11px; opacity: .65">{{ po.sub }}</span>
+                  </span>
+                  <span aria-hidden="true" style="flex: none; width: 46px; height: 5px; border-radius: 3px; background: {{ t.line }}; overflow: hidden"><span class="grow" style="display: block; height: 100%; width: {{ po.level }}%; background: #F2A93B; transform-origin: right"></span></span>
+                </button>
+              </li>
+            </sc-for>
+          </ol>
+        </sc-if>
       </div>
     </sc-if>
     <sc-if value="{{ isItem }}" hint-placeholder-val="{{ false }}">
@@ -1661,7 +1731,7 @@ class Component extends DCLogic {
     var next = !picked.model ? 'model' : !picked.year ? 'year' : !picked.trim ? 'trim' : null;
     patch.car = c; patch.picked = picked; patch.pickOther = ""; patch.checked = this.state.checked;
     patch.carSet = !!(picked.make && picked.model && picked.year && picked.trim);
-    patch.picker = next; patch.sheet = next ? 'picker' : null;
+    patch.picker = next; patch.sheet = next ? 'picker' : null; patch.pickDir = 'f';
     this.setState(patch);
   }
   // عربياتي: add (item null) or edit one of the user's own cars with the same car / paint / mechanics screens.
@@ -2433,7 +2503,7 @@ class Component extends DCLogic {
     var carShort = car.make + ' ' + car.model + ' ' + car.year;
     var MARKET = Component.remoteMarket || Component.MARKET;
     var logo = function (mk) { return (Component.logoFor && Component.logoFor(mk)) || ''; };
-    var pickOpts = [];
+    var pickOpts = [], pickTop = [];
     if (S.picker) {
       var list = S.picker === 'make' ? Object.keys(CAT).sort()
         : S.picker === 'model' ? Object.keys(CAT[car.make] || {}).sort()
@@ -2445,13 +2515,27 @@ class Component extends DCLogic {
       var RANK = ['الفئة الأولى', 'الفئة التانية', 'الفئة التالتة', 'الفئة الرابعة', 'الفئة الخامسة', 'الفئة السادسة', 'الفئة السابعة', 'الفئة التامنة', 'الفئة التاسعة', 'الفئة العاشرة'];
       var allTrims = S.picker === 'trim' && known ? Component.trimsOf(info, car.year) : [];
       var rankOf = function (i, n) { var r = RANK[i] || ('الفئة ' + (i + 1)); return n > 1 && i === 0 ? r + ' (الأقل)' : n > 1 && i === n - 1 ? r + ' (الأعلى)' : r; };
-      pickOpts = list.map(function (v) {
+      var mono = function (v) { var w = String(v).replace(/[^A-Za-z0-9\u0600-\u06ff ]/g, ' ').trim().split(/\s+/); return (w.length > 1 ? w[0][0] + w[1][0] : String(v).slice(0, 2)).toUpperCase(); };
+      var makeAds = function (mk) { var m = CAT[mk] || {}; return Object.keys(m).reduce(function (a, k) { return a + (m[k].n || 0); }, 0); };
+      var opt = function (v, i, n) {
         var on = String(car[S.picker]) === String(v) && (S.carSet || (S.picked || {})[S.picker]);
         var rk = allTrims.indexOf(v);
         var lg = S.picker === 'make' ? logo(v) : '';
-        return { label: String(v), logo: lg, hasLogo: !!lg, sub: rk >= 0 && allTrims.length > 1 ? rankOf(rk, allTrims.length) : '', sel: on ? 'true' : 'false', bg: on ? t.ink : 'transparent', fg: on ? t.bg : t.ink, bd: on ? t.ink : t.line2,
+        var inf3 = S.picker === 'model' ? (CAT[car.make] || {})[v] : null;
+        var yrs = inf3 && inf3.years && inf3.years.length ? (inf3.years[0] === inf3.years[inf3.years.length - 1] ? String(inf3.years[0]) : inf3.years[0] + ' – ' + inf3.years[inf3.years.length - 1]) : '';
+        return { label: String(v), logo: lg, hasLogo: !!lg, noLogo: S.picker === 'make' && !lg, mono: mono(v), on: !!on,
+          count: S.picker === 'make' ? (Object.keys(CAT[v] || {}).length + ' موديل') : '',
+          sub: S.picker === 'trim' ? (rk >= 0 && allTrims.length > 1 ? rankOf(rk, allTrims.length) : '') : S.picker === 'model' ? [yrs, inf3 && inf3.trims && inf3.trims.length > 1 ? inf3.trims.length + ' فئات' : ''].filter(Boolean).join(' · ') : '',
+          n: rk >= 0 ? rk + 1 : i + 1, level: allTrims.length > 1 && rk >= 0 ? Math.round(20 + 80 * rk / (allTrims.length - 1)) : 60,
+          delay: Math.min(0.5, i * 0.025).toFixed(3),
+          sel: on ? 'true' : 'false', bg: on ? t.ink : 'transparent', fg: on ? t.bg : t.ink, bd: on ? t.ink : t.line2,
           pick: function () { self.pickField(S.picker, v); } };
-      });
+      };
+      pickOpts = list.map(function (v, i) { return opt(v, i, list.length); });
+      if (S.picker === 'make' && !pq) {
+        pickTop = Object.keys(CAT).map(function (mk) { return [mk, makeAds(mk)]; }).filter(function (x) { return x[1] > 0; })
+          .sort(function (a, b) { return b[1] - a[1]; }).slice(0, 8).map(function (x, i) { return opt(x[0], i, 8); });
+      }
     }
     // typed in the picker: take the closest catalog name when it's clearly the same, else use the text as written
     var useOther = function () {
@@ -3114,7 +3198,20 @@ class Component extends DCLogic {
       isPicker: S.sheet === 'picker', isList: S.sheet === 'alerts' || S.sheet === 'zero' || S.sheet === 'comps',
       sheetTitle: S.sheet === 'item' && S.item ? S.item.name : S.sheet === 'picker' ? ({ make: 'اختار الماركة', model: 'اختار الموديل', year: 'اختار السنة', trim: 'اختار الفئة' }[S.picker]) : S.sheet === 'alerts' ? 'التنبيهات' : S.sheet === 'zero' ? 'أسعار الزيرو النهارده' : S.sheet === 'comps' ? ('العربيات اللي اتقارنت (' + nComps + ')') : '',
       sheetNote: S.sheet === 'item' && S.item ? S.item.kind + '، ' + S.item.when : S.sheet === 'comps' ? 'مقارنة بالرينج لعربية فابريكا' : S.sheet === 'zero' ? 'من هتلاقي' : '',
-      pickOpts: pickOpts,
+      pickOpts: pickOpts, pickTop: pickTop, pickHasTop: pickTop.length > 3,
+      pickIsMake: S.picker === 'make', pickIsModel: S.picker === 'model', pickIsYear: S.picker === 'year', pickIsTrim: S.picker === 'trim',
+      pickKey: 'pk-' + (S.picker || ''), pickAnim: S.pickDir === 'b' ? 'enter-b' : 'enter-f',
+      pickTyped: !!S.pickOther.trim(), pickShowCrumbs: S.picker !== 'make' || !!(S.picked || {}).make || S.carSet,
+      pickCrumbs: (function () {
+        var order2 = ['make', 'model', 'year', 'trim'], names = { make: 'الماركة', model: 'الموديل', year: 'السنة', trim: 'الفئة' }, pk = S.picked || {};
+        var cur = order2.indexOf(S.picker);
+        return order2.map(function (k, i) {
+          var done = S.carSet || pk[k], isCur = k === S.picker, can = i <= cur || done;
+          return { k: names[k], v: done && !isCur ? String(car[k]) : isCur ? '…' : '', cur: isCur ? 'step' : 'false', off: can ? undefined : true,
+            bg: isCur ? t.ink : 'transparent', fg: isCur ? t.bg : done ? t.ink : t.mute, bd: isCur ? t.ink : t.line2,
+            go: function () { if (can && !isCur) self.setState({ picker: k, pickOther: '', pickDir: i < cur ? 'b' : 'f' }); } };
+        });
+      })(),
       pickOther: S.pickOther, onPickOther: function (e) { self.setState({ pickOther: e.target.value }); },
       pickOtherEmpty: !S.pickOther.trim(), pickOtherOp: S.pickOther.trim() ? 1 : 0.4,
       pickOtherAria: 'حاجة تانية مش في القايمة', pickOtherPh: 'مش في القايمة؟ اكتبها…',

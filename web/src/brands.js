@@ -5,7 +5,7 @@ const ALIAS = {
   mercedes: 'mercedes-benz', mercedesbenz: 'mercedes-benz', benz: 'mercedes-benz', landrover: 'land-rover', rangerover: 'land-rover',
   alfaromeo: 'alfa-romeo', astonmartin: 'aston-martin', rollsroyce: 'rolls-royce', greatwall: 'great-wall', gac: 'gac-group',
   gacmotor: 'gac-group', baic: 'baic-motor', lynkco: 'lynk-and-co', lynkandco: 'lynk-and-co', liauto: 'li-auto', vw: 'volkswagen',
-  chevy: 'chevrolet', citroën: 'citroen', škoda: 'skoda', ds: 'ds', mgmotor: 'mg', kgmobility: 'ssangyong', kgm: 'ssangyong',
+  'lynk&co': 'lynk-and-co', chevy: 'chevrolet', citroën: 'citroen', škoda: 'skoda', ds: 'ds', mgmotor: 'mg', kgmobility: 'ssangyong', kgm: 'ssangyong',
   // Arabic names
   'تويوتا': 'toyota', 'هيونداي': 'hyundai', 'هيونداى': 'hyundai', 'كيا': 'kia', 'نيسان': 'nissan', 'شيفروليه': 'chevrolet', 'شيفرولية': 'chevrolet',
   'مرسيدس': 'mercedes-benz', 'بي ام دبليو': 'bmw', 'بيإمدبليو': 'bmw', 'بيامدبليو': 'bmw', 'اودي': 'audi', 'أودي': 'audi', 'فولكس': 'volkswagen',

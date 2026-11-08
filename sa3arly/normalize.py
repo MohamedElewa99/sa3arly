@@ -21,6 +21,31 @@ MAKE_ALIASES = {
 TRIM_START = re.compile(r"(?i)^(a/t|m/t|at|mt|cvt|dct|automatic|manual|\d\.\d|[\w+]+/[\w+]*)$")
 
 
+# one spelling per brand for the app; the key is the name without spaces, dashes or dots
+MAKE_KEY_ALIASES = {"alpharomeo": "alfaromeo", "mercedesbenz": "mercedes", "citroën": "citroen", "lynkandco": "lynkco",
+                    "landrover": "landrover", "rangerover": "landrover", "liauto": "liauto", "kgmobility": "kgm", "ssangyong": "kgm"}
+MAKE_DISPLAY = {"alfaromeo": "Alfa Romeo", "bmw": "BMW", "byd": "BYD", "baw": "BAW", "baic": "BAIC", "mg": "MG", "gac": "GAC",
+                "jac": "JAC", "dfsk": "DFSK", "ds": "DS", "kgm": "KGM", "im": "IM", "faw": "FAW", "jmc": "JMC", "gmc": "GMC",
+                "mercedes": "Mercedes", "landrover": "Land Rover", "astonmartin": "Aston Martin", "rollsroyce": "Rolls-Royce",
+                "lynkco": "Lynk & Co", "liauto": "Li Auto", "citroen": "Citroën", "icaur": "iCAUR", "mhero": "M-Hero",
+                "seres": "SERES", "vgv": "VGV", "zna": "ZNA", "sws": "SWS", "ssangyong": "SsangYong", "greatwall": "Great Wall"}
+
+
+def make_key(raw: Optional[str]) -> str:
+    """'Alfa Romeo', 'alfa-romeo', 'Alfaromeo', 'alpha-romeo' -> 'alfaromeo': the same brand however a site spells it."""
+    s = make_slug(raw) or ""
+    k = re.sub(r"[^a-z0-9\u0600-\u06ff]+", "", s.lower())
+    return MAKE_KEY_ALIASES.get(k, k)
+
+
+def make_display(raw: str) -> str:
+    k = make_key(raw)
+    if k in MAKE_DISPLAY:
+        return MAKE_DISPLAY[k]
+    n = re.sub(r"\s+", " ", (raw or "").replace("-", " ")).strip()
+    return n if n != n.lower() else n.title()
+
+
 def make_slug(raw: Optional[str]) -> Optional[str]:
     if not raw:
         return None

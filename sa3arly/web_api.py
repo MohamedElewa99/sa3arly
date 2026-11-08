@@ -10,6 +10,7 @@ import statistics
 from datetime import date, datetime, timezone
 from typing import Optional
 
+from .normalize import make_display
 from .pricing import DEFAULT_KM_RATE, DEFAULT_YEAR_RATE, Pricer
 
 BODY_WORDS = [
@@ -192,7 +193,11 @@ def catalog(cx, days: int = 90, min_ads: int = 1) -> dict:
     if cx.execute("select to_regclass('model_catalog')").fetchone()[0]:
         listed = cx.execute("""select mk.name_en, mo.name_en from model_catalog c
                                join models mo on mo.id = c.model_id join makes mk on mk.id = mo.make_id""").fetchall()
-    listed_set = {tuple(x) for x in listed}
+    names: dict[str, str] = {}
+    disp = lambda m: names.setdefault(m, make_display(m))       # 'Alfaromeo' and 'Alfa Romeo' -> one brand
+    rows = [(disp(r[0]),) + tuple(r[1:]) for r in rows]
+    zero = [(disp(r[0]),) + tuple(r[1:]) for r in zero]
+    listed_set = {(disp(a), b) for a, b in listed}
     zmap: dict[tuple, list] = {}
     for mk, mo, y, p, tn, fresh in zero:
         zmap.setdefault((mk, mo), []).append((y, p, tn, fresh))

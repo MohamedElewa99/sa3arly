@@ -182,9 +182,12 @@ class Pricer:
         return {k: v * disc for k, v in p.items()}, {"metrics": m.metrics, "known": m.known(f), "blend": m.blend}
 
     # ---------------------------------------------------------------- data
-    def _make_id(self, make: str) -> Optional[int]:
-        r = self.cx.execute("select id from makes where slug = %s", (make_slug(make),)).fetchone()
-        return r[0] if r else None
+    def _make_id(self, make: str) -> Optional[list]:
+        """Every row of this brand ('Alfa Romeo' and 'Alfaromeo' can both exist): a list of ids, or None."""
+        from .normalize import make_key
+        k = make_key(make)
+        ids = [r[0] for r in self.cx.execute("select id, slug from makes").fetchall() if make_key(r[1]) == k]
+        return ids or None
 
     def comparables(self, make: str, model: str, year: int, spread: int, days: int = 60) -> list[Comparable]:
         mk = self._make_id(make)
@@ -196,9 +199,9 @@ class Pricer:
         rows = self.cx.execute("""
             select l.source, l.year, l.km, l.price_egp, l.url, l.trim_raw, coalesce(l.raw->'badges', '[]'::jsonb)
             from listings l
-            where l.make_id = %s
+            where l.make_id = any(%s)
               and l.model_id in (select id from models
-                                 where make_id = %s and (slug = %s or slug like %s or %s like slug || '-%%'))
+                                 where make_id = any(%s) and (slug = %s or slug like %s or %s like slug || '-%%'))
               and l.year between %s and %s and l.price_egp is not null
               and l.last_seen > now() - make_interval(days => %s)
               and (l.removed_at is null or l.removed_at > now() - make_interval(days => %s))
@@ -221,9 +224,9 @@ class Pricer:
         like = ms.replace("\\", "\\\\").replace("_", "\\_").replace("%", "\\%") + "-%"
         rows = self.cx.execute("""
             select z.model_year, z.price_egp from zero_prices z
-            where z.make_id = %s and z.effective_on > now() - interval '45 days'
+            where z.make_id = any(%s) and z.effective_on > now() - interval '45 days'
               and z.model_id in (select id from models
-                                 where make_id = %s and (slug = %s or slug like %s or %s like slug || '-%%'))
+                                 where make_id = any(%s) and (slug = %s or slug like %s or %s like slug || '-%%'))
         """, (mk, mk, ms, like, ms)).fetchall()
         if not rows:
             return None, None
