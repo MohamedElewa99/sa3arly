@@ -204,8 +204,8 @@ def used_brand_slugs(f: Fetcher) -> list[str]:
 def parse_brand_models(text: str, links: list[str], slug: str) -> tuple[str, list[str]]:
     """A used-cars brand page (/en/car/<brand>) -> (brand name, every model it lists, old ones included)."""
     from urllib.parse import unquote
-    m = re.search(r"^Used (.+?) (?:Cars )?for Sale in Egypt", text, re.M)
-    brand = m.group(1).strip() if m else _brand_name(text, slug)
+    m = re.search(r"^Used (.+?) (?:cars )?for sale in Egypt", text, re.M | re.I)
+    brand = re.sub(r"\s+cars$", "", (m.group(1) if m else _brand_name(text, slug)).strip(), flags=re.I)
     models = []
     for l in links:
         u = l.split("#")[0].split("?")[0].rstrip("/")

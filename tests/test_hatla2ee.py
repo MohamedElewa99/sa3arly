@@ -50,7 +50,7 @@ def test_card_with_trim_and_badge():
 
 def test_brand_page_lists_every_model():
     from sa3arly.scrapers.hatla2ee import parse_brand_models
-    text = "Used Alfa Romeo for Sale in Egypt\nOther Models\nStelvio\n(6)\n156\n(5)"
+    text = "Used Alfa Romeo cars for sale in Egypt\nOther Models\nStelvio\n(6)\n156\n(5)"
     links = ["https://eg.hatla2ee.com/en/car/alpha-romeo/Stelvio", "https://eg.hatla2ee.com/en/car/alpha-romeo/156",
              "https://eg.hatla2ee.com/en/car/alpha-romeo/Giulietta%20Quadrifoglio%20Verde",
              "https://eg.hatla2ee.com/en/car/alpha-romeo/year/2020", "https://eg.hatla2ee.com/en/car/alpha-romeo/body",

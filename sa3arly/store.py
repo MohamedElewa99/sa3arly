@@ -122,6 +122,17 @@ class PgStore:
                                  model_id int primary key references models(id), source text not null,
                                  seen_on date not null default current_date)""")
             self._catalog_ready = True
+        if not getattr(self, "_catalog_cleaned", False):
+            # a first run filed brands as "<Brand> cars": drop those empty duplicates
+            self.cx.execute("""delete from model_catalog where model_id in (select mo.id from models mo join makes mk on mk.id = mo.make_id
+                                 where mk.slug like '%%-cars')""")
+            self.cx.execute("""delete from models mo using makes mk where mk.id = mo.make_id and mk.slug like '%%-cars'
+                                 and not exists (select 1 from listings l where l.model_id = mo.id)
+                                 and not exists (select 1 from zero_prices z where z.model_id = mo.id)""")
+            self.cx.execute("""delete from makes mk where mk.slug like '%%-cars'
+                                 and not exists (select 1 from models mo where mo.make_id = mk.id)
+                                 and not exists (select 1 from listings l where l.make_id = mk.id)""")
+            self._catalog_cleaned = True
         md = self.model_id(self.make_id(make_raw), model_raw)
         if md:
             self.cx.execute("""insert into model_catalog (model_id, source) values (%s, %s)
