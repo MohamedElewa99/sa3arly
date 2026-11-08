@@ -55,6 +55,22 @@ def run_models(f, store):
     return n
 
 
+def run_trims(f, store, max_pages):
+    from .scrapers import yallamotor_trims as yt
+    done = set()
+    for url in store.trim_pages_done():
+        p = yt._path(url)
+        if len(p) == 3:
+            done.add((p[0], p[1], int(p[2])))
+    n = 0
+    for t in yt.scrape(f, done=done, max_pages=max_pages):
+        store.trim_price(t, yt.SOURCE)
+        n += bool(t.trim)
+    print(f"[yallamotor] versions saved: {n} ({f.pages} pages)")
+    store.run("yallamotor:trims", pages=f.pages, items=n)
+    return n
+
+
 def run_used(f, store, source, max_pages, max_details=300):
     mod = USED[source]
     known = store.known_ids(source)
@@ -165,6 +181,8 @@ def main(argv=None):
     z.add_argument("--source", choices=ZERO, required=True)
     z.add_argument("--brands", help="comma-separated slugs, e.g. hyundai,kia (default: all)")
     sub.add_parser("models", help="every model of every brand on Hatla2ee (old ones too), for the app's pickers")
+    tp = sub.add_parser("trims", help="every version of every model year with its price new (YallaMotor), resumable")
+    tp.add_argument("--max-pages", type=int, default=1500)
     cc = sub.add_parser("catalog", help="print what the app's pickers show for some makes")
     cc.add_argument("--makes", default="Alfa Romeo,Proton,Hyundai")
     cc.add_argument("--top", type=int, default=0, help="instead: the N models with the most ads, all makes")
@@ -295,6 +313,8 @@ def main(argv=None):
             run_zero(f, store, a.source, a.brands.split(",") if a.brands else None)
         elif a.cmd == "models":
             run_models(f, store)
+        elif a.cmd == "trims":
+            run_trims(f, store, a.max_pages)
         elif a.cmd == "used":
             if a.source in BLOCKED:
                 print(f"[{a.source}] warning: {BLOCKED[a.source]} at last probe — expect few or no results")

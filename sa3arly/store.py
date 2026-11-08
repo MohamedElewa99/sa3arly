@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -138,6 +139,33 @@ class PgStore:
             self.cx.execute("""insert into model_catalog (model_id, source) values (%s, %s)
                                on conflict (model_id) do update set seen_on = current_date""", (md, source))
         return md
+
+    def _trims_ready(self):
+        if not getattr(self, "_trim_tables", False):
+            self.cx.execute("""create table if not exists trim_prices (
+                                 model_id int not null references models(id), model_year int not null, trim text not null,
+                                 price_egp int not null, source text not null, source_url text, seen_on date not null default current_date,
+                                 primary key (model_id, model_year, trim, source))""")
+            self.cx.execute("create table if not exists trim_pages (url text primary key, seen_on date not null default current_date)")
+            self._trim_tables = True
+
+    def trim_pages_done(self) -> set:
+        self._trims_ready()
+        return {r[0] for r in self.cx.execute("select url from trim_pages")}
+
+    def trim_price(self, t, source):
+        """One version of a model year with the price it sold for new (YallaMotor); an empty one only marks the page read."""
+        self._trims_ready()
+        if t.trim:
+            md = self.model_id(self.make_id(t.make_raw), t.model_raw)
+            if md:
+                self.cx.execute("""insert into trim_prices (model_id, model_year, trim, price_egp, source, source_url)
+                                   values (%s, %s, %s, %s, %s, %s)
+                                   on conflict (model_id, model_year, trim, source)
+                                   do update set price_egp = excluded.price_egp, seen_on = current_date""",
+                                (md, t.model_year, t.trim, t.price_egp, source, t.source_url))
+        if re.search(r"/\d{4}$", t.source_url or ""):
+            self.cx.execute("insert into trim_pages (url) values (%s) on conflict do nothing", (t.source_url,))
 
     def models_of(self, make_id):
         """Model names of a make, read once per make per run and kept up to date as models are added."""

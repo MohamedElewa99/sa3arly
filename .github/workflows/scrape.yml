@@ -22,7 +22,7 @@ jobs:
       max-parallel: 1          # one request stream at a time to Hatla2ee
       matrix:
         job: ${{ (github.event.schedule == '17 3 * * 5' || inputs.job == 'weekly')
-                 && fromJSON('["used --source hatla2ee --max-pages 800 --max-details 0", "models"]')
+                 && fromJSON('["used --source hatla2ee --max-pages 800 --max-details 0", "models", "trims --max-pages 1500"]')
                  || (inputs.job && inputs.job != 'daily') && fromJSON(format('["{0}"]', inputs.job))
                  || fromJSON('["zero --source hatla2ee", "used --source hatla2ee --max-pages 60 --max-details 300", "used --source opensooq --max-pages 60", "used --source sylndr --max-pages 40"]') }}
     steps:

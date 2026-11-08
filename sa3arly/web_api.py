@@ -166,6 +166,21 @@ def _official_trims(z: list[tuple]) -> tuple[list, dict]:
     return [max(v, key=lambda x: x[1])[2] for v in order], per_year
 
 
+def _mslug(s: str) -> str:
+    return re.sub(r"[^a-z0-9]+", "-", (s or "").lower()).strip("-")
+
+
+def _family_trims(zmap: dict, mk: str, mo: str, years: set) -> list:
+    """Official trims of the same model family (one name the start of the other) for the years this model covers."""
+    me, out = _mslug(mo), []
+    for (mk2, mo2), rows in zmap.items():
+        other = _mslug(mo2)
+        if mk2 != mk or other == me or not other or not (me.startswith(other + "-") or other.startswith(me + "-")):
+            continue
+        out += [(y, p, tn) for y, p, tn, _ in rows if y in years]
+    return out
+
+
 def _merge_case(names: list[str]) -> dict[str, str]:
     """'1st Category' and '1st category' are one trim: lower name -> the spelling used most."""
     cnt: dict[str, dict[str, int]] = {}
@@ -193,6 +208,12 @@ def catalog(cx, days: int = 90, min_ads: int = 1) -> dict:
     if cx.execute("select to_regclass('model_catalog')").fetchone()[0]:
         listed = cx.execute("""select mk.name_en, mo.name_en from model_catalog c
                                join models mo on mo.id = c.model_id join makes mk on mk.id = mo.make_id""").fetchall()
+    if cx.execute("select to_regclass('trim_prices')").fetchone()[0]:
+        # every version of past model years with its price new (YallaMotor): the real trims of old models
+        zero = list(zero) + [(mk, mo, y, p, tn, None) for mk, mo, y, p, tn in cx.execute("""
+            select mk.name_en, mo.name_en, t.model_year, t.price_egp, t.trim
+            from trim_prices t join models mo on mo.id = t.model_id join makes mk on mk.id = mo.make_id
+            where t.price_egp > 0""").fetchall()]
     names: dict[str, str] = {}
     disp = lambda m: names.setdefault(m, make_display(m))       # 'Alfaromeo' and 'Alfa Romeo' -> one brand
     rows = [(disp(r[0]),) + tuple(r[1:]) for r in rows]
@@ -221,11 +242,18 @@ def catalog(cx, days: int = 90, min_ads: int = 1) -> dict:
         if not years:
             years = list(range(this_year - 15, this_year + 1))
         zero_price = None
-        fresh = [(y, p) for y, p, _, f in z if f]
+        fresh = [(y, p) for y, p, _, f in z if f is True]
         if fresh:
             newest = max(y for y, _ in fresh)
             zero_price = int(statistics.median(p for y, p in fresh if y == newest))
-        official, per_year = _official_trims([(y, p, tn) for y, p, tn, _ in z])
+        # a year Hatla2ee has official prices for keeps those; YallaMotor fills the other years
+        hy = {y for y, _, _, f in z if f is not None}
+        official, per_year = _official_trims([(y, p, tn) for y, p, tn, f in z if f is not None or y not in hy])
+        if len(official) < 2:
+            # 'Elantra HD' takes the trims YallaMotor lists under 'Elantra' for the same years
+            fam = _family_trims(zmap, mk, mo, set(years))
+            if fam:
+                official, per_year = _official_trims(fam)
         if len(official) >= 2 or (official and not rs_all):
             trims, trims_by_year = official, {str(y): ts for y, ts in per_year.items() if ts}
         else:

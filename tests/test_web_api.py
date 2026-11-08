@@ -92,3 +92,11 @@ def test_catalog_lists_models_with_no_ads(db):
         assert g["trims"] == ["Standard"] and g["n"] == 0 and g["years"]
     finally:
         db.execute("drop table model_catalog")
+
+
+def test_family_trims():
+    from sa3arly.web_api import _family_trims
+    zmap = {("Hyundai", "Elantra"): [(2010, 100, "GL", None), (2010, 120, "GLS", None), (2020, 300, "Top", None)],
+            ("Hyundai", "Verna"): [(2010, 90, "GL", None)]}
+    assert sorted(_family_trims(zmap, "Hyundai", "Elantra HD", {2009, 2010})) == [(2010, 100, "GL"), (2010, 120, "GLS")]
+    assert _family_trims(zmap, "Hyundai", "Accent", {2010}) == []
