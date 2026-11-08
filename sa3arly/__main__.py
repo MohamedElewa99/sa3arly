@@ -167,6 +167,7 @@ def main(argv=None):
     sub.add_parser("models", help="every model of every brand on Hatla2ee (old ones too), for the app's pickers")
     cc = sub.add_parser("catalog", help="print what the app's pickers show for some makes")
     cc.add_argument("--makes", default="Alfa Romeo,Proton,Hyundai")
+    cc.add_argument("--top", type=int, default=0, help="instead: the N models with the most ads, all makes")
     u = sub.add_parser("used")
     u.add_argument("--source", choices=USED, required=True)
     u.add_argument("--max-pages", type=int, default=60,
@@ -205,6 +206,11 @@ def main(argv=None):
         t0 = time.time()
         c = catalog(cx)
         print(f"[catalog] {len(c['makes'])} makes, {sum(len(v) for v in c['makes'].values())} models in {time.time() - t0:.1f}s")
+        if a.top:
+            allm = sorted(((i["n"], mk, mo, i) for mk, ms in c["makes"].items() for mo, i in ms.items()), key=lambda x: -x[0])
+            for n, mk, mo, info in allm[:a.top]:
+                print(f"[top] {mk} | {mo} | years {info['years'][0]}-{info['years'][-1]} | ads {n} | official {bool(info.get('trimsByYear'))} | trims: {' < '.join(info['trims'][:8])}")
+            return 0
         for mk in a.makes.split(","):
             for mo, info in sorted((c["makes"].get(mk.strip()) or {}).items()):
                 print(f"[catalog] {mk} | {mo} | years {info['years'][0]}-{info['years'][-1]} | ads {info['n']} | trims: {' < '.join(info['trims'][:8])}")
