@@ -100,3 +100,11 @@ def test_family_trims():
             ("Hyundai", "Verna"): [(2010, 90, "GL", None)]}
     assert sorted(_family_trims(zmap, "Hyundai", "Elantra HD", {2009, 2010})) == [(2010, 100, "GL"), (2010, 120, "GLS")]
     assert _family_trims(zmap, "Hyundai", "Accent", {2010}) == []
+
+
+def test_researched_trims():
+    from sa3arly.trims_ref import ref_for
+    r = ref_for("Hyundai", "Elantra HD", {2010, 2018, 2030})
+    assert r[2010][0] == "M/T GL" and r[2018][-1] == "A/T GL Highline" and 2030 not in r
+    assert ref_for("Mitsubishi", "Lancer EX Shark", {2016})[2016] == ["1.6 GLX", "1.6 GLS", "2.0 GT"]
+    assert ref_for("Hyundai", "Elantra AD", {2018}) == {}            # its own official trims, not plain Elantra's

@@ -11,6 +11,7 @@ from datetime import date, datetime, timezone
 from typing import Optional
 
 from .normalize import make_display
+from .trims_ref import ref_for
 from .pricing import DEFAULT_KM_RATE, DEFAULT_YEAR_RATE, Pricer
 
 BODY_WORDS = [
@@ -254,6 +255,15 @@ def catalog(cx, days: int = 90, min_ads: int = 1) -> dict:
             fam = _family_trims(zmap, mk, mo, set(years))
             if fam:
                 official, per_year = _official_trims(fam)
+        # researched trims of popular older models fill the years no official price list covers
+        ref = ref_for(mk, mo, set(years))
+        for y, ts in ref.items():
+            if len(per_year.get(y, [])) < 2:
+                per_year[y] = list(ts)
+        if ref and len(official) < 2:
+            official = []
+            for y in sorted(per_year, reverse=True):
+                official += [t for t in per_year[y] if t not in official]
         if len(official) >= 2 or (official and not rs_all):
             trims, trims_by_year = official, {str(y): ts for y, ts in per_year.items() if ts}
         else:
