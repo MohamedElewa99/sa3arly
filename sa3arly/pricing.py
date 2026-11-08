@@ -189,23 +189,45 @@ class Pricer:
         ids = [r[0] for r in self.cx.execute("select id, slug from makes").fetchall() if make_key(r[1]) == k]
         return ids or None
 
+    def _model_ids(self, mk: list, make: str, model: str) -> list:
+        """The model and its family across sites: 'Elantra' ⇄ 'Elantra AD', and 'DS7' ⇄ '7' ⇄ '7 Crossback'."""
+        from .normalize import make_key
+
+        def core(slug):
+            k = make_key(make)
+            flat = slug.replace("-", "")
+            if k and flat.startswith(k) and len(flat) > len(k):
+                # drop the make written in front of the model ('ds-7', 'ds7' -> '7')
+                n, i = 0, 0
+                while i < len(slug) and n < len(k):
+                    if slug[i] != "-":
+                        n += 1
+                    i += 1
+                return slug[i:].lstrip("-")
+            return slug
+        me = core(slugify(model))
+        out = []
+        for mid, sl in self.cx.execute("select id, slug from models where make_id = any(%s)", (mk,)).fetchall():
+            c = core(sl)
+            if c == me or c.startswith(me + "-") or me.startswith(c + "-"):
+                out.append(mid)
+        return out
+
     def comparables(self, make: str, model: str, year: int, spread: int, days: int = 60) -> list[Comparable]:
         mk = self._make_id(make)
         if not mk:
             return []
-        ms = slugify(model)
-        like = ms.replace("\\", "\\\\").replace("_", "\\_").replace("%", "\\%") + "-%"
-        # model family ('elantra' ⇄ 'elantra-ad') is resolved in SQL, so only matching rows leave the database
+        mids = self._model_ids(mk, make, model)
+        if not mids:
+            return []
         rows = self.cx.execute("""
             select l.source, l.year, l.km, l.price_egp, l.url, l.trim_raw, coalesce(l.raw->'badges', '[]'::jsonb)
             from listings l
-            where l.make_id = any(%s)
-              and l.model_id in (select id from models
-                                 where make_id = any(%s) and (slug = %s or slug like %s or %s like slug || '-%%'))
+            where l.make_id = any(%s) and l.model_id = any(%s)
               and l.year between %s and %s and l.price_egp is not null
               and l.last_seen > now() - make_interval(days => %s)
               and (l.removed_at is null or l.removed_at > now() - make_interval(days => %s))
-        """, (mk, mk, ms, like, ms, year - spread, year + spread, days, days)).fetchall()
+        """, (mk, mids, year - spread, year + spread, days, days)).fetchall()
         out = []
         for src, y, km, price, url, trim, badges in rows:
             if set(badges or []) & EXCLUDE_BADGES or url == self.exclude_url:
@@ -220,14 +242,13 @@ class Pricer:
         mk = self._make_id(make)
         if not mk:
             return None, None
-        ms = slugify(model)
-        like = ms.replace("\\", "\\\\").replace("_", "\\_").replace("%", "\\%") + "-%"
+        mids = self._model_ids(mk, make, model)
+        if not mids:
+            return None, None
         rows = self.cx.execute("""
             select z.model_year, z.price_egp from zero_prices z
-            where z.make_id = any(%s) and z.effective_on > now() - interval '45 days'
-              and z.model_id in (select id from models
-                                 where make_id = any(%s) and (slug = %s or slug like %s or %s like slug || '-%%'))
-        """, (mk, mk, ms, like, ms)).fetchall()
+            where z.make_id = any(%s) and z.effective_on > now() - interval '45 days' and z.model_id = any(%s)
+        """, (mk, mids)).fetchall()
         if not rows:
             return None, None
         top = max(y for y, _ in rows)
@@ -291,6 +312,7 @@ class Pricer:
         if ai and not 30_000 <= ai["mid"] <= 100_000_000:
             ai = None                     # not a car price (a model trained without such cars): don't show it
         ai_out = None
+        agree = False
         if ai:
             met = info["metrics"]
             w = _ai_weight(n, info["known"]["model"], bool(zero), met.get("median_ape") or 0.0, info.get("blend"))
@@ -327,6 +349,12 @@ class Pricer:
                     new_mid = w * ai["mid"] + (1 - w) * mid
                     low, high = low * new_mid / mid, high * new_mid / mid
                     mid = new_mid
+                    if abs(gap) < 0.08:
+                        # the ads and the model say the same thing from two directions: a tighter range is honest
+                        agree = True
+                        half = max(0.035, (high - low) / 2 / mid * 0.7)
+                        low, high = mid * (1 - half), mid * (1 + half)
+                        lines.append("الإعلانات والذكاء الاصطناعي متفقين على السعر، فضيّقنا المدى")
                     if abs(gap) >= 0.12:
                         lines.append(f"الإعلانات القريبة {'أرخص' if gap > 0 else 'أغلى'} بـ {abs(gap):.0%} من اللي متوقع لعربية زيها، "
                                      "بص على العربيات اللي اتقارنت قبل ما تقرر")
@@ -338,7 +366,7 @@ class Pricer:
                          lines + ["مفيش عربيات شبهها في القاعدة لسه"])
 
         # few comparables -> the quartiles are too tight to be honest: enforce a minimum width
-        min_width = 0.12 if n == 0 else 0.10 if n < 8 else 0.07 if n < 20 else 0.0
+        min_width = 0.12 if n == 0 else (0.07 if agree else 0.10) if n < 8 else (0.05 if agree else 0.07) if n < 20 else 0.0
         if min_width and (high - low) < min_width * mid:
             low, high = mid * (1 - min_width / 2), mid * (1 + min_width / 2)
 

@@ -954,15 +954,29 @@ class Component extends React.Component {
       ['elec', 'الكهربا', [['battery', 'بطارية', 3500, 5500], ['alternator', 'دينامو', 4000, 9000], ['starter', 'مارش', 3000, 7000]]],
       ['tires', 'الكاوتش', [['tires2', '2 كاوتش', 6000, 10000], ['tires4', '4 كاوتش', 12000, 20000]]]
     ];
+    // repair costs follow the car: parts for a German luxury car cost more than for a Chinese city car,
+    // and a bigger, pricier car of the same brand costs more again
+    var mkKey = String(S.car.make || '').toLowerCase().replace(/[^a-z\u0600-\u06ff]/g, '');
+    var BR = { premium: ['mercedes', 'mercedesbenz', 'bmw', 'audi', 'porsche', 'landrover', 'rangerover', 'volvo', 'lexus', 'jaguar', 'mini', 'jeep', 'maserati', 'cadillac', 'genesis', 'infiniti', 'مرسيدس', 'بيامدبليو', 'اودي'],
+      euro: ['volkswagen', 'skoda', 'seat', 'cupra', 'peugeot', 'citroen', 'citroën', 'ds', 'opel', 'renault', 'fiat', 'ford', 'alfaromeo', 'subaru', 'كوبرا', 'سكودا', 'بيجو', 'رينو', 'فيات', 'اوبل'],
+      budget: ['lada', 'daewoo', 'speranza', 'proton', 'byd', 'brilliance', 'zotye', 'لادا', 'دايو'],
+      china: ['chery', 'geely', 'mg', 'haval', 'changan', 'jetour', 'baic', 'dongfeng', 'jac', 'gac', 'exeed', 'bestune', 'kaiyi', 'soueast', 'dfsk', 'faw', 'شيري', 'جيلي'] };
+    var brandF = BR.premium.indexOf(mkKey) >= 0 ? 2.2 : BR.euro.indexOf(mkKey) >= 0 ? 1.3 : BR.budget.indexOf(mkKey) >= 0 ? 0.8 : BR.china.indexOf(mkKey) >= 0 ? 0.9 : 1;
+    var CAT0 = Component.remoteCat || Component.CAT, inf0 = (CAT0[S.car.make] || {})[S.car.model] || {};
+    var val0 = inf0.zero || (inf0.ref ? inf0.ref * 1.4 : 0);
+    var classF = val0 ? Math.max(0.75, Math.min(1.8, Math.pow(val0 / 1200000, 0.35))) : 1;
+    var costF = brandF * classF;
+    var cost = function (n) { return Math.round(n * costF / 500) * 500; };
     var mLo = 0, mHi = 0, mechNames = [];
-    var k1 = function (n) { return Math.round(n / 1000) + ' ألف'; };
+    var k1 = function (n) { return n >= 1000 ? Math.round(n / 1000) + ' ألف' : n + ' جنيه'; };
     var cats = M.map(function (c) {
       var n = 0;
       var parts = c[2].map(function (p) {
         var on = !!S.mech[p[0]];
-        if (on) { n += 1; mLo += p[2]; mHi += p[3]; mechNames.push(p[1]); }
+        var lo = cost(p[2]), hi = cost(p[3]);
+        if (on) { n += 1; mLo += lo; mHi += hi; mechNames.push(p[1]); }
         return {
-          name: p[1], cost: k1(p[2]) + ' لـ ' + k1(p[3]), on: on ? 'true' : 'false',
+          name: p[1], cost: k1(lo) + ' لـ ' + k1(hi), on: on ? 'true' : 'false',
           bg: on ? '#F2A93B' : 'transparent', fg: on ? '#000000' : t.ink, bd: on ? '#F2A93B' : t.line2,
           toggle: function () { var m = Object.assign({}, self.state.mech); m[p[0]] = !m[p[0]]; self.setState({ mech: m }); }
         };
@@ -1372,6 +1386,7 @@ class Component extends React.Component {
       carNextLabel: !S.carSet ? 'اختار العربية الأول' : !S.kmSet ? 'اكتب العداد' : 'التالي: الدهان',
       carNextOp: S.carSet && S.kmSet ? 1 : 0.55,
       goMech: function () { self.go('mech', 'f'); }, goResult: function () { self.go(S.mine ? 'mysave' : 'result', 'f'); },
+      mechCostNote: 'الأسعار متظبطة على ' + (S.car.make || 'العربية') + (costF >= 1.6 ? ' (قطع غيارها غالية)' : costF <= 0.9 ? ' (قطع غيارها رخيصة)' : '') + '.',
       mechNextLabel: S.mine ? 'التالي: السعر والحالة' : 'احسب السعر',
       goCompare: function () { self.go('compare', 'f'); }, goHomeBack: function () { self.go('home', 'b'); },
       back: function () { self.go(idx > 0 ? order[idx - 1] : (S.mine ? 'garage' : 'home'), 'b'); },
@@ -2187,7 +2202,7 @@ class Component extends React.Component {
 <div className={v.enterCls} style={css("flex: 1; min-height: 0; display: flex; flex-direction: column")}>
 <main style={css("flex: 1; min-height: 0; overflow-y: auto; padding: 18px 20px 8px; display: flex; flex-direction: column")}>
 <h1 style={css("margin: 0 0 4px; font-family: 'Aref Ruqaa', serif; font-weight: 700; font-size: 40px; line-height: 1.1")}>الميكانيكا</h1>
-<p style={css(`margin: 0 0 12px; font-size: 13px; color: ${v.t.mute}`)}>افتح أي بند وعلّم على الحاجة اللي محتاجة تتغير بس.</p>
+<p style={css(`margin: 0 0 12px; font-size: 13px; color: ${v.t.mute}`)}>افتح أي بند وعلّم على الحاجة اللي محتاجة تتغير بس. {v.mechCostNote}</p>
 {(v.cats || []).map((c, i13) => (<React.Fragment key={i13}>
 <div style={css(`border-top: 1px solid ${v.t.line}; padding-top: 4px`)}>
 <button className="press" onClick={c.toggle} aria-expanded={c.expanded} style={css(`width: 100%; min-height: 54px; display: flex; align-items: center; justify-content: space-between; background: none; border: none; color: ${v.t.ink}; padding: 0`)}>

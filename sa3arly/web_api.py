@@ -227,6 +227,27 @@ def catalog(cx, days: int = 90, min_ads: int = 1) -> dict:
     groups: dict[tuple, list] = {}
     for r in rows:
         groups.setdefault((r[0], r[1]), []).append(r)
+    # one model however each site writes it: 'DS7', '7' and 'Ds 7' are the same car
+    from .normalize import make_key
+    def core(mk, mo):
+        k, m = make_key(mk), re.sub(r"[^a-z0-9]+", "", (mo or "").lower())
+        return m[len(k):] if k and m.startswith(k) and len(m) > len(k) else m
+    allk = set(groups) | set(zmap) | listed_set
+    best_name: dict[tuple, tuple] = {}
+    for mk, mo in allk:
+        c = (mk, core(mk, mo))
+        score = (len(groups.get((mk, mo), [])), len(zmap.get((mk, mo), [])), mo != mo.lower(), len(mo))
+        if c not in best_name or score > best_name[c][0]:
+            best_name[c] = (score, mo)
+    canon = {(mk, mo): best_name[(mk, core(mk, mo))][1] for mk, mo in allk}
+    g2: dict[tuple, list] = {}
+    for (mk, mo), rs in groups.items():
+        g2.setdefault((mk, canon[(mk, mo)]), []).extend(rs)
+    z2: dict[tuple, list] = {}
+    for (mk, mo), zs in zmap.items():
+        z2.setdefault((mk, canon[(mk, mo)]), []).extend(zs)
+    groups, zmap = g2, z2
+    listed_set = {(mk, canon[(mk, mo)]) for mk, mo in listed_set}
     keys = set(groups) | set(zmap) | listed_set
     makes: dict[str, dict] = {}
     best, best_n = None, 0
@@ -242,6 +263,8 @@ def catalog(cx, days: int = 90, min_ads: int = 1) -> dict:
         years = sorted({r[2] for r in rs_all if 1980 <= r[2] <= this_year + 1} | {y for y, _, _, _ in z if 1980 <= y <= this_year + 1})
         if not years:
             years = list(range(this_year - 15, this_year + 1))
+        else:                                  # every year between the first and the last, not only years with ads
+            years = list(range(years[0], years[-1] + 1))
         zero_price = None
         fresh = [(y, p) for y, p, _, f in z if f is True]
         if fresh:
