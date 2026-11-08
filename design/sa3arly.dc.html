@@ -307,7 +307,10 @@ button:disabled{cursor:not-allowed}
           <div style="display: flex; flex-direction: column; gap: 6px; min-width: 0">
             <span style="font-size: 12px; color: {{ t.mute }}">{{ fd.label }}</span>
             <button class="press" onClick="{{ fd.open }}" aria-haspopup="dialog" aria-label="{{ fd.aria }}" style="height: 46px; display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 0; border: none; border-bottom: 1px solid {{ t.edge }}; background: none; color: {{ t.ink }}; font-size: 16px; text-align: right; min-width: 0">
-              <span style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: {{ fd.fg }}">{{ fd.value }}</span>
+              <span style="display: flex; align-items: center; gap: 8px; min-width: 0">
+                <sc-if value="{{ fd.hasLogo }}" hint-placeholder-val="{{ false }}"><span aria-hidden="true" style="flex: none; width: 34px; height: 26px; border-radius: 7px; background: #FFFFFF; display: flex; align-items: center; justify-content: center"><img src="{{ fd.logo }}" alt="" style="max-width: 28px; max-height: 19px; object-fit: contain"></span></sc-if>
+                <span style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: {{ fd.fg }}">{{ fd.value }}</span>
+              </span>
               <svg width="12" height="8" viewBox="0 0 12 8" aria-hidden="true" style="flex: none"><path d="M1 1l5 5 5-5" stroke="currentColor" stroke-width="1.4" fill="none"></path></svg>
             </button>
           </div>
@@ -745,9 +748,12 @@ button:disabled{cursor:not-allowed}
       </sc-if>
       <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px">
         <sc-for list="{{ pickOpts }}" as="po" hint-placeholder-count="4">
-          <button class="press" onClick="{{ po.pick }}" aria-pressed="{{ po.sel }}" style="min-height: 52px; padding: 6px 12px; border-radius: 12px; border: 1px solid {{ po.bd }}; background: {{ po.bg }}; color: {{ po.fg }}; font-size: 15px; text-align: right; display: flex; flex-direction: column; justify-content: center; gap: 2px; min-width: 0">
-            <span style="font-size: 11px; opacity: .65">{{ po.sub }}</span>
-            <span style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap">{{ po.label }}</span>
+          <button class="press" onClick="{{ po.pick }}" aria-pressed="{{ po.sel }}" style="min-height: 52px; padding: 6px 12px; border-radius: 12px; border: 1px solid {{ po.bd }}; background: {{ po.bg }}; color: {{ po.fg }}; font-size: 15px; text-align: right; display: flex; align-items: center; gap: 10px; min-width: 0">
+            <sc-if value="{{ po.hasLogo }}" hint-placeholder-val="{{ false }}"><span aria-hidden="true" style="flex: none; width: 40px; height: 30px; border-radius: 8px; background: #FFFFFF; display: flex; align-items: center; justify-content: center"><img src="{{ po.logo }}" alt="" loading="lazy" style="max-width: 32px; max-height: 22px; object-fit: contain"></span></sc-if>
+            <span style="flex: 1; min-width: 0; display: flex; flex-direction: column; justify-content: center; gap: 2px">
+              <span style="font-size: 11px; opacity: .65">{{ po.sub }}</span>
+              <span style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap">{{ po.label }}</span>
+            </span>
           </button>
         </sc-for>
       </div>
@@ -924,7 +930,8 @@ button:disabled{cursor:not-allowed}
       </sc-if>
       <sc-for list="{{ zpRows }}" as="zr" hint-placeholder-count="6">
         <button class="press" onClick="{{ zr.go }}" style="width: 100%; min-height: 64px; padding: 10px 0; display: flex; align-items: center; justify-content: space-between; gap: 12px; background: none; border: none; border-bottom: 1px solid {{ t.line }}; color: {{ t.ink }}; text-align: right">
-          <span style="min-width: 0; display: flex; flex-direction: column; gap: 3px">
+          <sc-if value="{{ zr.hasLogo }}" hint-placeholder-val="{{ false }}"><span aria-hidden="true" style="flex: none; width: 44px; height: 32px; border-radius: 8px; background: #FFFFFF; display: flex; align-items: center; justify-content: center"><img src="{{ zr.logo }}" alt="" loading="lazy" style="max-width: 36px; max-height: 24px; object-fit: contain"></span></sc-if>
+          <span style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px">
             <span style="font-size: 15px; font-weight: 500">{{ zr.title }}</span>
             <span style="font-size: 12px; color: {{ t.mute }}">{{ zr.sub }}</span>
           </span>
@@ -1550,15 +1557,14 @@ class Component extends DCLogic {
       screen: props.start || 'home', dir: 'f', dark: props.night !== false, menu: false,
       q: '', tray: [], km: 100000, agencyKm: 60000,
       paint: {}, ex: {}, spin: true, angle: -35, dragging: false, last: '',
-      mech: {}, open: 'susp', k: 1, carSet: false, kmSet: false, hist: [], picked: {},
+      mech: {}, open: null, k: 1, carSet: false, kmSet: false, hist: [], picked: {},
       gl: true, oth: {}, exOther: false, mo: {}, body: 'crossover', bodyAuto: true, heroOn: true, partsOpen: false, mf: 'all', paintReady: false, more: false, wm: 0, margin: 30000, receipt: false, hideBuy: false, copied: false, checked: {}, car: { make: 'كوبرا', model: 'فورمينتور', year: 2022, trim: 'VZ' }, picker: null, pickOther: '', sheet: null, login: null, loginSent: false, loginEmail: '', loginErr: '', loginBusy: false, saving: false, flash: '', profile: false, pf: null, pfBusy: false, pfErr: '', photoBusy: false, item: null, shotsDone: {}, extraShots: 0, shotPick: null, extras: [], deskPage: null, zq: '', zp: null, zpq: '', vis: { busy: false, note: '' }, folds: {},
       mine: null, my: { price: '', status: 'available', notes: '' }, myBusy: false, myF: 'all', myOpen: null, myDel: false
     };
     // what this person did last time (car, km, paint, mechanics, margin, compare list, history) comes back
     try {
       var kept = JSON.parse(window.localStorage.getItem(Component.KEEP_KEY) || 'null');
-      if (kept && kept.v === 1) Component.KEEP.forEach(function (k) { if (kept[k] !== undefined) this.state[k] = kept[k]; }, this);
-      if (this.state.carSet && !(this.state.picked || {}).make) this.state.picked = { make: true, model: true, year: true, trim: true };
+      if (kept && kept.v === 1) ['hist', 'tray', 'margin', 'hideBuy'].forEach(function (k) { if (kept[k] !== undefined) this.state[k] = kept[k]; }, this);
     } catch (e) { /* first visit, private mode or the design canvas */ }
     this._raf = null; this._paint = null; this._hero = null;
     var self = this;
@@ -2359,6 +2365,7 @@ class Component extends DCLogic {
     var carName = car.make + ' ' + car.model + ' ' + car.trim + ' ' + car.year;
     var carShort = car.make + ' ' + car.model + ' ' + car.year;
     var MARKET = Component.remoteMarket || Component.MARKET;
+    var logo = function (mk) { return (Component.logoFor && Component.logoFor(mk)) || ''; };
     var pickOpts = [];
     if (S.picker) {
       var list = S.picker === 'make' ? Object.keys(CAT).sort()
@@ -2372,7 +2379,8 @@ class Component extends DCLogic {
       pickOpts = list.map(function (v) {
         var on = String(car[S.picker]) === String(v) && (S.carSet || (S.picked || {})[S.picker]);
         var rk = allTrims.indexOf(v);
-        return { label: String(v), sub: rk >= 0 && allTrims.length > 1 ? RANK[rk] || '' : '', sel: on ? 'true' : 'false', bg: on ? t.ink : 'transparent', fg: on ? t.bg : t.ink, bd: on ? t.ink : t.line2,
+        var lg = S.picker === 'make' ? logo(v) : '';
+        return { label: String(v), logo: lg, hasLogo: !!lg, sub: rk >= 0 && allTrims.length > 1 ? RANK[rk] || '' : '', sel: on ? 'true' : 'false', bg: on ? t.ink : 'transparent', fg: on ? t.bg : t.ink, bd: on ? t.ink : t.line2,
           pick: function () { self.pickField(S.picker, v); } };
       });
     }
@@ -2767,7 +2775,7 @@ class Component extends DCLogic {
       zpSearchPh: !ZP ? '' : ZP.model ? 'دوّر في الفئات' : ZP.make ? 'دوّر في موديلات ' + ZP.make : 'دوّر على ماركة: تويوتا، كيا…',
       zpEmpty: !!zpData && zpItems.length === 0, zpEmptyTxt: zpQ ? 'مفيش حاجة بالاسم ده.' : 'مفيش أسعار زيرو متسجلة هنا لسه.',
       zpRows: !ZP || ZP.trim ? [] : zpItems.map(function (it) {
-        if (!ZP.make) return { title: it.make, sub: it.models + ' موديل، ' + it.trims + ' فئة', right: 'من ' + fmt(it.from), rightSub: '', rsColor: t.mute,
+        if (!ZP.make) return { title: it.make, logo: logo(it.make), hasLogo: !!logo(it.make), sub: it.models + ' موديل، ' + it.trims + ' فئة', right: 'من ' + fmt(it.from), rightSub: '', rsColor: t.mute,
           go: function () { self.setState({ zp: { make: it.make }, zpq: '' }); } };
         if (!ZP.model) return { title: it.model + ' ' + it.year, sub: it.trims + (it.trims === 1 ? ' فئة' : ' فئات'), right: fmt(it.from), rightSub: it.to > it.from ? 'لحد ' + fmt(it.to) : '', rsColor: t.mute,
           go: function () { self.setState({ zp: { make: ZP.make, model: it.model }, zpq: '' }); } };
@@ -2948,7 +2956,7 @@ class Component extends DCLogic {
       maxBuyTxt: fmt(r5((finalLo + finalHi) / 2 - S.margin)),
       histLine: hist.line, histArea: hist.area, histX: hist.x, histY: hist.y, histLabels: hist.labels,
       histTop: hist.top, histTopY: hist.topY, histChange: hist.change, histAria: hist.aria,
-      issues: (info.issues || Component.GENERIC_ISSUES).map(function (it) {
+      issues: (info.issues || (Component.issuesFor && Component.issuesFor(car.make, car.model)) || Component.GENERIC_ISSUES).map(function (it) {
         var key = car.model + ':' + it[0];
         return { name: it[1], how: it[2], done: !!S.checked[key],
           toggle: function () { var c = Object.assign({}, self.state.checked); c[key] = !c[key]; self.setState({ checked: c }); } };
@@ -2980,7 +2988,8 @@ class Component extends DCLogic {
       fields: [['make', 'الماركة', car.make], ['model', 'الموديل', car.model], ['year', 'السنة', String(car.year)], ['trim', 'الفئة', car.trim]].map(function (f) {
         var done = S.carSet || (S.picked || {})[f[0]];
         var shown = done ? f[2] : 'اختار';
-        return { label: f[1], value: shown, fg: done ? t.ink : t.mute, aria: f[1] + ': ' + shown + '، غيّر', open: function () { self.setState({ picker: f[0], pickOther: '', sheet: 'picker' }); } };
+        var flg = f[0] === 'make' && done ? logo(f[2]) : '';
+        return { label: f[1], value: shown, logo: flg, hasLogo: !!flg, fg: done ? t.ink : t.mute, aria: f[1] + ': ' + shown + '، غيّر', open: function () { self.setState({ picker: f[0], pickOther: '', sheet: 'picker' }); } };
       }),
       shots: [['front', 'قدام'], ['back', 'ورا'], ['side', 'الجنب'], ['odo', 'العداد']].map(function (s2) {
         var d2 = !!S.shotsDone[s2[0]];

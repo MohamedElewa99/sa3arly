@@ -49,17 +49,54 @@ def _junk(name) -> bool:
     return (name or "").strip().lower() in JUNK
 
 
-def _trims_by_level(rs) -> list:
-    """The model's trims, highest first: each trim's median price brought to the same model year
-    (9 %/year), so a trim isn't 'higher' just because its ads are newer. Up to 8 of the most listed."""
+def _tnorm(t: str) -> set:
+    t = re.sub(r"\b([amc])\s*/\s*t\b", r"\1t", (t or "").lower())          # A/T, M/T, C/T -> at, mt, ct
+    return set(re.findall(r"[a-z0-9]+|[\u0600-\u06ff]+", t))
+
+
+def _trims_by_level(rs, zero_trims: Optional[dict] = None) -> list:
+    """The model's trims, highest first. Up to 8 of the most listed.
+
+    The new (zero) price of a trim says best where it sits, so trims that match one are ordered by it. The others
+    get a level from their used ads: price brought to the same model year (9 %/year) and the same km (1 % per 10k),
+    pulled toward the model's middle when a trim has few ads, then put on the zero scale with the ratio measured on
+    the matched trims. zero_trims: {trim name: newest zero price}."""
     by: dict[str, list] = {}
     newest = max(r[2] for r in rs)
+    kms = sorted(r[3] for r in rs if r[3] is not None)
+    mid_km = kms[len(kms) // 2] if kms else 0
     for r in rs:
         t = (r[5] or "").strip()
         if t and r[4]:
-            by.setdefault(t, []).append(r[4] * 1.09 ** (newest - r[2]))
+            km_adj = 1 + 0.01 * ((r[3] or mid_km) - mid_km) / 10_000
+            by.setdefault(t, []).append(r[4] * 1.09 ** (newest - r[2]) * max(0.7, min(1.3, km_adj)))
     common = sorted(by, key=lambda t: -len(by[t]))[:8]
-    return sorted(common, key=lambda t: -statistics.median(by[t]))
+    if not common:
+        return []
+    all_p = [p for t in common for p in by[t]]
+    model_mid = statistics.median(all_p)
+    k = 4
+
+    def used_level(t):
+        v = by[t]
+        return (statistics.median(v) * len(v) + model_mid * k) / (len(v) + k)
+
+    zero_of: dict[str, float] = {}
+    if zero_trims:
+        zt = [(_tnorm(n), p) for n, p in zero_trims.items() if p]
+        for t in common:
+            a = _tnorm(t)
+            best, score = None, 0.0
+            for b, p in zt:
+                j = len(a & b) / len(a | b) if a and b else 0.0
+                if j > score:
+                    best, score = p, j
+            if best and score >= 0.5:
+                zero_of[t] = best
+    ratios = [zero_of[t] / used_level(t) for t in zero_of]
+    ratio = statistics.median(ratios) if ratios else 1.0
+    level = {t: zero_of.get(t, used_level(t) * ratio) for t in common}
+    return sorted(common, key=lambda t: -level[t])
 
 
 def catalog(cx, days: int = 90, min_ads: int = 3) -> dict:
@@ -70,13 +107,13 @@ def catalog(cx, days: int = 90, min_ads: int = 3) -> dict:
           and l.last_seen > now() - make_interval(days => %s)
     """, (days,)).fetchall()
     zero = cx.execute("""
-        select mk.name_en, mo.name_en, z.model_year, z.price_egp
+        select mk.name_en, mo.name_en, z.model_year, z.price_egp, z.trim_name
         from zero_prices z join makes mk on mk.id = z.make_id join models mo on mo.id = z.model_id
         where z.effective_on > now() - interval '45 days'
     """).fetchall()
     zmap: dict[tuple, list] = {}
-    for mk, mo, y, p in zero:
-        zmap.setdefault((mk, mo), []).append((y, p))
+    for mk, mo, y, p, tn in zero:
+        zmap.setdefault((mk, mo), []).append((y, p, tn))
 
     groups: dict[tuple, list] = {}
     for r in rows:
@@ -88,12 +125,13 @@ def catalog(cx, days: int = 90, min_ads: int = 3) -> dict:
         if len(rs) < min_ads or _junk(mk) or _junk(mo):
             continue
         years = sorted({r[2] for r in rs if 1990 <= r[2] <= this_year + 1})
-        top_trims = _trims_by_level(rs) or ["Standard"]
         z = zmap.get((mk, mo), [])
-        zero_price = None
+        zero_price, zero_trims = None, {}
         if z:
-            newest = max(y for y, _ in z)
-            zero_price = int(statistics.median(p for y, p in z if y == newest))
+            newest = max(y for y, _, _ in z)
+            zero_price = int(statistics.median(p for y, p, _ in z if y == newest))
+            zero_trims = {tn: p for y, p, tn in sorted(z) if tn}          # newest year wins
+        top_trims = _trims_by_level(rs, zero_trims) or ["Standard"]
         makes.setdefault(mk, {})[mo] = {
             "body": _body([r[6] for r in rs]),
             "trims": top_trims,

@@ -4,6 +4,8 @@ import Component from './App.jsx';
 import { bindApp, loadCatalog, loadMarket } from './data.js';
 import { bindAuth, initAuth } from './auth.js';
 import { startScrollFx } from './scrollfx.js';
+import { logoFor } from './brands.js';
+import { issuesFor } from './issues.js';
 import './app.css';
 import './shell.css';
 
@@ -39,6 +41,8 @@ function Root() {
 // wide screens get the website layout (top nav + the app beside a data panel); phones get the app
 const wide = window.matchMedia('(min-width: 1024px)');
 Component.desk = wide.matches;
+Component.logoFor = logoFor;
+Component.issuesFor = issuesFor;
 let appRef = null;
 const onWide = () => { Component.desk = wide.matches; if (appRef) appRef.forceUpdate(); };
 if (wide.addEventListener) wide.addEventListener('change', onWide); else wide.addListener(onWide);
