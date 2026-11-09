@@ -40,7 +40,7 @@ def test_gemini_falls_back_to_the_next_model(monkeypatch):
             raise vision.VisionError("HTTP 404: models/x is not found")
         return {"candidates": [{"content": {"parts": [{"text": '{"make": "Kia", "confidence": 0.9}'}]}}]}
     monkeypatch.setattr(vision, "_post", post)
-    assert vision.car(b"x")["make"] == "Kia" and len(tried) == 2
+    assert vision.car(b"x")["make"] == "Kia" and tried == ["gemini-3.8-flash", "gemini-flash-latest"]
     monkeypatch.setattr(vision, "_post", lambda *a, **k: (_ for _ in ()).throw(vision.VisionError("HTTP 400: API key not valid")))
     c = vision.check()
     assert c["ok"] is False and "API key not valid" in c["error"] and c["error"].startswith("gemini-")

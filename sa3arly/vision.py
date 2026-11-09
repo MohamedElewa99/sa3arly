@@ -71,28 +71,63 @@ def _post(url: str, body: dict, headers: dict, timeout: int = 14) -> dict:
         raise VisionError(f"network: {type(e).__name__}") from None
 
 
-# tried in order until one answers: a retired alias shouldn't take photo reading down
-GEMINI_MODELS = ("gemini-2.5-flash", "gemini-flash-latest", "gemini-2.0-flash", "gemini-2.5-flash-lite")
+# tried in order until one answers; when all are retired the API's own model list is asked for the newest Flash
+GEMINI_MODELS = ("gemini-3.8-flash", "gemini-flash-latest")
+_BASE = "https://generativelanguage.googleapis.com/v1beta"
+_found: list = []
+
+
+def _discover() -> list:
+    """Flash models this key can call, newest first (cached for the life of the function instance)."""
+    if _found:
+        return _found
+    req = urllib.request.Request(_BASE + "/models?pageSize=200", headers={"x-goog-api-key": os.environ["GEMINI_API_KEY"].strip()})
+    try:
+        with urllib.request.urlopen(req, timeout=8) as r:
+            models = json.loads(r.read()).get("models") or []
+    except Exception:
+        return []
+    out = []
+    for m in models:
+        name = (m.get("name") or "").split("/")[-1]
+        v = re.fullmatch(r"gemini-(\d+(?:\.\d+)?)-flash", name)
+        if v and "generateContent" in (m.get("supportedGenerationMethods") or []):
+            out.append((float(v.group(1)), name))
+    _found.extend(n for _, n in sorted(out, reverse=True))
+    return _found
+
+
+def _thinking(model: str) -> dict | None:
+    """Keep the answer fast: a photo read doesn't need long reasoning."""
+    if re.search(r"gemini-3", model) or "latest" in model:
+        return {"thinkingLevel": "low"}
+    if "2.5" in model:
+        return {"thinkingBudget": 0}
+    return None
 
 
 def _gemini(parts: list, json_out: bool = True) -> dict:
+    key = {"x-goog-api-key": os.environ["GEMINI_API_KEY"].strip()}
     models = [os.environ["GEMINI_MODEL"]] if os.environ.get("GEMINI_MODEL") else []
     models += [m for m in GEMINI_MODELS if m not in models]
-    last = None
-    for model in models[:3]:
-        cfg = {"temperature": 0.1}
-        if json_out:
-            cfg["responseMimeType"] = "application/json"
-        if "2.5" in model:
-            cfg["thinkingConfig"] = {"thinkingBudget": 0}      # no "thinking": a photo answer in ~2s, not 15
-        try:
-            return _post(f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent",
-                         {"contents": [{"parts": parts}], "generationConfig": cfg},
-                         {"x-goog-api-key": os.environ["GEMINI_API_KEY"].strip()})
-        except VisionError as e:
-            last = VisionError(f"{model}: {e}")
-            if re.match(r"HTTP (401|403|429)", str(e)) or "API key" in str(e):
-                raise last from None       # a bad key or a used-up quota won't get better with another model
+    last, t0, i = None, time.time(), 0
+    while i < len(models) and i < 5 and time.time() - t0 < 40:
+        model = models[i]
+        i += 1
+        cfg = {"responseMimeType": "application/json"} if json_out else {}
+        think = _thinking(model)
+        for cfg_try in ([dict(cfg, thinkingConfig=think), cfg] if think else [cfg]):
+            try:
+                return _post(f"{_BASE}/models/{model}:generateContent",
+                             {"contents": [{"parts": parts}], "generationConfig": cfg_try}, key, timeout=20)
+            except VisionError as e:
+                last = VisionError(f"{model}: {e}")
+                if re.match(r"HTTP (401|403|429)", str(e)) or "API key" in str(e):
+                    raise last from None       # a bad key or a used-up quota won't get better with another model
+                if not str(e).startswith("HTTP 400"):
+                    break                      # only a 400 is worth retrying without the thinking setting
+        if i == len(models):
+            models += [m for m in _discover() if m not in models]
     raise last or VisionError("no model")
 
 
