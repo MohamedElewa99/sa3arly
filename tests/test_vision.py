@@ -42,4 +42,5 @@ def test_gemini_falls_back_to_the_next_model(monkeypatch):
     monkeypatch.setattr(vision, "_post", post)
     assert vision.car(b"x")["make"] == "Kia" and len(tried) == 2
     monkeypatch.setattr(vision, "_post", lambda *a, **k: (_ for _ in ()).throw(vision.VisionError("HTTP 400: API key not valid")))
-    assert vision.check() == {"ok": False, "provider": "gemini", "error": "HTTP 400: API key not valid"}
+    c = vision.check()
+    assert c["ok"] is False and "API key not valid" in c["error"] and c["error"].startswith("gemini-")

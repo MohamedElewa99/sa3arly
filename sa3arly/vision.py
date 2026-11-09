@@ -10,6 +10,7 @@ import base64
 import json
 import os
 import re
+import time
 import urllib.error
 import urllib.request
 
@@ -53,7 +54,7 @@ class VisionError(RuntimeError):
     """What the vision API answered, short enough to show (never contains the key)."""
 
 
-def _post(url: str, body: dict, headers: dict, timeout: int = 25) -> dict:
+def _post(url: str, body: dict, headers: dict, timeout: int = 14) -> dict:
     req = urllib.request.Request(url, data=json.dumps(body).encode(), headers={"Content-Type": "application/json", **headers})
     try:
         with urllib.request.urlopen(req, timeout=timeout) as r:
@@ -66,6 +67,8 @@ def _post(url: str, body: dict, headers: dict, timeout: int = 25) -> dict:
         raise VisionError(f"HTTP {e.code}: {msg[:160]}") from None
     except urllib.error.URLError as e:
         raise VisionError(f"network: {e.reason}") from None
+    except (TimeoutError, OSError) as e:
+        raise VisionError(f"network: {type(e).__name__}") from None
 
 
 # tried in order until one answers: a retired alias shouldn't take photo reading down
@@ -75,19 +78,21 @@ GEMINI_MODELS = ("gemini-2.5-flash", "gemini-flash-latest", "gemini-2.0-flash", 
 def _gemini(parts: list, json_out: bool = True) -> dict:
     models = [os.environ["GEMINI_MODEL"]] if os.environ.get("GEMINI_MODEL") else []
     models += [m for m in GEMINI_MODELS if m not in models]
-    cfg = {"temperature": 0.1}
-    if json_out:
-        cfg["responseMimeType"] = "application/json"
     last = None
-    for model in models:
+    for model in models[:3]:
+        cfg = {"temperature": 0.1}
+        if json_out:
+            cfg["responseMimeType"] = "application/json"
+        if "2.5" in model:
+            cfg["thinkingConfig"] = {"thinkingBudget": 0}      # no "thinking": a photo answer in ~2s, not 15
         try:
             return _post(f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent",
                          {"contents": [{"parts": parts}], "generationConfig": cfg},
                          {"x-goog-api-key": os.environ["GEMINI_API_KEY"].strip()})
         except VisionError as e:
-            last = e
-            if not re.match(r"HTTP (404|400)", str(e)) or "API key" in str(e):
-                raise                      # a bad key or quota won't get better with another model
+            last = VisionError(f"{model}: {e}")
+            if re.match(r"HTTP (401|403|429)", str(e)) or "API key" in str(e):
+                raise last from None       # a bad key or a used-up quota won't get better with another model
     raise last or VisionError("no model")
 
 
@@ -96,14 +101,15 @@ def check() -> dict:
     p = provider()
     if not p:
         return {"ok": False, "provider": None, "error": "no GEMINI_API_KEY / ANTHROPIC_API_KEY on the server"}
+    t0 = time.time()
     try:
         if p == "gemini":
             _gemini([{"text": "Reply with the word ok."}], json_out=False)
         else:
             _ask("Reply with the word ok.", None)
-        return {"ok": True, "provider": p}
+        return {"ok": True, "provider": p, "seconds": round(time.time() - t0, 1)}
     except VisionError as e:
-        return {"ok": False, "provider": p, "error": str(e)}
+        return {"ok": False, "provider": p, "error": str(e), "seconds": round(time.time() - t0, 1)}
 
 
 def _ask(prompt: str, jpeg: bytes | None) -> dict:
