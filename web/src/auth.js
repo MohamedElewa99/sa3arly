@@ -217,7 +217,11 @@ async function readPhoto(kind, file, makes) {
     method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + auth.token },
     body: JSON.stringify({ kind, image, makes: makes || [] }),
   });
-  if (!res.ok) { const e = new Error('vision ' + res.status); e.status = res.status; throw e; }
+  if (!res.ok) {
+    const e = new Error('vision ' + res.status); e.status = res.status;
+    try { e.detail = (await res.json()).error || ''; } catch (x) { e.detail = ''; }
+    throw e;
+  }
   return res.json();
 }
 

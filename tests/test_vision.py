@@ -27,3 +27,19 @@ def test_provider(monkeypatch):
     assert vision.provider() == ""
     monkeypatch.setenv("GEMINI_API_KEY", "k")
     assert vision.provider() == "gemini"
+
+
+def test_gemini_falls_back_to_the_next_model(monkeypatch):
+    monkeypatch.setenv("GEMINI_API_KEY", "k")
+    monkeypatch.delenv("GEMINI_MODEL", raising=False)
+    tried = []
+
+    def post(url, body, headers, timeout=25):
+        tried.append(url.split("/models/")[1].split(":")[0])
+        if len(tried) == 1:
+            raise vision.VisionError("HTTP 404: models/x is not found")
+        return {"candidates": [{"content": {"parts": [{"text": '{"make": "Kia", "confidence": 0.9}'}]}}]}
+    monkeypatch.setattr(vision, "_post", post)
+    assert vision.car(b"x")["make"] == "Kia" and len(tried) == 2
+    monkeypatch.setattr(vision, "_post", lambda *a, **k: (_ for _ in ()).throw(vision.VisionError("HTTP 400: API key not valid")))
+    assert vision.check() == {"ok": False, "provider": "gemini", "error": "HTTP 400: API key not valid"}

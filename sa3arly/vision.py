@@ -1,7 +1,7 @@
 """Read a car photo: which make / model / trim it is, or the km on the odometer.
 
 Uses whichever vision model has a key set on the server:
-  GEMINI_API_KEY      Google Gemini (free tier), model GEMINI_MODEL (default: the current Flash alias)
+  GEMINI_API_KEY      Google Gemini (free tier), model GEMINI_MODEL (default: tries current Flash models in turn)
   ANTHROPIC_API_KEY   Claude, model ANTHROPIC_MODEL (default: claude-haiku-5-5)
 """
 from __future__ import annotations
@@ -10,6 +10,7 @@ import base64
 import json
 import os
 import re
+import urllib.error
 import urllib.request
 
 MAX_IMAGE = 1_600_000          # bytes of JPEG after the app shrinks it (~1024px)
@@ -48,29 +49,76 @@ def _json(text: str) -> dict:
     return out if isinstance(out, dict) else {}
 
 
+class VisionError(RuntimeError):
+    """What the vision API answered, short enough to show (never contains the key)."""
+
+
 def _post(url: str, body: dict, headers: dict, timeout: int = 25) -> dict:
     req = urllib.request.Request(url, data=json.dumps(body).encode(), headers={"Content-Type": "application/json", **headers})
-    with urllib.request.urlopen(req, timeout=timeout) as r:
-        return json.loads(r.read())
+    try:
+        with urllib.request.urlopen(req, timeout=timeout) as r:
+            return json.loads(r.read())
+    except urllib.error.HTTPError as e:
+        try:
+            msg = (json.loads(e.read() or b"{}").get("error") or {}).get("message", "")
+        except ValueError:
+            msg = ""
+        raise VisionError(f"HTTP {e.code}: {msg[:160]}") from None
+    except urllib.error.URLError as e:
+        raise VisionError(f"network: {e.reason}") from None
 
 
-def _ask(prompt: str, jpeg: bytes) -> dict:
-    b64 = base64.b64encode(jpeg).decode()
+# tried in order until one answers: a retired alias shouldn't take photo reading down
+GEMINI_MODELS = ("gemini-2.5-flash", "gemini-flash-latest", "gemini-2.0-flash", "gemini-2.5-flash-lite")
+
+
+def _gemini(parts: list, json_out: bool = True) -> dict:
+    models = [os.environ["GEMINI_MODEL"]] if os.environ.get("GEMINI_MODEL") else []
+    models += [m for m in GEMINI_MODELS if m not in models]
+    cfg = {"temperature": 0.1}
+    if json_out:
+        cfg["responseMimeType"] = "application/json"
+    last = None
+    for model in models:
+        try:
+            return _post(f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent",
+                         {"contents": [{"parts": parts}], "generationConfig": cfg},
+                         {"x-goog-api-key": os.environ["GEMINI_API_KEY"].strip()})
+        except VisionError as e:
+            last = e
+            if not re.match(r"HTTP (404|400)", str(e)) or "API key" in str(e):
+                raise                      # a bad key or quota won't get better with another model
+    raise last or VisionError("no model")
+
+
+def check() -> dict:
+    """A one-word text request: is the key set and accepted? For /api/vision?check=1."""
+    p = provider()
+    if not p:
+        return {"ok": False, "provider": None, "error": "no GEMINI_API_KEY / ANTHROPIC_API_KEY on the server"}
+    try:
+        if p == "gemini":
+            _gemini([{"text": "Reply with the word ok."}], json_out=False)
+        else:
+            _ask("Reply with the word ok.", None)
+        return {"ok": True, "provider": p}
+    except VisionError as e:
+        return {"ok": False, "provider": p, "error": str(e)}
+
+
+def _ask(prompt: str, jpeg: bytes | None) -> dict:
+    b64 = base64.b64encode(jpeg).decode() if jpeg else ""
     p = provider()
     if p == "gemini":
-        model = os.environ.get("GEMINI_MODEL", "gemini-flash-latest")
-        r = _post(f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent",
-                  {"contents": [{"parts": [{"inline_data": {"mime_type": "image/jpeg", "data": b64}}, {"text": prompt}]}],
-                   "generationConfig": {"responseMimeType": "application/json", "temperature": 0.1}},
-                  {"x-goog-api-key": os.environ["GEMINI_API_KEY"]})
+        r = _gemini([{"inline_data": {"mime_type": "image/jpeg", "data": b64}}, {"text": prompt}])
         parts = (((r.get("candidates") or [{}])[0].get("content") or {}).get("parts") or [])
         return _json("".join(x.get("text", "") for x in parts))
     if p == "anthropic":
         r = _post("https://api.anthropic.com/v1/messages",
                   {"model": os.environ.get("ANTHROPIC_MODEL", "claude-haiku-5-5"), "max_tokens": 400,
-                   "messages": [{"role": "user", "content": [
-                       {"type": "image", "source": {"type": "base64", "media_type": "image/jpeg", "data": b64}},
-                       {"type": "text", "text": prompt}]}]},
+                   "messages": [{"role": "user", "content": ([
+                       {"type": "image", "source": {"type": "base64", "media_type": "image/jpeg", "data": b64}}] if b64 else [])
+                       + [{"type": "text", "text": prompt}]}]},
                   {"x-api-key": os.environ["ANTHROPIC_API_KEY"], "anthropic-version": "2023-06-01"})
         return _json("".join(c.get("text", "") for c in r.get("content", []) if c.get("type") == "text"))
     raise RuntimeError("no vision key")

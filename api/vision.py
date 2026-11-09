@@ -6,7 +6,7 @@ import sys
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))  # repo root, for the sa3arly package
 
 from sa3arly import vision  # noqa: E402
-from sa3arly.http_shared import connect, read_json, send, user_id  # noqa: E402
+from sa3arly.http_shared import connect, query, read_json, send, user_id  # noqa: E402
 
 PER_HOUR = 40     # photos one account can read per hour (keeps the shared free quota for everyone)
 
@@ -26,6 +26,12 @@ def allowed(uid: str) -> bool:
 
 
 class handler(BaseHTTPRequestHandler):
+    def do_GET(self):
+        """/api/vision?check=1: is photo reading set up and working? (never shows the key)"""
+        if query(self).get("check"):
+            return send(self, 200, vision.check())
+        send(self, 400, {"error": "POST a photo, or GET ?check=1"})
+
     def do_POST(self):
         if not vision.provider():
             return send(self, 503, {"error": "off"})
@@ -44,5 +50,7 @@ class handler(BaseHTTPRequestHandler):
                 return send(self, 200, vision.odometer(jpeg))
             makes = body.get("makes") if isinstance(body.get("makes"), list) else None
             send(self, 200, vision.car(jpeg, [str(m)[:40] for m in makes] if makes else None))
+        except vision.VisionError as e:
+            send(self, 502, {"error": str(e)})
         except Exception as e:
             send(self, 502, {"error": type(e).__name__})

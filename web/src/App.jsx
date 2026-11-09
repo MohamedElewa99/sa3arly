@@ -391,7 +391,8 @@ class Component extends React.Component {
     var fail = function (e) {
       self.setState({ vis: { busy: false, note: e && e.status === 429 ? 'قريت صور كتير الساعة دي. كمّل بإيدك وجرّب كمان شوية.'
         : e && (e.status === 503 || e.status === 501) ? 'قراية الصور مش شغالة دلوقتي. اختار العربية بإيدك تحت.'
-        : 'ماقدرناش نقرا الصورة. جرّب تاني أو اختار بإيدك تحت.' } });
+        : e && e.status === 401 ? 'دخولك خلص. اخرج وادخل تاني وجرّب.'
+        : 'ماقدرناش نقرا الصورة. جرّب تاني أو اختار بإيدك تحت.' + (e && e.detail ? ' (' + String(e.detail).slice(0, 90) + ')' : '') } });
     };
     var CAT = Component.remoteCat || Component.CAT;
     var F = Component._fz || (Component._fz = Component.fzInit());
