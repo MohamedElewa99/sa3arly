@@ -1108,25 +1108,6 @@ button:disabled{cursor:not-allowed}
 </div>
 </sc-if>
 
-<sc-if value="{{ askRole }}" hint-placeholder-val="{{ false }}">
-<div class="fade" role="dialog" aria-modal="true" aria-labelledby="role-t" style="position: absolute; inset: 0; z-index: 30; background: {{ t.bg }}; display: flex; flex-direction: column; justify-content: center; padding: 28px 22px; gap: 22px; overflow-y: auto">
-  <div style="display: flex; flex-direction: column; gap: 8px">
-    <span style="font-family: 'Aref Ruqaa', serif; font-size: 34px; font-weight: 700" translate="no">سعرلي</span>
-    <h1 id="role-t" style="margin: 0; font-size: 22px; font-weight: 600; line-height: 1.5">أهلاً بيك. إنت مين؟</h1>
-    <p style="margin: 0; font-size: 14px; color: {{ t.mute }}; line-height: 1.8">عشان نوريك الحاجات اللي تفيدك انت. تقدر تغيّرها بعدين من القايمة.</p>
-  </div>
-  <sc-for list="{{ roleOpts }}" as="ro" hint-placeholder-count="2">
-    <button class="press fu" onClick="{{ ro.pick }}" style="animation-delay: {{ ro.delay }}s; width: 100%; padding: 20px 18px; border-radius: 20px; border: 1px solid {{ ro.bd }}; background: {{ ro.bg }}; color: {{ t.ink }}; display: flex; align-items: flex-start; gap: 16px; text-align: right">
-      <span aria-hidden="true" style="flex: none; width: 52px; height: 52px; border-radius: 16px; background: #F2A93B; color: #000000; display: flex; align-items: center; justify-content: center; font-size: 26px">{{ ro.icon }}</span>
-      <span style="flex: 1; display: flex; flex-direction: column; gap: 6px">
-        <span style="font-size: 18px; font-weight: 600">{{ ro.title }}</span>
-        <span style="font-size: 13px; color: {{ t.mute }}; line-height: 1.8">{{ ro.sub }}</span>
-      </span>
-    </button>
-  </sc-for>
-</div>
-</sc-if>
-
 <sc-if value="{{ login }}" hint-placeholder-val="{{ false }}">
 <div style="position: absolute; inset: 0; z-index: 12">
   <button class="fade" onClick="{{ closeLogin }}" aria-label="اقفل" style="position: absolute; inset: 0; border: none; background: rgba(0,0,0,0.6); padding: 0"></button>
@@ -2771,7 +2752,7 @@ class Component extends DCLogic {
     var setRole = function (r) {
       self.setState({ role: r, menu: false });
       if (A.user && A.saveProfile) A.saveProfile({ role: r }).catch(function () {});
-      self.flashMsg(r === 'dealer' ? 'تمام، شغّلنا أدوات المعارض' : 'تمام، هنوريك اللي يفيدك');
+      self.flashMsg(r === 'dealer' ? 'الحساب بقى معرض / تاجر' : 'الحساب بقى مستخدم عادي');
     };
     // ---------- عربياتي ----------
     var openGarage = function () {
@@ -2828,7 +2809,7 @@ class Component extends DCLogic {
       { label: 'تنبيهاتي', sub: 'لما الزيرو يتغير أو تنزل عربية رخيصة', go: function () { if (!me) return needLogin('alerts', { kind: 'alerts' }); self.setState({ menu: false, sheet: 'alerts' }); }, soon: false },
       { label: 'تسعيراتي', sub: 'كل العربيات اللي سعّرتها', go: function () { self.setState({ menu: false, more: true }); self.go('home', 'b'); }, soon: false },
       { label: 'عربياتي', sub: 'العربيات اللي عندك في المعرض', go: function () { openGarage(); }, soon: false },
-      { label: isDealer ? 'أنا مش معرض' : 'أنا معرض / تاجر', sub: isDealer ? 'بتشتري أو بتبيع عربيتك انت' : 'شغّل عربياتي وهامش الربح وسعر الشرا', go: function () { setRole(isDealer ? 'user' : 'dealer'); }, soon: false }
+      { label: 'نوع الحساب: ' + (isDealer ? 'معرض / تاجر' : 'مستخدم عادي'), sub: isDealer ? 'دوس لو بتبيع أو بتشتري عربيتك انت بس' : 'دوس لو انت معرض: عربياتي وهامش الربح وسعر الشرا', go: function () { setRole(isDealer ? 'user' : 'dealer'); }, soon: false }
     ].filter(function (m) { return isDealer || m.label !== 'عربياتي'; }).map(function (m, i) { m.delay = (0.08 + i * 0.05).toFixed(2); m.op = m.soon ? 0.55 : 1; return m; });
 
     return {
@@ -2937,11 +2918,6 @@ class Component extends DCLogic {
       editEmail: function () { self.setState({ loginSent: false }); },
       hasFlash: !!S.flash, flash: S.flash,
       isDealer: isDealer, isUser: !isDealer, showBuyRow: isDealer && !S.hideBuy,
-      askRole: !role && !(A.user && !A.profile) && S.screen === 'home',
-      roleOpts: [['dealer', 'معرض / تاجر', 'بشتري وببيع عربيات: أسعر بسرعة، أعرف أقصى سعر شرا وهامش ربحي، وأتابع عربياتي اللي في المعرض.', '🏪'],
-                 ['user', 'ببيع أو بشتري عربيتي', 'عايز أعرف السعر العادل لعربية قبل ما أبيع أو أشتري، وأفاصل صح.', '🚗']].map(function (r, i) {
-        return { title: r[1], sub: r[2], icon: r[3], delay: (0.1 + i * 0.08).toFixed(2), bd: t.line2, bg: 'transparent', pick: function () { setRole(r[0]); } };
-      }),
       goHomeTop: function () { self.setState({ sheet: null, zp: null, menu: false, myOpen: null }); self.go('home', 'b'); },
       isGarage: S.screen === 'garage', isMySave: S.screen === 'mysave', openGarage: openGarage,
       startMine: function () { self.startMine(null); },
