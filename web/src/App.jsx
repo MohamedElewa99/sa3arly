@@ -363,7 +363,7 @@ class Component extends React.Component {
     var patch = { car: Object.assign({}, c), carSet: true, picked: { make: true, model: true, year: true, trim: true }, paint: {}, ex: {}, mech: {}, mo: {}, menu: false, vis: { busy: false, note: '' } };
     if (inf) { patch.body = inf.body; patch.bodyAuto = true; }
     if (km) patch.kmSet = true;
-    if (km !== undefined) { patch.km = km; patch.agencyKm = Math.min(this.state.agencyKm, Math.floor(km / 10000) * 10000); }
+    if (km !== undefined) patch.km = km;
     this.setState(patch);
     this.go(screen || 'car', 'f');
   }
@@ -381,14 +381,17 @@ class Component extends React.Component {
   // read a photo with the server's vision model: the car from front/back/side, the km from the odometer
   readShot(k, file) {
     var self = this, read = Component.readPhoto;
-    if (!read || !file) return;
+    if (!file) return;
+    if (!read) return this.setState({ vis: { busy: false, note: 'قراية الصور بالذكاء الاصطناعي مش متفعلة على السيرفر لسه. اختار العربية بإيدك تحت.' } });
     var A = Component.auth;
     if (A && !A.user) {
       if (A.pending) A.pending(null);
       return this.setState({ login: 'photos', loginSent: false, loginErr: '', vis: { busy: false, note: 'ادخل حسابك وإحنا نعرف العربية والعداد من الصور لوحدنا.' } });
     }
     var fail = function (e) {
-      self.setState({ vis: { busy: false, note: e && e.status === 429 ? 'قريت صور كتير الساعة دي. كمّل بإيدك وجرّب كمان شوية.' : '' } });
+      self.setState({ vis: { busy: false, note: e && e.status === 429 ? 'قريت صور كتير الساعة دي. كمّل بإيدك وجرّب كمان شوية.'
+        : e && (e.status === 503 || e.status === 501) ? 'قراية الصور مش شغالة دلوقتي. اختار العربية بإيدك تحت.'
+        : 'ماقدرناش نقرا الصورة. جرّب تاني أو اختار بإيدك تحت.' } });
     };
     var CAT = Component.remoteCat || Component.CAT;
     var F = Component._fz || (Component._fz = Component.fzInit());
@@ -397,7 +400,7 @@ class Component extends React.Component {
       this.setState({ vis: { busy: true, note: '' } });
       return read('odo', file).then(function (r) {
         if (r.km == null || r.confidence < 0.5) return self.setState({ vis: { busy: false, note: 'ماقدرناش نقرا العداد من الصورة دي. اكتبه بإيدك تحت.' } });
-        self.setState({ km: r.km, agencyKm: Math.min(self.state.agencyKm, Math.floor(r.km / 10000) * 10000), vis: { busy: false, note: 'قرينا العداد: ' + fmtN(r.km) + ' كم. لو غلط عدّله تحت.' } });
+        self.setState({ km: r.km, kmSet: true, vis: { busy: false, note: 'قرينا العداد: ' + fmtN(r.km) + ' كم. لو غلط عدّله تحت.' } });
       }, fail);
     }
     if (this.state.vis.carDone) return;               // the first clear car photo is enough
@@ -417,7 +420,11 @@ class Component extends React.Component {
       c.year = y;
       var tr = r.trim ? (Component.fuzzy(r.trim, inf.trims, String)[0] || {}) : {};
       c.trim = tr.item && tr.score >= 0.8 ? tr.item : (inf.trims.indexOf(c.trim) >= 0 ? c.trim : inf.trims[0]);
-      self.setState({ car: c, body: inf.body, bodyAuto: true, vis: { busy: false, carDone: true,
+      // fill the fields like a manual pick would: make and model sure, year when the photo narrowed it, trim when read
+      var pk = Object.assign({}, self.state.picked || {}, { make: true, model: true });
+      if (r.years) pk.year = true;
+      if (tr.item && tr.score >= 0.8) pk.trim = true;
+      self.setState({ car: c, picked: pk, body: inf.body, bodyAuto: true, vis: { busy: false, carDone: true,
         note: 'من الصورة: ' + mk.item + ' ' + md.item + (r.years ? ' (' + r.years[0] + '–' + r.years[1] + ')' : '') + (tr.item && tr.score >= 0.8 ? '، فئة ' + tr.item : '') + '. ' + (r.note ? r.note + '. ' : '') + 'اتأكد من السنة والفئة تحت.' } });
     }, fail);
   }
@@ -1025,7 +1032,8 @@ class Component extends React.Component {
     var conf = live && live.confidence ? live.confidence : nComps >= 20 ? 'عالية' : nComps >= 8 ? 'متوسطة' : 'منخفضة';
     var aiQ = live && live.ai ? live.ai : null;
     var r5 = function (n) { return Math.round(n / 5000) * 5000; };
-    var agencyShare = S.km ? Math.min(1, S.agencyKm / S.km) : 0;
+    var agencyEff = Math.min(S.agencyKm, Math.floor((S.km || 0) / 10000) * 10000);
+    var agencyShare = S.km ? Math.min(1, agencyEff / S.km) : 0;
     var agencyAdd = r5(0.02 * mid * agencyShare);
     var paintDed = r5(mid * paintPct / 100), replDed = r5(mid * replPct / 100), exDed = r5(mid * exPct / 100);
     var finalLo = r5(baseLo + agencyAdd - paintDed - replDed - exDed - mHi);
@@ -1400,13 +1408,13 @@ class Component extends React.Component {
       km: S.km, kmTxt: fmt(S.km),
       onKm: function (e) {
         var v = parseInt(String(e.target.value).replace(/[^0-9]/g, ''), 10) || 0;
-        self.setState({ km: v, kmSet: v > 0, agencyKm: Math.min(self.state.agencyKm, Math.floor(v / 10000) * 10000) });
+        self.setState({ km: v, kmSet: v > 0 });     // the agency slider keeps its value; it's capped at the km where it's used
       },
       kmInput: S.kmSet ? fmt(S.km) : '',
       kmErr: S.kmSet && S.km <= 0, kmBorder: S.kmSet && S.km <= 0 ? t.warn : t.edge,
-      agencyKm: S.agencyKm, agencyTxt: S.agencyKm ? fmt(S.agencyKm) + ' كم' : 'مفيش',
+      agencyKm: agencyEff, agencyMax: Math.max(10000, Math.floor((S.km || 0) / 10000) * 10000), agencyTxt: agencyEff ? fmt(agencyEff) + ' كم' : 'مفيش',
       onAgency: function (e) { self.setState({ agencyKm: parseInt(e.target.value, 10) || 0 }); },
-      agencyCount: Math.floor(S.agencyKm / 10000), serviceCount: services,
+      agencyCount: Math.floor(agencyEff / 10000), serviceCount: services,
       faces: faces, glass: glass, wheels: wheels, extras: extras,
       nF: counts[0], nP: counts[1], nR: counts[2],
       paintLine: S.last ? S.last : (counts[1] || counts[2] ? counts[0] + ' فابريكا، ' + counts[1] + ' رش، ' + counts[2] + ' متغير' : 'كلها فابريكا. دوس على أي جزء.'),
@@ -2126,7 +2134,7 @@ class Component extends React.Component {
 <span>صيانات توكيل لحد كام كم؟</span>
 <span style={css("font-size: 17px; font-weight: 500; direction: ltr")}>{v.agencyTxt}</span>
 </label>
-<input id="agency" type="range" min="0" max={v.km} step="10000" value={v.agencyKm} onChange={v.onAgency} style={css(`width: 100%; height: 30px; accent-color: ${v.t.ink}; direction: ltr`)} />
+<input id="agency" type="range" min="0" max={v.agencyMax} step="10000" value={v.agencyKm} onChange={v.onAgency} style={css(`width: 100%; height: 30px; accent-color: ${v.t.ink}; direction: ltr`)} />
 <span style={css(`font-size: 12px; color: ${v.t.mute}; line-height: 1.6`)}>الصيانة كل 10,000 كم. يعني {v.agencyCount} صيانة من {v.serviceCount} اتعملوا في التوكيل.</span>
 </div>
 </main>
