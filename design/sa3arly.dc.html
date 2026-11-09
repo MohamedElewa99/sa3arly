@@ -70,6 +70,41 @@ button:disabled{cursor:not-allowed}
 @keyframes ldSpin{to{transform:rotate(-360deg)}}
 @keyframes ldWind{from{stroke-dashoffset:0;opacity:0}30%{opacity:.7}to{stroke-dashoffset:-36;opacity:0}}
 @keyframes ldLamp{0%,100%{opacity:.35}50%{opacity:1}}
+/* ---- motion: simple, quick, everywhere ---- */
+/* colours glide instead of snapping when something is picked */
+.press{transition:transform .18s cubic-bezier(.2,.8,.2,1),opacity .15s ease,background-color .25s ease,border-color .25s ease,color .25s ease,box-shadow .25s ease}
+input,textarea{transition:border-color .25s ease,background-color .25s ease,box-shadow .25s ease}
+input:not([type=range]):not([type=checkbox]):focus,textarea:focus{box-shadow:0 2px 0 -1px #F2A93B}
+/* a small bounce when an option turns on */
+@keyframes tap{0%{transform:scale(.93)}55%{transform:scale(1.035)}100%{transform:scale(1)}}
+.press[aria-pressed="true"],.press[aria-checked="true"],.press[aria-selected="true"]{animation:tap .34s cubic-bezier(.2,.8,.2,1)}
+input[type=checkbox]{transition:transform .2s cubic-bezier(.3,1.6,.5,1)}
+input[type=checkbox]:checked{transform:scale(1.12)}
+/* every screen's content arrives in a short cascade */
+:where(.app-col main)>:where(*){animation:fadeUp .42s cubic-bezier(.16,1,.3,1) backwards}
+:where(.app-col main)>:where(:nth-child(2)){animation-delay:.04s}
+:where(.app-col main)>:where(:nth-child(3)){animation-delay:.08s}
+:where(.app-col main)>:where(:nth-child(4)){animation-delay:.12s}
+:where(.app-col main)>:where(:nth-child(5)){animation-delay:.16s}
+:where(.app-col main)>:where(:nth-child(6)){animation-delay:.2s}
+:where(.app-col main)>:where(:nth-child(n+7)){animation-delay:.24s}
+/* rows of a list follow one another */
+:where(.app-col main ul,.app-col main ol,.app-col main dl)>:where(*){animation:fadeUp .38s cubic-bezier(.16,1,.3,1) backwards}
+:where(.app-col main ul,.app-col main ol,.app-col main dl)>:where(:nth-child(2)){animation-delay:.05s}
+:where(.app-col main ul,.app-col main ol,.app-col main dl)>:where(:nth-child(3)){animation-delay:.1s}
+:where(.app-col main ul,.app-col main ol,.app-col main dl)>:where(:nth-child(4)){animation-delay:.15s}
+:where(.app-col main ul,.app-col main ol,.app-col main dl)>:where(:nth-child(5)){animation-delay:.2s}
+:where(.app-col main ul,.app-col main ol,.app-col main dl)>:where(:nth-child(n+6)){animation-delay:.25s}
+/* photos fade in instead of popping */
+:where(.app-col) img{animation:fadeIn .4s ease backwards}
+/* the main button breathes, quietly */
+@keyframes breathe{0%,100%{box-shadow:0 0 0 0 rgba(242,169,59,0)}50%{box-shadow:0 0 0 7px rgba(242,169,59,.16)}}
+[data-scr="home"]>footer .press{animation:breathe 3.4s ease-in-out 1.5s infinite}
+/* messages slide up from the bottom */
+@keyframes toastIn{from{opacity:0;transform:translate(-50%,-14px) scale(.94)}to{opacity:1;transform:translate(-50%,0) scale(1)}}
+.toast{animation:toastIn .38s cubic-bezier(.2,1.2,.4,1) backwards}
+/* arrows nudge on hover, icons tilt */
+@media (hover:hover){.press:hover svg{transform:translateX(-2px)}.press svg{transition:transform .25s cubic-bezier(.2,.8,.2,1)}}
 @media (prefers-reduced-motion: reduce){*{animation:none!important;transition:none!important}}
 </style>
 </helmet>
@@ -79,7 +114,7 @@ button:disabled{cursor:not-allowed}
   <button onClick="{{ goHomeBack }}" aria-label="سعرلي، الرئيسية" style="background: none; border: none; padding: 0; color: {{ t.ink }}; cursor: pointer">
     <span translate="no" style="font-family: 'Aref Ruqaa', serif; font-size: 40px; font-weight: 700; line-height: 1">سعرلي</span>
   </button>
-  <nav aria-label="الأقسام" style="display: flex; gap: 4px; flex: 1">
+  <nav aria-label="الأقسام" class="desk-nav" style="display: flex; gap: 4px; flex: 1">
     <sc-for list="{{ deskLinks }}" as="dl" hint-placeholder-count="4">
       <button class="press" onClick="{{ dl.go }}" aria-current="{{ dl.cur }}" style="height: 40px; padding: 0 16px; border-radius: 999px; border: none; background: {{ dl.bg }}; color: {{ dl.fg }}; font-size: 14px; font-weight: 500">{{ dl.label }}</button>
     </sc-for>
@@ -327,8 +362,8 @@ button:disabled{cursor:not-allowed}
           <span>صيانات توكيل لحد كام كم؟</span>
           <span style="font-size: 17px; font-weight: 500; direction: ltr">{{ agencyTxt }}</span>
         </label>
-        <input id="agency" type="range" min="0" max="{{ agencyMax }}" step="10000" value="{{ agencyKm }}" onChange="{{ onAgency }}" style="width: 100%; height: 30px; accent-color: {{ t.ink }}; direction: ltr">
-        <span style="font-size: 12px; color: {{ t.mute }}; line-height: 1.6">الصيانة كل 10,000 كم. يعني {{ agencyCount }} صيانة من {{ serviceCount }} اتعملوا في التوكيل.</span>
+        <input id="agency" type="range" min="0" max="{{ agencyMax }}" step="10000" value="{{ agencyKm }}" onChange="{{ onAgency }}" disabled="{{ agencyOff }}" style="width: 100%; height: 30px; accent-color: {{ t.ink }}; direction: ltr; opacity: {{ agencyOp }}; transition: opacity .3s ease">
+        <span style="font-size: 12px; color: {{ t.mute }}; line-height: 1.6">{{ agencyHint }}</span>
       </div>
     </main>
     <footer style="flex: none; padding: 12px 20px 26px">
@@ -1233,7 +1268,7 @@ button:disabled{cursor:not-allowed}
 </sc-if>
 
 <sc-if value="{{ hasFlash }}" hint-placeholder-val="{{ false }}">
-  <div class="fu" role="status" aria-live="polite" style="position: absolute; left: 50%; top: 72px; transform: translateX(-50%); z-index: 14; padding: 12px 18px; border-radius: 999px; background: {{ t.ink }}; color: {{ t.bg }}; font-size: 14px; line-height: 1.6; text-align: center; width: max-content; max-width: calc(100% - 40px); box-sizing: border-box; box-shadow: 0 8px 24px rgba(0,0,0,0.25)">{{ flash }}</div>
+  <div class="toast" role="status" aria-live="polite" style="position: absolute; left: 50%; top: 72px; transform: translateX(-50%); z-index: 14; padding: 12px 18px; border-radius: 999px; background: {{ t.ink }}; color: {{ t.bg }}; font-size: 14px; line-height: 1.6; text-align: center; width: max-content; max-width: calc(100% - 40px); box-sizing: border-box; box-shadow: 0 8px 24px rgba(0,0,0,0.25)">{{ flash }}</div>
 </sc-if>
 
 <sc-if value="{{ menu }}" hint-placeholder-val="{{ false }}">
@@ -2460,7 +2495,8 @@ class Component extends DCLogic {
     var conf = live && live.confidence ? live.confidence : nComps >= 20 ? 'عالية' : nComps >= 8 ? 'متوسطة' : 'منخفضة';
     var aiQ = live && live.ai ? live.ai : null;
     var r5 = function (n) { return Math.round(n / 5000) * 5000; };
-    var agencyEff = Math.min(S.agencyKm, Math.floor((S.km || 0) / 10000) * 10000);
+    var kmNow = S.kmSet ? (S.km || 0) : 0;
+    var agencyEff = Math.min(S.agencyKm, Math.floor(kmNow / 10000) * 10000);
     var agencyShare = S.km ? Math.min(1, agencyEff / S.km) : 0;
     var agencyAdd = r5(0.02 * mid * agencyShare);
     var paintDed = r5(mid * paintPct / 100), replDed = r5(mid * replPct / 100), exDed = r5(mid * exPct / 100);
@@ -2849,7 +2885,9 @@ class Component extends DCLogic {
       },
       kmInput: S.kmSet ? fmt(S.km) : '',
       kmErr: S.kmSet && S.km <= 0, kmBorder: S.kmSet && S.km <= 0 ? t.warn : t.edge,
-      agencyKm: agencyEff, agencyMax: Math.max(10000, Math.floor((S.km || 0) / 10000) * 10000), agencyTxt: agencyEff ? fmt(agencyEff) + ' كم' : 'مفيش',
+      agencyKm: agencyEff, agencyMax: Math.max(10000, Math.floor(kmNow / 10000) * 10000), agencyTxt: !S.kmSet ? '—' : agencyEff ? fmt(agencyEff) + ' كم' : 'مفيش',
+      agencyOff: S.kmSet ? undefined : true, agencyOp: S.kmSet ? 1 : 0.45,
+      agencyHint: !S.kmSet ? 'اكتب العداد الأول، وبعدين حدد صيانات التوكيل.' : 'الصيانة كل 10,000 كم. يعني ' + Math.floor(agencyEff / 10000) + ' صيانة من ' + Math.floor(kmNow / 10000) + ' اتعملوا في التوكيل.',
       onAgency: function (e) { self.setState({ agencyKm: parseInt(e.target.value, 10) || 0 }); },
       agencyCount: Math.floor(agencyEff / 10000), serviceCount: services,
       faces: faces, glass: glass, wheels: wheels, extras: extras,

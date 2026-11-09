@@ -1033,7 +1033,8 @@ class Component extends React.Component {
     var conf = live && live.confidence ? live.confidence : nComps >= 20 ? 'عالية' : nComps >= 8 ? 'متوسطة' : 'منخفضة';
     var aiQ = live && live.ai ? live.ai : null;
     var r5 = function (n) { return Math.round(n / 5000) * 5000; };
-    var agencyEff = Math.min(S.agencyKm, Math.floor((S.km || 0) / 10000) * 10000);
+    var kmNow = S.kmSet ? (S.km || 0) : 0;
+    var agencyEff = Math.min(S.agencyKm, Math.floor(kmNow / 10000) * 10000);
     var agencyShare = S.km ? Math.min(1, agencyEff / S.km) : 0;
     var agencyAdd = r5(0.02 * mid * agencyShare);
     var paintDed = r5(mid * paintPct / 100), replDed = r5(mid * replPct / 100), exDed = r5(mid * exPct / 100);
@@ -1422,7 +1423,9 @@ class Component extends React.Component {
       },
       kmInput: S.kmSet ? fmt(S.km) : '',
       kmErr: S.kmSet && S.km <= 0, kmBorder: S.kmSet && S.km <= 0 ? t.warn : t.edge,
-      agencyKm: agencyEff, agencyMax: Math.max(10000, Math.floor((S.km || 0) / 10000) * 10000), agencyTxt: agencyEff ? fmt(agencyEff) + ' كم' : 'مفيش',
+      agencyKm: agencyEff, agencyMax: Math.max(10000, Math.floor(kmNow / 10000) * 10000), agencyTxt: !S.kmSet ? '—' : agencyEff ? fmt(agencyEff) + ' كم' : 'مفيش',
+      agencyOff: S.kmSet ? undefined : true, agencyOp: S.kmSet ? 1 : 0.45,
+      agencyHint: !S.kmSet ? 'اكتب العداد الأول، وبعدين حدد صيانات التوكيل.' : 'الصيانة كل 10,000 كم. يعني ' + Math.floor(agencyEff / 10000) + ' صيانة من ' + Math.floor(kmNow / 10000) + ' اتعملوا في التوكيل.',
       onAgency: function (e) { self.setState({ agencyKm: parseInt(e.target.value, 10) || 0 }); },
       agencyCount: Math.floor(agencyEff / 10000), serviceCount: services,
       faces: faces, glass: glass, wheels: wheels, extras: extras,
@@ -1909,7 +1912,7 @@ class Component extends React.Component {
 <button onClick={v.goHomeBack} aria-label="سعرلي، الرئيسية" style={css(`background: none; border: none; padding: 0; color: ${v.t.ink}; cursor: pointer`)}>
 <span translate="no" style={css("font-family: 'Aref Ruqaa', serif; font-size: 40px; font-weight: 700; line-height: 1")}>سعرلي</span>
 </button>
-<nav aria-label="الأقسام" style={css("display: flex; gap: 4px; flex: 1")}>
+<nav aria-label="الأقسام" className="desk-nav" style={css("display: flex; gap: 4px; flex: 1")}>
 {(v.deskLinks || []).map((dl, i1) => (<React.Fragment key={i1}>
 <button className="press" onClick={dl.go} aria-current={dl.cur} style={css(`height: 40px; padding: 0 16px; border-radius: 999px; border: none; background: ${dl.bg}; color: ${dl.fg}; font-size: 14px; font-weight: 500`)}>{dl.label}</button>
 </React.Fragment>))}
@@ -2148,8 +2151,8 @@ class Component extends React.Component {
 <span>صيانات توكيل لحد كام كم؟</span>
 <span style={css("font-size: 17px; font-weight: 500; direction: ltr")}>{v.agencyTxt}</span>
 </label>
-<input id="agency" type="range" min="0" max={v.agencyMax} step="10000" value={v.agencyKm} onChange={v.onAgency} style={css(`width: 100%; height: 30px; accent-color: ${v.t.ink}; direction: ltr`)} />
-<span style={css(`font-size: 12px; color: ${v.t.mute}; line-height: 1.6`)}>الصيانة كل 10,000 كم. يعني {v.agencyCount} صيانة من {v.serviceCount} اتعملوا في التوكيل.</span>
+<input id="agency" type="range" min="0" max={v.agencyMax} step="10000" value={v.agencyKm} onChange={v.onAgency} disabled={v.agencyOff} style={css(`width: 100%; height: 30px; accent-color: ${v.t.ink}; direction: ltr; opacity: ${v.agencyOp}; transition: opacity .3s ease`)} />
+<span style={css(`font-size: 12px; color: ${v.t.mute}; line-height: 1.6`)}>{v.agencyHint}</span>
 </div>
 </main>
 <footer style={css("flex: none; padding: 12px 20px 26px")}>
@@ -3024,7 +3027,7 @@ class Component extends React.Component {
 </div>
 </>)}
 {(v.hasFlash) && (<>
-<div className="fu" role="status" aria-live="polite" style={css(`position: absolute; left: 50%; top: 72px; transform: translateX(-50%); z-index: 14; padding: 12px 18px; border-radius: 999px; background: ${v.t.ink}; color: ${v.t.bg}; font-size: 14px; line-height: 1.6; text-align: center; width: max-content; max-width: calc(100% - 40px); box-sizing: border-box; box-shadow: 0 8px 24px rgba(0,0,0,0.25)`)}>{v.flash}</div>
+<div className="toast" role="status" aria-live="polite" style={css(`position: absolute; left: 50%; top: 72px; transform: translateX(-50%); z-index: 14; padding: 12px 18px; border-radius: 999px; background: ${v.t.ink}; color: ${v.t.bg}; font-size: 14px; line-height: 1.6; text-align: center; width: max-content; max-width: calc(100% - 40px); box-sizing: border-box; box-shadow: 0 8px 24px rgba(0,0,0,0.25)`)}>{v.flash}</div>
 </>)}
 {(v.menu) && (<>
 <div style={css("position: absolute; inset: 0; z-index: 10")}>

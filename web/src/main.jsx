@@ -39,7 +39,7 @@ function Root() {
 }
 
 // wide screens get the website layout (top nav + the app beside a data panel); phones get the app
-const wide = window.matchMedia('(min-width: 1024px)');
+const wide = window.matchMedia('(min-width: 768px)');
 Component.desk = wide.matches;
 Component.logoFor = logoFor;
 Component.issuesFor = issuesFor;
@@ -72,7 +72,7 @@ window.addEventListener('appinstalled', () => { deferred = null; if (appRef) app
 
 createRoot(document.getElementById('root')).render(<Root />);
 startScrollFx();
-// keep the splash up until the first real data is in (no jumping content), at least 1.6s, at most 4s
+// keep the splash up until the first real data is in (no jumping content)
 const started = Date.now();
 const firstData = Promise.allSettled([loadCatalog(), loadMarket(), initAuth()]);
 const hideSplash = () => {
@@ -81,8 +81,11 @@ const hideSplash = () => {
   el.classList.add('out');
   setTimeout(() => el.remove(), 600);
 };
-Promise.race([firstData, new Promise((r) => setTimeout(r, 4000))])
-  .then(() => setTimeout(hideSplash, Math.max(0, 1600 - (Date.now() - started))));
+// the first visit watches the word being written (1.6s); after that the app opens in about half a second
+let seen = false;
+try { seen = !!localStorage.getItem('sa3.seen'); localStorage.setItem('sa3.seen', '1'); } catch (e) { /* private mode */ }
+Promise.race([firstData, new Promise((r) => setTimeout(r, seen ? 1200 : 4000))])
+  .then(() => setTimeout(hideSplash, Math.max(0, (seen ? 500 : 1600) - (Date.now() - started))));
 
 if ('serviceWorker' in navigator && import.meta.env.PROD) {
   window.addEventListener('load', () => { navigator.serviceWorker.register('/sw.js').catch(() => {}); });

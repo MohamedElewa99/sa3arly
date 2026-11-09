@@ -3,7 +3,7 @@ html, body { margin: 0; background: #000; height: 100%; }
 body { font-family: 'Alexandria', sans-serif; -webkit-font-smoothing: antialiased; }
 #root { min-height: 100dvh; }
 /* iPhone: keep the app below the status bar / notch (the page itself runs under it, in the app's colour) */
-@media (max-width: 1023px) {
+@media (max-width: 767px) {
   .app-col {
     margin-top: env(safe-area-inset-top, 0px) !important;
     height: calc(100dvh - env(safe-area-inset-top, 0px)) !important;
@@ -45,6 +45,13 @@ body { font-family: 'Alexandria', sans-serif; -webkit-font-smoothing: antialiase
   position: fixed; top: 71px; left: 0; right: 0; height: 2px; z-index: 50; background: #F2A93B;
   transform: scaleX(0); transform-origin: right; pointer-events: none; transition: transform .08s linear;
 }
-@media (max-width: 1023px) { .scroll-bar { display: none; } }
+@media (max-width: 767px) { .scroll-bar { display: none; } }
 @media (prefers-reduced-motion: reduce) { .desk [data-reveal] { opacity: 1; transform: none; transition: none; } }
 .desk:not(.desk-over) .site-foot { padding-left: 40px !important; padding-right: 40px !important; }
+
+/* tablets get the website too: the nav stays on one line */
+.desk .desk-nav button { white-space: nowrap; }
+@media (max-width: 1023px) {
+  .desk .desk-nav { gap: 0 !important; }
+  .desk .desk-nav button { padding: 0 10px !important; font-size: 13px !important; }
+}
