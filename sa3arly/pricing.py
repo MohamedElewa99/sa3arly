@@ -338,7 +338,16 @@ class Pricer:
                                  + f"، والمدى واسع (±{half:.0%}). اتأكد من السعر قبل ما تقرر")
             else:
                 gap = (ai["mid"] - mid) / mid
-                if abs(gap) > 0.20 and n >= 5:
+                if n < 3:
+                    # one or two ads aren't a market: meet the model halfway, and make the range cover both views
+                    w = 0.5
+                    ai_out["weight"] = 0.5
+                    mid = (mid + ai["mid"]) / 2
+                    half = min(0.30, max(0.10, abs(gap) / 2 + 0.04))
+                    low, high = mid * (1 - half), mid * (1 + half)
+                    conf = "منخفضة"
+                    lines.append(f"لقينا {n} إعلان بس شبهها، فالسعر نصه من الإعلان ونصه من الذكاء الاصطناعي، والمدى واسع (±{half:.0%})")
+                elif abs(gap) > 0.20 and n >= 5:
                     # too far from what the ads say: trust the ads, and say so
                     w = 0.0
                     ai_out["weight"] = 0.0

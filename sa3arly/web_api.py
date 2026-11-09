@@ -47,12 +47,12 @@ JUNK = {"other", "others", "أخرى", "اخرى", "غير ذلك", "unknown", "
 
 
 NOT_MODELS = {"automatic", "manual", "diesel", "gas", "natural-gas", "natural gas", "electric", "hybrid", "plug-in-hybrid",
-              "plug in hybrid", "taxi", "classic", "disabled", "kasr-zero"}
+              "plug in hybrid", "taxi", "classic", "disabled", "kasr-zero", "kasr zero"}
 
 
 def _junk(name) -> bool:
     """Catch-all buckets from the listing sites ("Other") aren't a car anyone can pick."""
-    n = (name or "").strip().lower()
+    n = re.sub(r"[-_]+", " ", (name or "").strip().lower())
     return n in JUNK or n in NOT_MODELS or n.startswith("other-") or n.startswith("other ") or "other model" in n
 
 
