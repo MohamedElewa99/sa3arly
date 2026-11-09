@@ -969,10 +969,10 @@ class Component extends React.Component {
       euro: ['volkswagen', 'skoda', 'seat', 'cupra', 'peugeot', 'citroen', 'citroën', 'ds', 'opel', 'renault', 'fiat', 'ford', 'alfaromeo', 'subaru', 'كوبرا', 'سكودا', 'بيجو', 'رينو', 'فيات', 'اوبل'],
       budget: ['lada', 'daewoo', 'speranza', 'proton', 'byd', 'brilliance', 'zotye', 'لادا', 'دايو'],
       china: ['chery', 'geely', 'mg', 'haval', 'changan', 'jetour', 'baic', 'dongfeng', 'jac', 'gac', 'exeed', 'bestune', 'kaiyi', 'soueast', 'dfsk', 'faw', 'شيري', 'جيلي'] };
-    var brandF = BR.premium.indexOf(mkKey) >= 0 ? 2.2 : BR.euro.indexOf(mkKey) >= 0 ? 1.3 : BR.budget.indexOf(mkKey) >= 0 ? 0.8 : BR.china.indexOf(mkKey) >= 0 ? 0.9 : 1;
+    var brandF = BR.premium.indexOf(mkKey) >= 0 ? 2.2 : BR.euro.indexOf(mkKey) >= 0 ? 1.3 : BR.budget.indexOf(mkKey) >= 0 ? 0.8 : BR.china.indexOf(mkKey) >= 0 ? 0.85 : 1;
     var CAT0 = Component.remoteCat || Component.CAT, inf0 = (CAT0[S.car.make] || {})[S.car.model] || {};
     var val0 = inf0.zero || (inf0.ref ? inf0.ref * 1.4 : 0);
-    var classF = val0 ? Math.max(0.75, Math.min(1.8, Math.pow(val0 / 1200000, 0.35))) : 1;
+    var classF = val0 ? Math.max(0.8, Math.min(1.5, Math.pow(val0 / 1200000, 0.25))) : 1;
     var costF = brandF * classF;
     var cost = function (n) { return Math.round(n * costF / 500) * 500; };
     var mLo = 0, mHi = 0, mechNames = [];

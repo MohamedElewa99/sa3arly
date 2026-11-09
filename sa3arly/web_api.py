@@ -53,7 +53,33 @@ NOT_MODELS = {"automatic", "manual", "diesel", "gas", "natural-gas", "natural ga
 def _junk(name) -> bool:
     """Catch-all buckets from the listing sites ("Other") aren't a car anyone can pick."""
     n = (name or "").strip().lower()
-    return n in JUNK or n in NOT_MODELS or n.startswith("other-") or n.startswith("other ")
+    return n in JUNK or n in NOT_MODELS or n.startswith("other-") or n.startswith("other ") or "other model" in n
+
+
+_GEAR = re.compile(r"\s*\b(automtic|automatic|manual)\b[\s\u200f]*", re.I)
+
+
+def _fix_official(mk: str, mo: str, tn):
+    """Hatla2ee's price list sometimes files 'GS4 Automtic / GE' as the model and 'GAC GS4 2025 Automtic / GE' as the
+    trim. -> ('GS4', 'A/T / GE'). Anything already clean comes back as it was."""
+    trim_from_model = None
+    m = _GEAR.search(mo or "")
+    if m and m.start() > 0:
+        gear = "M/T" if m.group(1).lower() == "manual" else "A/T"
+        rest = mo[m.end():].strip(" /")
+        mo, trim_from_model = mo[:m.start()].strip(), (gear + " / " + rest if rest else gear)
+    t = tn or ""
+    if t and (mk.lower() in t.lower() or re.search(r"\b(19|20)\d{2}\b", t)):
+        t = re.sub(re.escape(mk), " ", t, flags=re.I)
+        t = re.sub(re.escape(mo), " ", t, flags=re.I)
+        t = re.sub(r"\b(19|20)\d{2}\b", " ", t)
+        t = re.sub(r"\b(automtic|automatic)\b[\s\u200f]*", " A/T ", t, flags=re.I)
+        t = re.sub(r"\bmanual\b[\s\u200f]*", " M/T ", t, flags=re.I)
+        parts = [x.strip() for x in re.split(r"/(?!T\b)", re.sub(r"\s+", " ", t)) if x.strip()]
+        t = " / ".join(parts)
+    if trim_from_model and (not t or t in ("A/T", "M/T")):
+        t = trim_from_model
+    return mo, (t or tn)
 
 
 def _pretty(name: str) -> str:
@@ -219,7 +245,8 @@ def catalog(cx, days: int = 90, min_ads: int = 1) -> dict:
     disp = lambda m: names.setdefault(m, make_display(m))       # 'Alfaromeo' and 'Alfa Romeo' -> one brand
     rows = [(disp(r[0]),) + tuple(r[1:]) for r in rows]
     zero = [(disp(r[0]),) + tuple(r[1:]) for r in zero]
-    listed_set = {(disp(a), b) for a, b in listed}
+    zero = [(r[0],) + _fix_official(r[0], r[1], r[4])[:1] + (r[2], r[3], _fix_official(r[0], r[1], r[4])[1]) + tuple(r[5:]) for r in zero]
+    listed_set = {(disp(a), _fix_official(disp(a), b, None)[0]) for a, b in listed}
     zmap: dict[tuple, list] = {}
     for mk, mo, y, p, tn, fresh in zero:
         zmap.setdefault((mk, mo), []).append((y, p, tn, fresh))

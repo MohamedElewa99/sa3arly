@@ -108,3 +108,10 @@ def test_researched_trims():
     assert r[2010][0] == "M/T GL" and r[2018][-1] == "A/T GL Highline" and 2030 not in r
     assert ref_for("Mitsubishi", "Lancer EX Shark", {2016})[2016] == ["1.6 GLX", "1.6 GLS", "2.0 GT"]
     assert ref_for("Hyundai", "Elantra AD", {2018}) == {}            # its own official trims, not plain Elantra's
+
+
+def test_fix_official_names():
+    from sa3arly.web_api import _fix_official as f
+    assert f("GAC", "GS4 Automtic / GE", "GAC GS4 2025 Automtic / GE") == ("GS4", "A/T / GE")
+    assert f("BMW", "IX2 Automtic", "BMW IX2 Automtic 2027") == ("IX2", "A/T")
+    assert f("Hyundai", "Elantra", "A/T / Smart") == ("Elantra", "A/T / Smart")
