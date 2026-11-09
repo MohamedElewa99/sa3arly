@@ -17,7 +17,13 @@ create table if not exists profiles (
 );
 alter table profiles enable row level security;
 """
-FIELDS = ("name", "showroom", "phone", "city", "avatar")
+# same as db/migrations/006_profile_role.sql
+ROLE_MIGRATION = """-- Who the user is, chosen when the app first opens: 'dealer' (a showroom / trader) or 'user' (someone buying or
+-- selling his own car). The app shows each the features that fit.
+alter table profiles add column if not exists role text;
+"""
+ROLES = ("dealer", "user")
+FIELDS = ("name", "showroom", "phone", "city", "avatar", "role")
 CITIES = ["القاهرة", "الجيزة", "الإسكندرية", "القليوبية", "الشرقية", "الدقهلية", "الغربية", "المنوفية", "البحيرة", "كفر الشيخ",
           "دمياط", "بورسعيد", "الإسماعيلية", "السويس", "الفيوم", "بني سويف", "المنيا", "أسيوط", "سوهاج", "قنا", "الأقصر",
           "أسوان", "البحر الأحمر", "مطروح", "شمال سيناء", "جنوب سيناء", "الوادي الجديد"]
@@ -29,12 +35,13 @@ def ensure(cx) -> None:
     global _ready
     if not _ready:
         cx.execute(MIGRATION)
+        cx.execute(ROLE_MIGRATION)
         _ready = True
 
 
 def get(cx, uid: str) -> dict:
     ensure(cx)
-    r = cx.execute("select name, showroom, phone, city, avatar from profiles where user_id = %s", (uid,)).fetchone()
+    r = cx.execute("select name, showroom, phone, city, avatar, role from profiles where user_id = %s", (uid,)).fetchone()
     return dict(zip(FIELDS, r)) if r else {k: None for k in FIELDS}
 
 
@@ -65,6 +72,11 @@ def clean(body: dict) -> tuple[dict | None, str]:
         if v and v not in CITIES:
             return None, "city"
         out["city"] = v or None
+    if "role" in body:
+        v = str(body["role"] or "").strip()
+        if v and v not in ROLES:
+            return None, "role"
+        out["role"] = v or None
     if "avatar" in body:
         v = str(body["avatar"] or "")
         if v and (len(v) > AVATAR_MAX or not re.match(r"^data:image/(jpeg|png|webp);base64,[A-Za-z0-9+/=]+$", v)):

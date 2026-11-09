@@ -36,3 +36,9 @@ def test_put_get(db):  # noqa: F811
     assert profile.put(db, uid, {"name": "محمد", "city": "القاهرة"})["city"] == "القاهرة"
     p = profile.put(db, uid, {"showroom": "معرض طارق"})
     assert p["name"] == "محمد" and p["showroom"] == "معرض طارق"      # untouched fields stay
+
+
+def test_role():
+    assert Path("db/migrations/006_profile_role.sql").read_text() == profile.ROLE_MIGRATION
+    assert profile.clean({"role": "dealer"})[0] == {"role": "dealer"}
+    assert profile.clean({"role": "admin"}) == (None, "role")

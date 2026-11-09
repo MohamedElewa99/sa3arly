@@ -143,6 +143,7 @@ button:disabled{cursor:not-allowed}
       </span>
       <span aria-hidden="true" style="font-size: 18px; color: {{ t.mute }}">←</span>
     </button>
+    <sc-if value="{{ isDealer }}" hint-placeholder-val="{{ true }}">
     <button class="press" onClick="{{ openGarage }}" style="margin-top: 8px; width: 100%; min-height: 52px; padding: 0 16px; border-radius: 16px; border: 1px solid {{ t.line2 }}; background: none; color: {{ t.ink }}; display: flex; align-items: center; gap: 12px; text-align: right">
       <svg width="20" height="20" viewBox="0 0 20 20" aria-hidden="true" style="flex: none"><path d="M2 18V8l8-5 8 5v10" stroke="#F2A93B" stroke-width="1.5" fill="none" stroke-linejoin="round"></path><path d="M5.5 18v-5h9v5M5.5 15.5h9" stroke="#F2A93B" stroke-width="1.5" fill="none"></path></svg>
       <span style="flex: 1; display: flex; flex-direction: column; gap: 2px">
@@ -151,6 +152,7 @@ button:disabled{cursor:not-allowed}
       </span>
       <span aria-hidden="true" style="font-size: 18px; color: {{ t.mute }}">←</span>
     </button>
+    </sc-if>
     </sc-if>
     <sc-if value="{{ hasResults }}" hint-placeholder-val="{{ false }}">
       <div class="fade" style="display: flex; flex-direction: column; margin-top: 4px">
@@ -516,6 +518,23 @@ button:disabled{cursor:not-allowed}
       <p style="margin: 8px 0 0; font-size: 12px; color: {{ t.mute }}; text-align: center; line-height: 1.7">{{ confTxt }}</p>
 
 
+      <sc-if value="{{ isUser }}" hint-placeholder-val="{{ false }}">
+      <section aria-labelledby="deal-u" style="margin-top: 34px; display: flex; flex-direction: column; gap: 12px">
+        <h2 id="deal-u" style="margin: 0; font-size: 17px; font-weight: 600">هتعمل بيها إيه؟</h2>
+        <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px">
+          <div style="display: flex; flex-direction: column; gap: 4px; padding: 14px; border-radius: 14px; background: {{ t.ink }}; color: {{ t.bg }}">
+            <span style="font-size: 12px; opacity: .8">لو بتبيعها، اعرضها بـ</span>
+            <span class="num" style="font-size: 20px; font-weight: 500; direction: ltr; text-align: right">{{ askTxt }}</span>
+          </div>
+          <div style="display: flex; flex-direction: column; gap: 4px; padding: 14px; border-radius: 14px; border: 1px solid {{ t.line2 }}">
+            <span style="font-size: 12px; color: {{ t.mute }}">لو بتشتريها، فاصل لحد</span>
+            <span class="num" style="font-size: 20px; font-weight: 300; direction: ltr; text-align: right">{{ targetTxt }}</span>
+          </div>
+        </div>
+        <p style="margin: 0; font-size: 12px; color: {{ t.mute }}; line-height: 1.7">الناس بتفاصل غالباً 3–5% من سعر العرض. المعارض بتشتري أقل من السعر ده عشان تكسب فيها.</p>
+      </section>
+      </sc-if>
+      <sc-if value="{{ isDealer }}" hint-placeholder-val="{{ true }}">
       <section aria-labelledby="deal" style="margin-top: 34px; display: flex; flex-direction: column; gap: 12px">
         <h2 id="deal" style="margin: 0; font-size: 17px; font-weight: 600">تشتريها بكام؟</h2>
         <label for="margin" style="display: flex; justify-content: space-between; align-items: baseline; font-size: 13px; color: {{ t.mute }}">
@@ -535,6 +554,7 @@ button:disabled{cursor:not-allowed}
         </div>
         <p style="margin: 0; font-size: 12px; color: {{ t.mute }}; line-height: 1.7">البيع محسوب على نص الرينج العادل، والتصليح متخصم خلاص من فوق.</p>
       </section>
+      </sc-if>
       <div style="margin-top: 30px">
       <div style="border-top: 1px solid {{ t.line }}">
         <button class="press" onClick="{{ fold.how }}" aria-expanded="{{ foldOpen.how }}" style="width: 100%; min-height: 56px; padding: 0; display: flex; align-items: center; justify-content: space-between; background: none; border: none; color: {{ t.ink }}; font-size: 15px; text-align: right">
@@ -949,7 +969,7 @@ button:disabled{cursor:not-allowed}
         <div style="display: flex; justify-content: space-between; gap: 12px"><dt style="color: {{ t.mute }}">الدهان</dt><dd style="margin: 0; text-align: left">{{ paintSummary }}</dd></div>
         <div style="display: flex; justify-content: space-between; gap: 12px"><dt style="color: {{ t.mute }}">الميكانيكا</dt><dd style="margin: 0; text-align: left">{{ mechSummary }}</dd></div>
         <div style="display: flex; justify-content: space-between; gap: 12px"><dt style="color: {{ t.mute }}">اتقارنت بـ</dt><dd style="margin: 0">{{ nComps }} عربية، آخر 60 يوم</dd></div>
-        <div style="display: flex; justify-content: space-between; gap: 12px"><dt style="color: {{ t.mute }}">أقصى سعر شرا</dt><dd class="num" style="margin: 0; direction: ltr">{{ maxBuyTxt }}</dd></div>
+        <sc-if value="{{ showBuyRow }}" hint-placeholder-val="{{ true }}"><div style="display: flex; justify-content: space-between; gap: 12px"><dt style="color: {{ t.mute }}">أقصى سعر شرا</dt><dd class="num" style="margin: 0; direction: ltr">{{ maxBuyTxt }}</dd></div></sc-if>
       </dl>
       <sc-if value="{{ hasFrom }}" hint-placeholder-val="{{ false }}">
         <div style="display: flex; justify-content: space-between; gap: 12px; padding-top: 10px; border-top: 1px dashed {{ t.line2 }}; font-size: 13px">
@@ -957,10 +977,12 @@ button:disabled{cursor:not-allowed}
           <span class="num" dir="ltr" style="color: {{ t.mute }}">{{ fromPhone }}</span>
         </div>
       </sc-if>
+      <sc-if value="{{ isDealer }}" hint-placeholder-val="{{ true }}">
       <label style="display: flex; align-items: center; gap: 10px; font-size: 13px; min-height: 40px; cursor: pointer">
         <input type="checkbox" checked="{{ hideBuy }}" onChange="{{ toggleHideBuy }}" style="width: 18px; height: 18px; margin: 0; accent-color: #F2A93B">
         خبّي سعر الشرا لو هتبعته للزبون
       </label>
+      </sc-if>
     </div>
     <div style="display: flex; align-items: center; gap: 8px; height: 46px; padding: 0 6px 0 14px; border-radius: 999px; background: {{ t.soft }}">
       <span class="num" style="flex: 1; min-width: 0; font-size: 14px; direction: ltr; text-align: left; overflow: hidden; text-overflow: ellipsis; white-space: nowrap">{{ siteHost }}</span>
@@ -1083,6 +1105,25 @@ button:disabled{cursor:not-allowed}
     </sc-if>
     <button class="press" onClick="{{ closeShot }}" style="min-height: 44px; background: none; border: none; color: {{ t.mute }}; font-size: 14px">إلغاء</button>
   </section>
+</div>
+</sc-if>
+
+<sc-if value="{{ askRole }}" hint-placeholder-val="{{ false }}">
+<div class="fade" role="dialog" aria-modal="true" aria-labelledby="role-t" style="position: absolute; inset: 0; z-index: 30; background: {{ t.bg }}; display: flex; flex-direction: column; justify-content: center; padding: 28px 22px; gap: 22px; overflow-y: auto">
+  <div style="display: flex; flex-direction: column; gap: 8px">
+    <span style="font-family: 'Aref Ruqaa', serif; font-size: 34px; font-weight: 700" translate="no">سعرلي</span>
+    <h1 id="role-t" style="margin: 0; font-size: 22px; font-weight: 600; line-height: 1.5">أهلاً بيك. إنت مين؟</h1>
+    <p style="margin: 0; font-size: 14px; color: {{ t.mute }}; line-height: 1.8">عشان نوريك الحاجات اللي تفيدك انت. تقدر تغيّرها بعدين من القايمة.</p>
+  </div>
+  <sc-for list="{{ roleOpts }}" as="ro" hint-placeholder-count="2">
+    <button class="press fu" onClick="{{ ro.pick }}" style="animation-delay: {{ ro.delay }}s; width: 100%; padding: 20px 18px; border-radius: 20px; border: 1px solid {{ ro.bd }}; background: {{ ro.bg }}; color: {{ t.ink }}; display: flex; align-items: flex-start; gap: 16px; text-align: right">
+      <span aria-hidden="true" style="flex: none; width: 52px; height: 52px; border-radius: 16px; background: #F2A93B; color: #000000; display: flex; align-items: center; justify-content: center; font-size: 26px">{{ ro.icon }}</span>
+      <span style="flex: 1; display: flex; flex-direction: column; gap: 6px">
+        <span style="font-size: 18px; font-weight: 600">{{ ro.title }}</span>
+        <span style="font-size: 13px; color: {{ t.mute }}; line-height: 1.8">{{ ro.sub }}</span>
+      </span>
+    </button>
+  </sc-for>
 </div>
 </sc-if>
 
@@ -1651,13 +1692,13 @@ class Component extends DCLogic {
       q: '', tray: [], km: 100000, agencyKm: 60000,
       paint: {}, ex: {}, spin: true, angle: -35, dragging: false, last: '',
       mech: {}, open: null, k: 1, carSet: false, kmSet: false, hist: [], picked: {},
-      gl: true, oth: {}, exOther: false, mo: {}, body: 'crossover', bodyAuto: true, heroOn: true, partsOpen: false, mf: 'all', paintReady: false, more: false, wm: 0, margin: 30000, receipt: false, hideBuy: false, copied: false, checked: {}, car: { make: 'كوبرا', model: 'فورمينتور', year: 2022, trim: 'VZ' }, picker: null, pickOther: '', sheet: null, login: null, wa: null, loginSent: false, loginEmail: '', loginErr: '', loginBusy: false, saving: false, flash: '', profile: false, pf: null, pfBusy: false, pfErr: '', photoBusy: false, item: null, shotsDone: {}, extraShots: 0, shotPick: null, extras: [], deskPage: null, zq: '', zp: null, zpq: '', vis: { busy: false, note: '' }, folds: {},
+      gl: true, oth: {}, exOther: false, mo: {}, body: 'crossover', bodyAuto: true, heroOn: true, partsOpen: false, mf: 'all', paintReady: false, more: false, wm: 0, margin: 30000, receipt: false, hideBuy: false, copied: false, checked: {}, car: { make: 'كوبرا', model: 'فورمينتور', year: 2022, trim: 'VZ' }, picker: null, pickOther: '', sheet: null, login: null, wa: null, loginSent: false, loginEmail: '', loginErr: '', loginBusy: false, saving: false, flash: '', profile: false, pf: null, pfBusy: false, pfErr: '', photoBusy: false, item: null, shotsDone: {}, extraShots: 0, shotPick: null, extras: [], deskPage: null, zq: '', zp: null, zpq: '', vis: { busy: false, note: '' }, folds: {}, role: null,
       mine: null, my: { price: '', status: 'available', notes: '' }, myBusy: false, myF: 'all', myOpen: null, myDel: false
     };
     // what this person did last time (car, km, paint, mechanics, margin, compare list, history) comes back
     try {
       var kept = JSON.parse(window.localStorage.getItem(Component.KEEP_KEY) || 'null');
-      if (kept && kept.v === 1) ['hist', 'tray', 'margin', 'hideBuy'].forEach(function (k) { if (kept[k] !== undefined) this.state[k] = kept[k]; }, this);
+      if (kept && kept.v === 1) ['hist', 'tray', 'margin', 'hideBuy', 'role'].forEach(function (k) { if (kept[k] !== undefined) this.state[k] = kept[k]; }, this);
     } catch (e) { /* first visit, private mode or the design canvas */ }
     this._raf = null; this._paint = null; this._hero = null;
     var self = this;
@@ -1885,7 +1926,7 @@ class Component extends DCLogic {
     this.go(i > 0 ? order[i - 1] : (S.mine ? 'garage' : 'home'), 'b');
     return true;
   }
-  static get KEEP() { return ['car', 'carSet', 'picked', 'km', 'kmSet', 'agencyKm', 'paint', 'ex', 'exOther', 'mech', 'mo', 'oth', 'margin', 'tray', 'hist', 'checked', 'body', 'bodyAuto', 'hideBuy']; }
+  static get KEEP() { return ['car', 'carSet', 'picked', 'km', 'kmSet', 'agencyKm', 'paint', 'ex', 'exOther', 'mech', 'mo', 'oth', 'margin', 'tray', 'hist', 'checked', 'body', 'bodyAuto', 'hideBuy', 'role']; }
   static get KEEP_KEY() { return 'sa3.mine'; }
   componentDidUpdate(pp, ps) {
     var st = this.state;
@@ -2723,6 +2764,14 @@ class Component extends DCLogic {
       return d <= 0 ? 'النهارده' : d === 1 ? 'امبارح' : d === 2 ? 'من يومين' : 'من ' + d + ' يوم';
     };
 
+    // ---------- who's using it: a showroom / trader, or someone buying or selling his own car ----------
+    var role = S.role || (A.profile && A.profile.role) || null;
+    var isDealer = role !== 'user';
+    var setRole = function (r) {
+      self.setState({ role: r, menu: false });
+      if (A.user && A.saveProfile) A.saveProfile({ role: r }).catch(function () {});
+      self.flashMsg(r === 'dealer' ? 'تمام، شغّلنا أدوات المعارض' : 'تمام، هنوريك اللي يفيدك');
+    };
     // ---------- عربياتي ----------
     var openGarage = function () {
       if (!me) return needLogin('garage', { kind: 'garage' });
@@ -2777,8 +2826,9 @@ class Component extends DCLogic {
       { label: 'سعر الزيرو', sub: 'كل الماركات والموديلات والفئات', go: function () { openZp(); }, soon: false },
       { label: 'تنبيهاتي', sub: 'لما الزيرو يتغير أو تنزل عربية رخيصة', go: function () { if (!me) return needLogin('alerts', { kind: 'alerts' }); self.setState({ menu: false, sheet: 'alerts' }); }, soon: false },
       { label: 'تسعيراتي', sub: 'كل العربيات اللي سعّرتها', go: function () { self.setState({ menu: false, more: true }); self.go('home', 'b'); }, soon: false },
-      { label: 'عربياتي', sub: 'العربيات اللي عندك في المعرض', go: function () { openGarage(); }, soon: false }
-    ].map(function (m, i) { m.delay = (0.08 + i * 0.05).toFixed(2); m.op = m.soon ? 0.55 : 1; return m; });
+      { label: 'عربياتي', sub: 'العربيات اللي عندك في المعرض', go: function () { openGarage(); }, soon: false },
+      { label: isDealer ? 'أنا مش معرض' : 'أنا معرض / تاجر', sub: isDealer ? 'بتشتري أو بتبيع عربيتك انت' : 'شغّل عربياتي وهامش الربح وسعر الشرا', go: function () { setRole(isDealer ? 'user' : 'dealer'); }, soon: false }
+    ].filter(function (m) { return isDealer || m.label !== 'عربياتي'; }).map(function (m, i) { m.delay = (0.08 + i * 0.05).toFixed(2); m.op = m.soon ? 0.55 : 1; return m; });
 
     return {
       t: t, dark: S.dark, light: !S.dark, darkStr: S.dark ? 'true' : 'false',
@@ -2885,6 +2935,12 @@ class Component extends DCLogic {
       closeLogin: function () { if (A.pending) A.pending(null); if (self._waCtl) self._waCtl.stop = true; self.setState({ login: null, wa: null }); },
       editEmail: function () { self.setState({ loginSent: false }); },
       hasFlash: !!S.flash, flash: S.flash,
+      isDealer: isDealer, isUser: !isDealer, showBuyRow: isDealer && !S.hideBuy,
+      askRole: !role && !(A.user && !A.profile) && S.screen === 'home',
+      roleOpts: [['dealer', 'معرض / تاجر', 'بشتري وببيع عربيات: أسعر بسرعة، أعرف أقصى سعر شرا وهامش ربحي، وأتابع عربياتي اللي في المعرض.', '🏪'],
+                 ['user', 'ببيع أو بشتري عربيتي', 'عايز أعرف السعر العادل لعربية قبل ما أبيع أو أشتري، وأفاصل صح.', '🚗']].map(function (r, i) {
+        return { title: r[1], sub: r[2], icon: r[3], delay: (0.1 + i * 0.08).toFixed(2), bd: t.line2, bg: 'transparent', pick: function () { setRole(r[0]); } };
+      }),
       goHomeTop: function () { self.setState({ sheet: null, zp: null, menu: false, myOpen: null }); self.go('home', 'b'); },
       isGarage: S.screen === 'garage', isMySave: S.screen === 'mysave', openGarage: openGarage,
       startMine: function () { self.startMine(null); },
@@ -3016,7 +3072,7 @@ class Component extends DCLogic {
       deskRow: !desk ? 'display: contents' : (idx >= 0 || S.screen === 'compare' || S.screen === 'garage')
         ? 'width: 100%; padding: 0 0 40px; box-sizing: border-box; display: flex; flex-direction: column; gap: 48px'
         : 'width: 100%; max-width: 1200px; margin: 0 auto; padding: 32px 40px 0; box-sizing: border-box; display: flex; flex-direction: column; gap: 56px',
-      deskLinks: [['الرئيسية', 'home'], ['سعّر عربية', 'car'], ['قارن عربيات', 'compare'], ['أسعار الزيرو', 'zero'], ['عربياتي', 'garage']].map(function (l) {
+      deskLinks: [['الرئيسية', 'home'], ['سعّر عربية', 'car'], ['قارن عربيات', 'compare'], ['أسعار الزيرو', 'zero']].concat(isDealer ? [['عربياتي', 'garage']] : []).map(function (l) {
         var on = l[1] === 'zero' ? !!S.zp : (l[1] === 'car' ? idx >= 0 && !S.mine : l[1] === 'garage' ? S.screen === 'garage' || !!S.mine : S.screen === l[1]) && S.deskPage !== 'zero';
         return { label: l[0], cur: on ? 'page' : 'false', bg: on ? t.soft : 'transparent', fg: on ? t.ink : t.mute,
           go: function () { if (l[1] === 'garage') return openGarage(); if (l[1] === 'zero') { if (self.state.screen !== 'home') self.go('home', 'f'); openZp(); } else { self.setState({ sheet: null, zp: null }); if (self.state.mine) self.go('home', 'f'); self.go(l[1], 'f'); } } };
@@ -3147,6 +3203,7 @@ class Component extends DCLogic {
       margin: S.margin, marginTxt: fmt(S.margin) + ' جنيه',
       onMargin: function (e) { self.setState({ margin: parseInt(e.target.value, 10) || 0 }); },
       sellTxt: fmt(r5((finalLo + finalHi) / 2)),
+      askTxt: fmt(r5(finalHi * 1.03)), targetTxt: fmt(r5((finalLo + finalHi) / 2)),
       maxBuyTxt: fmt(r5((finalLo + finalHi) / 2 - S.margin)),
       histLine: hist.line, histArea: hist.area, histX: hist.x, histY: hist.y, histLabels: hist.labels,
       histTop: hist.top, histTopY: hist.topY, histChange: hist.change, histAria: hist.aria,
@@ -3169,7 +3226,7 @@ class Component extends DCLogic {
         try { if (navigator.clipboard) navigator.clipboard.writeText(siteUrl); } catch (e) {}
         self.setState({ copied: true });
       },
-      waHref: 'https://wa.me/?text=' + encodeURIComponent('تسعير سعرلي: ' + carName + '، ' + fmt(S.km) + ' كم\nالسعر العادل: ' + fmt(finalLo) + ' – ' + fmt(finalHi) + ' جنيه' + (S.hideBuy ? '' : '\nأقصى سعر شرا: ' + fmt(r5((finalLo + finalHi) / 2 - S.margin))) + ((P.showroom || P.name) ? '\n— ' + (P.showroom || P.name) + (P.phone ? '، ' + P.phone : '') : '') + '\n' + siteUrl),
+      waHref: 'https://wa.me/?text=' + encodeURIComponent('تسعير سعرلي: ' + carName + '، ' + fmt(S.km) + ' كم\nالسعر العادل: ' + fmt(finalLo) + ' – ' + fmt(finalHi) + ' جنيه' + (S.hideBuy || !isDealer ? '' : '\nأقصى سعر شرا: ' + fmt(r5((finalLo + finalHi) / 2 - S.margin))) + ((P.showroom || P.name) ? '\n— ' + (P.showroom || P.name) + (P.phone ? '، ' + P.phone : '') : '') + '\n' + siteUrl),
       carName: carName, carShort: carShort, nComps: nComps, compsBtn: 'شوف الـ ' + nComps + ' عربية',
       confTxt: nComps === 0 ? 'ثقة ' + conf + '. مفيش إعلانات قريبة للعربية دي دلوقتي.' : 'ثقة ' + conf + '. قارنّا بـ ' + nComps + ' عربية من نفس الفئة وعدادها قريب، آخر 60 يوم.' + (known ? ' وشلنا الإعلانات اللي أسعارها شاذة.' : ' الموديل ده مش عندنا كفاية، فالرينج أعرض.'),
       axisLo: fmt(lo), axisHi: fmt(hi),
