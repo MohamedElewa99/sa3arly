@@ -72,7 +72,8 @@ def _post(url: str, body: dict, headers: dict, timeout: int = 14) -> dict:
 
 
 # tried in order until one answers; when all are retired the API's own model list is asked for the newest Flash
-GEMINI_MODELS = ("gemini-3.8-flash", "gemini-flash-latest")
+GEMINI_MODELS = ("gemini-3.6-flash", "gemini-3.8-flash", "gemini-flash-latest")   # 3.6 answers in ~1.5s; 3.8 is often busy on the free tier
+_good: list = []          # the model that answered last: tried first next time
 _BASE = "https://generativelanguage.googleapis.com/v1beta"
 _found: list = []
 _trace: list = []         # [model, with thinking setting, seconds, result] of the last calls, for ?check=1
@@ -110,7 +111,7 @@ def _thinking(model: str) -> dict | None:
 def _gemini(parts: list, json_out: bool = True) -> dict:
     key = {"x-goog-api-key": os.environ["GEMINI_API_KEY"].strip()}
     models = [os.environ["GEMINI_MODEL"]] if os.environ.get("GEMINI_MODEL") else []
-    models += [m for m in GEMINI_MODELS if m not in models]
+    models += [m for m in _good + list(GEMINI_MODELS) if m not in models]
     last, t0, i = None, time.time(), 0
     while i < len(models) and i < 5 and time.time() - t0 < 40:
         model = models[i]
@@ -121,8 +122,9 @@ def _gemini(parts: list, json_out: bool = True) -> dict:
             t1 = time.time()
             try:
                 r = _post(f"{_BASE}/models/{model}:generateContent",
-                          {"contents": [{"parts": parts}], "generationConfig": cfg_try}, key, timeout=20)
+                          {"contents": [{"parts": parts}], "generationConfig": cfg_try}, key, timeout=12)
                 _trace.append([model, "thinkingConfig" in cfg_try, round(time.time() - t1, 1), "ok"])
+                _good[:] = [model]
                 return r
             except VisionError as e:
                 _trace.append([model, "thinkingConfig" in cfg_try, round(time.time() - t1, 1), str(e)[:80]])
