@@ -75,6 +75,7 @@ def _post(url: str, body: dict, headers: dict, timeout: int = 14) -> dict:
 GEMINI_MODELS = ("gemini-3.8-flash", "gemini-flash-latest")
 _BASE = "https://generativelanguage.googleapis.com/v1beta"
 _found: list = []
+_trace: list = []         # [model, with thinking setting, seconds, result] of the last calls, for ?check=1
 
 
 def _discover() -> list:
@@ -117,10 +118,14 @@ def _gemini(parts: list, json_out: bool = True) -> dict:
         cfg = {"responseMimeType": "application/json"} if json_out else {}
         think = _thinking(model)
         for cfg_try in ([dict(cfg, thinkingConfig=think), cfg] if think else [cfg]):
+            t1 = time.time()
             try:
-                return _post(f"{_BASE}/models/{model}:generateContent",
-                             {"contents": [{"parts": parts}], "generationConfig": cfg_try}, key, timeout=20)
+                r = _post(f"{_BASE}/models/{model}:generateContent",
+                          {"contents": [{"parts": parts}], "generationConfig": cfg_try}, key, timeout=20)
+                _trace.append([model, "thinkingConfig" in cfg_try, round(time.time() - t1, 1), "ok"])
+                return r
             except VisionError as e:
+                _trace.append([model, "thinkingConfig" in cfg_try, round(time.time() - t1, 1), str(e)[:80]])
                 last = VisionError(f"{model}: {e}")
                 if re.match(r"HTTP (401|403|429)", str(e)) or "API key" in str(e):
                     raise last from None       # a bad key or a used-up quota won't get better with another model
@@ -137,14 +142,15 @@ def check() -> dict:
     if not p:
         return {"ok": False, "provider": None, "error": "no GEMINI_API_KEY / ANTHROPIC_API_KEY on the server"}
     t0 = time.time()
+    del _trace[:]
     try:
         if p == "gemini":
             _gemini([{"text": "Reply with the word ok."}], json_out=False)
         else:
             _ask("Reply with the word ok.", None)
-        return {"ok": True, "provider": p, "seconds": round(time.time() - t0, 1)}
+        return {"ok": True, "provider": p, "seconds": round(time.time() - t0, 1), "tries": _trace[-6:]}
     except VisionError as e:
-        return {"ok": False, "provider": p, "error": str(e), "seconds": round(time.time() - t0, 1)}
+        return {"ok": False, "provider": p, "error": str(e), "seconds": round(time.time() - t0, 1), "tries": _trace[-6:]}
 
 
 def _ask(prompt: str, jpeg: bytes | None) -> dict:
