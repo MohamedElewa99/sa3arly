@@ -1,4 +1,6 @@
 :root{--ac:#E3232C}
+.pn{cursor:pointer;transition:fill .25s ease}
+.pn:active{opacity:.7}
 body{margin:0}
 a{color:inherit}
 button{font-family:'Alexandria',sans-serif;cursor:pointer}
