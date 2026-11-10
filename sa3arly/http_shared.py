@@ -21,6 +21,7 @@ def send(handler, status: int, body, cache: int = 0):
     handler.send_response(status)
     handler.send_header("Content-Type", "application/json; charset=utf-8")
     handler.send_header("Cache-Control", f"public, s-maxage={cache}, stale-while-revalidate={cache * 4}" if cache else "no-store")
+    handler.send_header("X-Content-Type-Options", "nosniff")
     handler.send_header("Content-Length", str(len(data)))
     handler.end_headers()
     handler.wfile.write(data)
@@ -40,8 +41,11 @@ def anon_key() -> str:
 
 
 def read_json(handler, limit: int = 2_500_000) -> dict:
-    n = int(handler.headers.get("Content-Length") or 0)
-    if not n or n > limit:
+    try:
+        n = int(handler.headers.get("Content-Length") or 0)
+    except ValueError:
+        return {}
+    if n <= 0 or n > limit:
         return {}
     try:
         body = json.loads(handler.rfile.read(n))

@@ -39,7 +39,8 @@ jobs:
       - name: scrape
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
-        run: python -m sa3arly ${{ matrix.job }}
+          JOB: ${{ matrix.job }}          # through the environment, never pasted into the shell line
+        run: python -m sa3arly $JOB
 
   # after every scrape: retrain the AI price model on the fresh ads (a few minutes on the free runner)
   train:

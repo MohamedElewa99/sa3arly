@@ -86,6 +86,12 @@ class PgStore:
     def __init__(self, url: str):
         import psycopg
         self.cx = psycopg.connect(url, autocommit=True)
+        try:                                    # every run: tables added since the last one are locked too
+            from .secure import lockdown
+            left = lockdown(self.cx)
+            print(f"[db] lockdown: {left} tables without row level security")
+        except Exception as e:
+            print(f"[db] lockdown FAILED: {e}")
         self._makes, self._models = {}, {}
         self._model_names: dict[int, list[str]] = {}     # make_id -> model names (N+1 fix for zero())
         self._pending: dict[tuple, dict] = {}            # (source, source_id) -> row, last one wins

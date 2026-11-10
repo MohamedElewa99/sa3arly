@@ -1233,12 +1233,66 @@ input[type=checkbox]:checked{transform:scale(1.12)}
             كمّل بجوجل
           </button>
           <div aria-hidden="true" style="display: flex; align-items: center; gap: 12px; color: {{ t.mute }}; font-size: 12px; margin: 4px 0">
-            <span style="flex: 1; height: 1px; background: {{ t.line }}"></span>أو بالإيميل<span style="flex: 1; height: 1px; background: {{ t.line }}"></span>
+            <span style="flex: 1; height: 1px; background: {{ t.line }}"></span>أو<span style="flex: 1; height: 1px; background: {{ t.line }}"></span>
+          </div>
+        </sc-if>
+        <div role="tablist" aria-label="دخول أو حساب جديد" style="display: grid; grid-template-columns: 1fr 1fr; gap: 4px; padding: 4px; border-radius: 12px; background: {{ t.soft }}">
+          <button class="press" role="tab" aria-selected="{{ lg.inSel }}" onClick="{{ lg.goIn }}" style="height: 40px; border-radius: 9px; border: none; background: {{ lg.inBg }}; color: {{ lg.inFg }}; font-size: 14px; font-weight: 600">دخول</button>
+          <button class="press" role="tab" aria-selected="{{ lg.upSel }}" onClick="{{ lg.goUp }}" style="height: 40px; border-radius: 9px; border: none; background: {{ lg.upBg }}; color: {{ lg.upFg }}; font-size: 14px; font-weight: 600">حساب جديد</button>
+        </div>
+        <sc-if value="{{ lg.isUp }}" hint-placeholder-val="{{ false }}">
+          <div class="fu" style="display: flex; flex-direction: column; gap: 10px">
+            <span style="font-size: 13px; color: {{ t.mute }}">إنت مين؟</span>
+            <div role="radiogroup" aria-label="نوع الحساب" style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px">
+              <button class="press" role="radio" aria-checked="{{ lg.dealerOn }}" onClick="{{ lg.setDealer }}" style="min-height: 64px; padding: 10px 12px; border-radius: 12px; border: 1px solid {{ lg.dealerBd }}; background: {{ lg.dealerBg }}; color: {{ lg.dealerFg }}; display: flex; flex-direction: column; gap: 3px; align-items: flex-start; text-align: right"><span style="font-size: 15px; font-weight: 600">معرض أو تاجر</span><span style="font-size: 11px; opacity: .8">بشتري وببيع عربيات</span></button>
+              <button class="press" role="radio" aria-checked="{{ lg.userOn }}" onClick="{{ lg.setUser }}" style="min-height: 64px; padding: 10px 12px; border-radius: 12px; border: 1px solid {{ lg.userBd }}; background: {{ lg.userBg }}; color: {{ lg.userFg }}; display: flex; flex-direction: column; gap: 3px; align-items: flex-start; text-align: right"><span style="font-size: 15px; font-weight: 600">مشتري</span><span style="font-size: 11px; opacity: .8">بشتري أو ببيع عربيتي</span></button>
+            </div>
+            <label for="lg-name" style="position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0)">اسمك</label>
+            <input id="lg-name" type="text" name="name" autocomplete="name" maxlength="60" value="{{ lg.name }}" onChange="{{ lg.onName }}" placeholder="اسمك" style="height: 52px; border-radius: 12px; border: 1px solid {{ t.line2 }}; background: {{ t.soft }}; color: {{ t.ink }}; caret-color: {{ t.ac }}; padding: 0 16px; font-family: 'Alexandria', sans-serif; font-size: 16px; width: 100%; box-sizing: border-box">
+            <sc-if value="{{ lg.isDealer }}" hint-placeholder-val="{{ false }}">
+              <label for="lg-shop" style="position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0)">اسم المعرض</label>
+              <input id="lg-shop" type="text" name="organization" autocomplete="organization" maxlength="60" value="{{ lg.showroom }}" onChange="{{ lg.onShowroom }}" placeholder="اسم المعرض" style="height: 52px; border-radius: 12px; border: 1px solid {{ t.line2 }}; background: {{ t.soft }}; color: {{ t.ink }}; caret-color: {{ t.ac }}; padding: 0 16px; font-family: 'Alexandria', sans-serif; font-size: 16px; width: 100%; box-sizing: border-box">
+            </sc-if>
+            <label for="lg-phone" style="position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0)">رقم الموبايل</label>
+            <input id="lg-phone" type="tel" name="tel" autocomplete="tel" inputmode="tel" dir="ltr" maxlength="16" value="{{ lg.phone }}" onChange="{{ lg.onPhone }}" placeholder="01xxxxxxxxx" style="height: 52px; border-radius: 12px; border: 1px solid {{ t.line2 }}; background: {{ t.soft }}; color: {{ t.ink }}; caret-color: {{ t.ac }}; padding: 0 16px; font-family: 'Alexandria', sans-serif; font-size: 16px; width: 100%; box-sizing: border-box; text-align: left">
           </div>
         </sc-if>
         <label for="lg-mail" style="position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0)">الإيميل</label>
-        <input id="lg-mail" type="email" name="email" autocomplete="email" inputmode="email" dir="ltr" value="{{ loginEmail }}" onChange="{{ onLoginEmail }}" placeholder="name@gmail.com" style="height: 52px; border-radius: 14px; border: 1px solid {{ t.line2 }}; background: {{ t.soft }}; color: {{ t.ink }}; caret-color: {{ t.ac }}; padding: 0 16px; font-family: 'Alexandria', sans-serif; font-size: 16px; text-align: left">
-        <button class="press" onClick="{{ sendLink }}" disabled="{{ emailDisabled }}" style="height: 52px; border-radius: 14px; background: {{ mailBg }}; border: 1px solid {{ t.ink }}; color: {{ mailFg }}; font-size: 15px; font-weight: 600; opacity: {{ emailOp }}">{{ emailBtn }}</button>
+        <input id="lg-mail" type="email" name="email" autocomplete="username" inputmode="email" dir="ltr" maxlength="120" value="{{ loginEmail }}" onChange="{{ onLoginEmail }}" placeholder="name@gmail.com" style="height: 52px; border-radius: 12px; border: 1px solid {{ t.line2 }}; background: {{ t.soft }}; color: {{ t.ink }}; caret-color: {{ t.ac }}; padding: 0 16px; font-family: 'Alexandria', sans-serif; font-size: 16px; width: 100%; box-sizing: border-box; text-align: left">
+        <sc-if value="{{ lg.needPass }}" hint-placeholder-val="{{ true }}">
+          <div style="position: relative">
+            <label for="lg-pass" style="position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0)">الباسورد</label>
+            <input id="lg-pass" type="{{ lg.passType }}" name="password" autocomplete="{{ lg.passAuto }}" dir="ltr" maxlength="72" value="{{ lg.pass }}" onChange="{{ lg.onPass }}" placeholder="{{ lg.passHint }}" style="height: 52px; border-radius: 12px; border: 1px solid {{ t.line2 }}; background: {{ t.soft }}; color: {{ t.ink }}; caret-color: {{ t.ac }}; padding: 0 16px; font-family: 'Alexandria', sans-serif; font-size: 16px; width: 100%; box-sizing: border-box; text-align: left; padding-right: 64px">
+            <button class="press" onClick="{{ lg.toggleShow }}" aria-pressed="{{ lg.showOn }}" style="position: absolute; top: 6px; right: 6px; height: 40px; padding: 0 10px; border: none; background: none; color: {{ t.mute }}; font-size: 12px">{{ lg.showLabel }}</button>
+          </div>
+        </sc-if>
+        <sc-if value="{{ lg.isUp }}" hint-placeholder-val="{{ false }}">
+          <div style="display: flex; align-items: center; gap: 10px">
+            <span aria-hidden="true" style="flex: none; width: 72px; height: 4px; border-radius: 2px; background: {{ t.line }}; overflow: hidden; display: flex"><span style="width: {{ lg.strPct }}%; background: {{ lg.strBg }}; transition: width .25s ease"></span></span>
+            <span style="font-size: 12px; line-height: 1.6; color: {{ t.mute }}">{{ lg.strTxt }}</span>
+          </div>
+        </sc-if>
+        <button class="press" onClick="{{ lg.submit }}" disabled="{{ lg.off }}" style="height: 52px; border-radius: 14px; border: none; background: {{ t.ac }}; color: #FFFFFF; font-size: 15px; font-weight: 600; opacity: {{ lg.op }}">{{ lg.btn }}</button>
+        <sc-if value="{{ hasLoginErr }}" hint-placeholder-val="{{ false }}">
+          <p role="alert" style="margin: 0; font-size: 13px; line-height: 1.6; color: {{ t.warn }}">{{ loginErr }}</p>
+        </sc-if>
+        <sc-if value="{{ lg.isIn }}" hint-placeholder-val="{{ true }}">
+          <button class="press" onClick="{{ lg.goReset }}" style="align-self: flex-start; min-height: 36px; padding: 0; background: none; border: none; color: {{ t.ink }}; font-size: 13px; text-decoration: underline; text-underline-offset: 4px">نسيت الباسورد؟</button>
+        </sc-if>
+        <sc-if value="{{ lg.isReset }}" hint-placeholder-val="{{ false }}">
+          <button class="press" onClick="{{ lg.goIn }}" style="align-self: flex-start; min-height: 36px; padding: 0; background: none; border: none; color: {{ t.ink }}; font-size: 13px; text-decoration: underline; text-underline-offset: 4px">رجوع للدخول</button>
+        </sc-if>
+      </div>
+    </sc-if>
+    <sc-if value="{{ lg.isNew }}" hint-placeholder-val="{{ false }}">
+      <div style="display: flex; flex-direction: column; gap: 12px">
+        <div style="position: relative">
+          <label for="lg-new" style="position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0)">الباسورد الجديد</label>
+          <input id="lg-new" type="{{ lg.passType }}" name="new-password" autocomplete="new-password" dir="ltr" maxlength="72" value="{{ lg.pass }}" onChange="{{ lg.onPass }}" placeholder="8 حروف وأرقام على الأقل" style="height: 52px; border-radius: 12px; border: 1px solid {{ t.line2 }}; background: {{ t.soft }}; color: {{ t.ink }}; caret-color: {{ t.ac }}; padding: 0 16px; font-family: 'Alexandria', sans-serif; font-size: 16px; width: 100%; box-sizing: border-box; text-align: left; padding-right: 64px">
+          <button class="press" onClick="{{ lg.toggleShow }}" aria-pressed="{{ lg.showOn }}" style="position: absolute; top: 6px; right: 6px; height: 40px; padding: 0 10px; border: none; background: none; color: {{ t.mute }}; font-size: 12px">{{ lg.showLabel }}</button>
+        </div>
+        <span style="font-size: 12px; line-height: 1.6; color: {{ t.mute }}">{{ lg.strTxt }}</span>
+        <button class="press" onClick="{{ lg.submit }}" disabled="{{ lg.off }}" style="height: 52px; border-radius: 14px; border: none; background: {{ t.ac }}; color: #FFFFFF; font-size: 15px; font-weight: 600; opacity: {{ lg.op }}">{{ lg.btn }}</button>
         <sc-if value="{{ hasLoginErr }}" hint-placeholder-val="{{ false }}">
           <p role="alert" style="margin: 0; font-size: 13px; line-height: 1.6; color: {{ t.warn }}">{{ loginErr }}</p>
         </sc-if>
@@ -1248,12 +1302,12 @@ input[type=checkbox]:checked{transform:scale(1.12)}
       <div class="fu" role="status" style="display: flex; flex-direction: column; gap: 12px; padding: 18px; border-radius: 16px; border: 1px solid {{ t.line2 }}">
         <svg width="34" height="26" viewBox="0 0 34 26" aria-hidden="true"><rect x="1" y="1" width="32" height="24" rx="3" stroke="{{ t.ink }}" stroke-width="1.4" fill="none"></rect><path d="M2 3l15 11L32 3" stroke="{{ t.ac }}" stroke-width="1.6" fill="none"></path></svg>
         <span style="font-size: 16px; font-weight: 600">بصّ على الإيميل</span>
-        <span style="font-size: 13px; line-height: 1.8; color: {{ t.mute }}">بعتنالك لينك دخول على <span dir="ltr" style="color: {{ t.ink }}">{{ loginEmail }}</span>. افتحه من الموبايل ده وهتدخل على طول. لو مش لاقيه، بصّ في الـ Spam.</span>
-        <button class="press" onClick="{{ editEmail }}" style="align-self: flex-start; min-height: 40px; padding: 0; background: none; border: none; color: {{ t.ink }}; font-size: 13px; text-decoration: underline">غيّر الإيميل</button>
+        <span style="font-size: 13px; line-height: 1.8; color: {{ t.mute }}">{{ lg.sentTxt }}</span>
+        <button class="press" onClick="{{ editEmail }}" style="align-self: flex-start; min-height: 40px; padding: 0; background: none; border: none; color: {{ t.ink }}; font-size: 13px; text-decoration: underline">رجوع</button>
       </div>
     </sc-if>
     <button class="press" onClick="{{ closeLogin }}" style="min-height: 44px; background: none; border: none; color: {{ t.mute }}; font-size: 14px">مش دلوقتي، كمّل من غير حساب</button>
-    <p style="margin: 0; font-size: 11px; line-height: 1.7; color: {{ t.mute }}; text-align: center">بنستخدم الإيميل للدخول بس. مش هنبعتلك إعلانات.</p>
+    <p style="margin: 0; font-size: 11px; line-height: 1.7; color: {{ t.mute }}; text-align: center">الباسورد بيتخزن متشفر ومحدش عندنا يقدر يشوفه. مش هنبعتلك إعلانات.</p>
   </section>
 </div>
 </sc-if>
@@ -1883,11 +1937,15 @@ class Component extends DCLogic {
     this.go(screen || 'car', 'f');
   }
   // after Google / email-link sign-in: finish what the user asked for before the redirect
+  onRecovery() {
+    this.setState({ login: 'newpass', loginSent: false, loginErr: '', loginBusy: false, lg: {}, menu: false, sheet: null });
+  }
   onSignedIn() {
     var A = Component.auth, self = this;
     if (!A) return;
     var p = A.takePending ? A.takePending() : null, wasOpen = !!this.state.login;
-    this.setState({ login: null });
+    if (this.state.login === 'newpass') return;      // back from the reset link: the new-password form stays open
+    this.setState({ login: null, lg: {} });
     if (p && p.kind === 'save' && p.q) A.save(p.q).then(function () { self.flashMsg('دخلت، والتسعيرة اتحفظت'); }, function () { self.flashMsg('دخلت، بس التسعيرة ماتحفظتش'); });
     else if (p && p.kind === 'garage') { this.go('garage', 'f'); this.flashMsg('دخلت، دي عربياتك'); }
     else if (p && p.kind === 'alerts') { this.setState({ sheet: 'alerts' }); this.flashMsg('دخلت، التنبيهات شغّالة'); }
@@ -2424,6 +2482,8 @@ class Component extends DCLogic {
   renderVals() {
     var self = this, S = this.state;
     var fmt = function (n) { return Math.round(n).toLocaleString('en-US'); };
+    // links come from scraped ads: only real web addresses may be opened
+    var okUrl = function (u) { return typeof u === 'string' && /^https?:\/\//i.test(u) ? u : ''; };
     var nPics = function (n) { return n === 1 ? 'صورة واحدة' : n === 2 ? 'صورتين' : n <= 10 ? n + ' صور' : n + ' صورة'; };
     var t = S.dark ? {
       bg: '#000000', ink: '#F4F4F4', mute: '#8E8E93', line: '#232326', line2: '#3A3A3F', edge: '#5C5C62',
@@ -2728,7 +2788,7 @@ class Component extends DCLogic {
         var inR = cp.adjusted >= baseLo && cp.adjusted <= baseHi;
         return { name: car.make + ' ' + car.model + ' ' + cp.year + (cp.km ? '، ' + fmt(cp.km) + ' كم' : ''), sub: cp.source + (cp.trim ? '، ' + cp.trim : ''), val: fmt(cp.price),
           tag: inR ? 'في الرينج' : (cp.adjusted < baseLo ? 'أرخص' : 'أغلى'), tagFg: inR ? t.ink : t.mute,
-          go: function () { if (cp.url && window.open) window.open(cp.url, '_blank', 'noopener'); } };
+          go: function () { if (okUrl(cp.url) && window.open) window.open(cp.url, '_blank', 'noopener'); } };
       });
     } else if (S.sheet === 'comps') {
       var srcs = ['هتلاقي', 'السوق المفتوح', 'Sylndr', 'هتلاقي', 'هتلاقي', 'السوق المفتوح'];
@@ -2763,9 +2823,9 @@ class Component extends DCLogic {
       }
       itemView = {
         price: fmt(m.price), priceLabel: priceLabel, delta: dTxt, rot: m.up ? 0 : 180, chipBg: m.up ? t.ac : '#5B9CF5', chipFg: m.up ? '#FFFFFF' : '#000000',
-        story: story, rows: rowsI, url: m.url || '', hasLink: !!m.url,
+        story: story, rows: rowsI, url: okUrl(m.url), hasLink: !!okUrl(m.url),
         priceBtnLabel: m.t === 'zero' ? 'سعّر مستعملة منها' : 'سعّرها بالتفصيل',
-        priceBtnBg: m.url ? 'transparent' : t.ink, priceBtnFg: m.url ? t.ink : t.bg,
+        priceBtnBg: okUrl(m.url) ? 'transparent' : t.ink, priceBtnFg: okUrl(m.url) ? t.ink : t.bg,
         price2: function () { self.setState({ sheet: null, item: null }); self.setCar(c, m.t === 'zero' ? 60000 : m.km); },
         compare: function () {
           var id = c.make + '|' + c.model + '|' + c.year, tr = self.state.tray.slice();
@@ -2814,13 +2874,64 @@ class Component extends DCLogic {
         });
       }).catch(function () { if (!ctl.stop) self.setState({ wa: null, loginErr: 'حصلت مشكلة، جرّب تاني.' }); });
     };
-    var sendLink = function () {
-      var m = self.state.loginEmail.trim();
-      if (!/^[^@\s]+@[^@\s]+\.[^@\s]{2,}$/.test(m)) return self.setState({ loginErr: 'اكتب إيميل صح، مثلاً name@gmail.com' });
-      if (!A.email) return self.setState({ loginSent: true, loginErr: '' });
-      self.setState({ loginBusy: true, loginErr: '' });
-      A.email(m).then(function () { self.setState({ loginBusy: false, loginSent: true }); },
-        function (e) { self.setState({ loginBusy: false, loginErr: /rate|seconds/i.test(String(e && e.message)) ? 'استنى دقيقة وجرّب تاني.' : 'ماقدرناش نبعت اللينك. اتأكد من الإيميل وجرّب تاني.' }); });
+    var L = S.lg || {}, lgMode = S.login === 'newpass' ? 'new' : (L.mode || 'in');
+    var setLg = function (o) { self.setState({ lg: Object.assign({}, self.state.lg || {}, o), loginErr: '' }); };
+    var mailNow = (S.loginEmail || '').trim().toLowerCase();
+    // a password worth having: 8+, letters and digits, not the obvious ones, not the email or the name
+    var passScore = (function () {
+      var p = L.pass || '';
+      if (!p) return [0, '8 حروف على الأقل، فيها حروف وأرقام.'];
+      if (p.length < 8) return [1, 'قصير. لازم 8 حروف على الأقل.'];
+      if (!/[A-Za-z؀-ۿ]/.test(p) || !/\d/.test(p)) return [1, 'لازم يبقى فيه حروف وأرقام مع بعض.'];
+      var low = p.toLowerCase();
+      if (/^(.)\1+$/.test(p) || /^(?:0?1234567890?|password\d*|qwerty\d*|abc12345?6?|a1234567|11111111a?|iloveyou\d*|sa3arly\d*)$/.test(low) || (mailNow && low === mailNow.split('@')[0]) || (mailNow && low === mailNow))
+        return [1, 'ده باسورد سهل يتخمّن. اختار غيره.'];
+      var kinds = [/[a-z]/, /[A-Z]/, /\d/, /[^A-Za-z0-9]/].filter(function (r) { return r.test(p); }).length;
+      return p.length >= 12 && kinds >= 3 ? [3, 'باسورد قوي.'] : [2, 'مقبول. أطول أو فيه رموز يبقى أقوى.'];
+    })();
+    var phoneNorm = function (v) { v = String(v || '').replace(/[٠-٩]/g, function (d) { return '٠١٢٣٤٥٦٧٨٩'.indexOf(d); }).replace(/[\s\-()]/g, '').replace(/^(\+|00)20/, '0'); return /^01[0125]\d{8}$/.test(v) ? v : null; };
+    var authErr = function (e) {
+      var m = String((e && e.message) || ''), c = (e && e.code) || '';
+      return /invalid login|invalid_credentials/i.test(m + c) ? 'الإيميل أو الباسورد غلط.'
+        : /already registered|user_already_exists/i.test(m + c) ? 'الإيميل ده عليه حساب. ادخل بيه من "دخول".'
+        : /not confirmed/i.test(m + c) ? 'أكّد الإيميل الأول من اللينك اللي بعتناهولك.'
+        : /weak|pwned|should be at least|different from the old/i.test(m + c) ? 'الباسورد ضعيف أو مستخدم قبل كده. اختار غيره.'
+        : /rate|seconds|too many/i.test(m + c) || (e && e.status === 429) ? 'محاولات كتير. استنى دقيقة وجرّب تاني.'
+        : /signups? (are )?(not allowed|disabled)/i.test(m) ? 'فتح حسابات جديدة مقفول دلوقتي.'
+        : 'حصلت مشكلة. اتأكد من النت وجرّب تاني.';
+    };
+    var lgSubmit = function () {
+      if (self.state.loginBusy) return;
+      var m = mailNow, p = L.pass || '';
+      var bad = function (t) { self.setState({ loginErr: t }); };
+      if (lgMode !== 'new' && !/^[^@\s]+@[^@\s]+\.[^@\s]{2,}$/.test(m)) return bad('اكتب إيميل صح، مثلاً name@gmail.com');
+      var busy = function () { self.setState({ loginBusy: true, loginErr: '' }); };
+      var fail = function (e) { self.setState({ loginBusy: false, loginErr: authErr(e) }); };
+      if (lgMode === 'in') {
+        if (!p) return bad('اكتب الباسورد.');
+        if (!A.signIn) return bad('الدخول مش متاح دلوقتي.');
+        busy();
+        return A.signIn(m, p).then(function () { self.setState({ loginBusy: false, lg: {} }); }, fail);
+      }
+      if (lgMode === 'reset') {
+        busy();
+        return A.resetPass(m).then(function () { self.setState({ loginBusy: false, loginSent: true, lg: { mode: 'in', sent: 'reset' } }); }, fail);
+      }
+      if (passScore[0] < 2) return bad(passScore[1]);
+      if (lgMode === 'new') {
+        busy();
+        return A.newPass(p).then(function () { self.setState({ loginBusy: false, login: null, lg: {} }); self.flashMsg('الباسورد اتغيّر'); }, fail);
+      }
+      if (L.role !== 'dealer' && L.role !== 'user') return bad('اختار: معرض ولا مشتري؟');
+      var name = (L.name || '').trim(), shop = (L.showroom || '').trim(), ph = (L.phone || '').trim();
+      if (name.length < 2) return bad('اكتب اسمك.');
+      if (L.role === 'dealer' && shop.length < 2) return bad('اكتب اسم المعرض.');
+      if (!ph || !phoneNorm(ph)) return bad('اكتب رقم موبايل مصري صح، مثلاً 01012345678');
+      busy();
+      A.signUp(m, p, { role: L.role, name: name, showroom: L.role === 'dealer' ? shop : '', phone: phoneNorm(ph) }).then(function (r) {
+        if (r === 'in') self.setState({ loginBusy: false, lg: {}, role: L.role });
+        else self.setState({ loginBusy: false, loginSent: true, lg: { mode: 'in', sent: 'confirm' } });
+      }, fail);
     };
     var P = (A.profile) || {};
     var pf = S.pf || { name: P.name || '', showroom: P.showroom || '', phone: P.phone || '', city: P.city || '' };
@@ -3015,28 +3126,50 @@ class Component extends DCLogic {
       openLogin: function () { needLogin('account', null); },
       doSave: doSave, savePressed: isSaved ? 'true' : 'false', saveFill: isSaved ? t.ink : 'none',
       saveAria: isSaved ? 'اتحفظت في تسعيراتك' : S.saving ? 'بتتحفظ' : 'احفظ التسعيرة',
-      login: !!S.login, loginOff: A.ready && A.enabled === false, loginAsk: !S.loginSent && A.enabled !== false, loginSent: S.loginSent,
-      loginTitle: { save: 'احفظ التسعيرة دي', alerts: 'شغّل التنبيهات', photos: 'خلّينا نقرا الصور' }[S.login] || 'ادخل حسابك',
+      login: !!S.login, loginOff: A.ready && A.enabled === false, loginAsk: !S.loginSent && A.enabled !== false && lgMode !== 'new', loginSent: S.loginSent,
+      loginTitle: { save: 'احفظ التسعيرة دي', alerts: 'شغّل التنبيهات', photos: 'خلّينا نقرا الصور', newpass: 'اختار باسورد جديد' }[S.login] || 'ادخل حسابك',
       loginWhy: { save: 'ادخل مرة واحدة، وكل تسعيرة تحفظها هتلاقيها على أي موبايل أو كمبيوتر.', alerts: 'هنقولك أول ما سعر الزيرو يتغير أو تنزل عربية أرخص من السوق.', photos: 'بعد ما تدخل، صوّر العربية وإحنا نعرف الماركة والموديل، ونقرا العداد لوحدنا.' }[S.login] || 'تسعيراتك وتنبيهاتك تفضل معاك على أي جهاز. التسعير نفسه شغال من غير حساب.',
       loginEmail: S.loginEmail, onLoginEmail: function (e) { self.setState({ loginEmail: e.target.value, loginErr: '' }); },
-      emailBtn: S.loginBusy ? 'بيتبعت…' : 'ابعتلي لينك الدخول', emailDisabled: S.loginBusy || !mailOk, emailOp: S.loginBusy || !mailOk ? 0.45 : 1,
-      sendLink: sendLink, loginErr: S.loginErr, hasLoginErr: !!S.loginErr,
+      lg: (function () {
+        var seg = function (on) { return { bg: on ? t.bg : 'transparent', fg: on ? t.ink : t.mute }; };
+        var card = function (on) { return { bd: on ? t.ac : t.line2, bg: on ? t.ac : 'transparent', fg: on ? '#FFFFFF' : t.ink }; };
+        var si = seg(lgMode === 'in' || lgMode === 'reset'), su = seg(lgMode === 'up'), cd = card(L.role === 'dealer'), cu = card(L.role === 'user');
+        var change = function (k) { return function (e) { setLg((function (o) { o[k] = e.target.value; return o; })({})); }; };
+        return {
+          isIn: lgMode === 'in', isUp: lgMode === 'up', isReset: lgMode === 'reset', isNew: lgMode === 'new' && !S.loginSent, needPass: lgMode !== 'reset',
+          inSel: lgMode !== 'up' ? 'true' : 'false', upSel: lgMode === 'up' ? 'true' : 'false', inBg: si.bg, inFg: si.fg, upBg: su.bg, upFg: su.fg,
+          goIn: function () { setLg({ mode: 'in' }); }, goUp: function () { setLg({ mode: 'up' }); }, goReset: function () { setLg({ mode: 'reset' }); },
+          dealerOn: L.role === 'dealer' ? 'true' : 'false', userOn: L.role === 'user' ? 'true' : 'false', isDealer: L.role === 'dealer',
+          dealerBd: cd.bd, dealerBg: cd.bg, dealerFg: cd.fg, userBd: cu.bd, userBg: cu.bg, userFg: cu.fg,
+          setDealer: function () { setLg({ role: 'dealer' }); }, setUser: function () { setLg({ role: 'user' }); },
+          name: L.name || '', showroom: L.showroom || '', phone: L.phone || '', pass: L.pass || '',
+          onName: change('name'), onShowroom: change('showroom'), onPhone: change('phone'), onPass: change('pass'),
+          passType: L.show ? 'text' : 'password', passAuto: lgMode === 'in' ? 'current-password' : 'new-password',
+          passHint: lgMode === 'in' ? 'الباسورد' : 'باسورد: 8 حروف وأرقام على الأقل',
+          showOn: L.show ? 'true' : 'false', showLabel: L.show ? 'إخفاء' : 'إظهار', toggleShow: function () { setLg({ show: !L.show }); },
+          strPct: [0, 33, 66, 100][passScore[0]], strBg: [t.line, t.warn, t.mute, t.ink][passScore[0]], strTxt: passScore[1],
+          submit: lgSubmit, off: !!S.loginBusy, op: S.loginBusy ? 0.5 : 1,
+          btn: S.loginBusy ? 'لحظة…' : { in: 'ادخل', up: 'اعمل الحساب', reset: 'ابعتلي لينك أغيّر الباسورد', new: 'احفظ الباسورد الجديد' }[lgMode],
+          sentTxt: L.sent === 'reset' ? 'لو الإيميل ده عليه حساب، هيوصله لينك تغيّر بيه الباسورد. افتحه من نفس الجهاز ده. لو مش لاقيه بصّ في الـ Spam.'
+            : 'بعتنالك لينك تأكيد. افتحه وبعدين ادخل بالإيميل والباسورد. لو الإيميل عليه حساب قبل كده مش هيوصلك حاجة، ادخل بيه عادي. لو مش لاقيه بصّ في الـ Spam.'
+        };
+      })(),
+      loginErr: S.loginErr, hasLoginErr: !!S.loginErr,
       waOn: !!A.waOn, waIdle: !!A.waOn && !S.wa, waWaiting: !!(S.wa && S.wa.code), waBusy: !!(S.wa && S.wa.busy),
       waGo: waGo, waCode: S.wa && S.wa.code ? S.wa.code.slice(0, 3) + ' ' + S.wa.code.slice(3) : '', waLink: (S.wa && S.wa.link) || '',
       waCancel: function () { if (self._waCtl) self._waCtl.stop = true; self.setState({ wa: null }); },
       loginKey: function (e) {
         if (e.key === 'Escape') { if (A.pending) A.pending(null); self.setState({ login: null }); }
-        else if (e.key === 'Enter' && e.target && e.target.name === 'email') { e.preventDefault(); sendLink(); }
+        else if (e.key === 'Enter' && e.target && e.target.tagName === 'INPUT') { e.preventDefault(); lgSubmit(); }
       },
       goGoogle: function () {
         if (!A.google) return;
         self.setState({ loginErr: '' });
-        A.google().catch(function () { self.setState({ loginErr: 'الدخول بجوجل مش متاح دلوقتي. ادخل بالإيميل.' }); });
+        A.google().catch(function () { self.setState({ loginErr: 'الدخول بجوجل مش متاح دلوقتي. ادخل بالإيميل والباسورد.' }); });
       },
       googleOn: A.googleOn !== false,
-      mailBg: A.googleOn === false ? t.ink : 'transparent', mailFg: A.googleOn === false ? t.bg : t.ink,
-      closeLogin: function () { if (A.pending) A.pending(null); if (self._waCtl) self._waCtl.stop = true; self.setState({ login: null, wa: null }); },
-      editEmail: function () { self.setState({ loginSent: false }); },
+      closeLogin: function () { if (A.pending) A.pending(null); if (self._waCtl) self._waCtl.stop = true; self.setState({ login: null, wa: null, lg: {} }); },
+      editEmail: function () { self.setState({ loginSent: false, lg: { mode: 'in' } }); },
       hasFlash: !!S.flash, flash: S.flash,
       isDealer: isDealer, isUser: !isDealer, showBuyRow: isDealer && !S.hideBuy,
       goHomeTop: function () { self.setState({ sheet: null, zp: null, menu: false, myOpen: null }); self.go('home', 'b'); },
@@ -3164,7 +3297,7 @@ class Component extends DCLogic {
         var nx = arr[i + 1], d = nx ? h.price - nx.price : 0;
         return { date: dmy(h.date), price: fmt(h.price), d: d ? (d > 0 ? '+' : '−') + fmt(Math.abs(d)) : '', c: d > 0 ? t.warn : '#5B9CF5' };
       }),
-      zdHasUrl: !!(zpTrim && zpTrim.url), zdUrl: zpTrim && zpTrim.url ? zpTrim.url : '', zdSource: zpTrim && zpTrim.source ? zpTrim.source : 'هتلاقي',
+      zdHasUrl: !!(zpTrim && okUrl(zpTrim.url)), zdUrl: zpTrim ? okUrl(zpTrim.url) : '', zdSource: zpTrim && zpTrim.source ? zpTrim.source : 'هتلاقي',
       zdPrice2: function () {
         var inf = (CAT[ZP.make] || {})[ZP.model];
         var mk = inf ? ZP.make : (Component.fuzzy(ZP.make, Object.keys(CAT), String)[0] || {}).item;
@@ -3241,7 +3374,7 @@ class Component extends DCLogic {
         var inR = cp.adjusted >= baseLo && cp.adjusted <= baseHi;
         return { name: car.make + ' ' + car.model + ' ' + cp.year + (cp.km ? '، ' + fmt(cp.km) + ' كم' : ''), sub: cp.source + (cp.trim ? '، ' + cp.trim : ''), val: fmt(cp.price),
           tag: inR ? 'في الرينج' : (cp.adjusted < baseLo ? 'أرخص' : 'أغلى'), tagFg: inR ? t.ink : t.mute,
-          go: function () { if (cp.url && window.open) window.open(cp.url, '_blank', 'noopener'); } };
+          go: function () { if (okUrl(cp.url) && window.open) window.open(cp.url, '_blank', 'noopener'); } };
       }) : prices.map(function (pr, i) {
         var y = (car.year || 2022) + (i % 3 === 0 ? -1 : i % 3 === 1 ? 0 : 1), kmc = Math.max(5000, Math.round((S.km + (i - 6) * 9000) / 1000) * 1000);
         var inRange = pr >= finalLo && pr <= finalHi;

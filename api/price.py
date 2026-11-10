@@ -16,6 +16,8 @@ class handler(BaseHTTPRequestHandler):
             year, km = int(q.get("year", "")), int(float(q.get("km", "0")))
         except ValueError:
             return send(self, 400, {"error": "year and km must be numbers"})
+        if max(len(q.get("make", "")), len(q.get("model", "")), len(q.get("trim") or "")) > 60:
+            return send(self, 400, {"error": "too long"})
         if not q.get("make") or not q.get("model") or not (1980 <= year <= 2030) or not (0 <= km <= 2_000_000):
             return send(self, 400, {"error": "make, model, year (1980-2030) and km (0-2,000,000) are required"})
         try:

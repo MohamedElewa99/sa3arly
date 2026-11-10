@@ -180,6 +180,7 @@ def probe(out="probe_out", headless=True):
 def main(argv=None):
     ap = argparse.ArgumentParser(prog="sa3arly")
     sub = ap.add_subparsers(dest="cmd", required=True)
+    sub.add_parser("lockdown", help="row level security on every table, nothing granted to the public API roles")
     p = sub.add_parser("probe")
     p.add_argument("--show", action="store_true", help="open a visible browser window")
     z = sub.add_parser("zero")
@@ -216,12 +217,23 @@ def main(argv=None):
     dl.add_argument("--max-pages", type=int, default=60)
     a = ap.parse_args(argv)
 
+    if a.cmd == "lockdown":
+        import os
+        import psycopg
+        from .secure import lockdown
+        with psycopg.connect(os.environ["DATABASE_URL"], autocommit=True) as cx:
+            before = cx.execute("select count(*) from pg_tables where schemaname = 'public' and not rowsecurity").fetchone()[0]
+            left = lockdown(cx)
+            grants = cx.execute("select count(*) from information_schema.role_table_grants where table_schema = 'public' and grantee in ('anon', 'authenticated')").fetchone()[0]
+        print(f"[lockdown] tables without row level security: {before} before, {left} now; grants left to the public roles: {grants}")
+        return 1 if left or grants else 0
     if a.cmd == "probe":
         return probe(headless=not a.show)
 
     if a.cmd == "catalog":
         import os
         import time
+        import os
         import psycopg
         from .web_api import catalog
         cx = psycopg.connect(os.environ["DATABASE_URL"])

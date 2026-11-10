@@ -368,11 +368,15 @@ class Component extends React.Component {
     this.go(screen || 'car', 'f');
   }
   // after Google / email-link sign-in: finish what the user asked for before the redirect
+  onRecovery() {
+    this.setState({ login: 'newpass', loginSent: false, loginErr: '', loginBusy: false, lg: {}, menu: false, sheet: null });
+  }
   onSignedIn() {
     var A = Component.auth, self = this;
     if (!A) return;
     var p = A.takePending ? A.takePending() : null, wasOpen = !!this.state.login;
-    this.setState({ login: null });
+    if (this.state.login === 'newpass') return;      // back from the reset link: the new-password form stays open
+    this.setState({ login: null, lg: {} });
     if (p && p.kind === 'save' && p.q) A.save(p.q).then(function () { self.flashMsg('دخلت، والتسعيرة اتحفظت'); }, function () { self.flashMsg('دخلت، بس التسعيرة ماتحفظتش'); });
     else if (p && p.kind === 'garage') { this.go('garage', 'f'); this.flashMsg('دخلت، دي عربياتك'); }
     else if (p && p.kind === 'alerts') { this.setState({ sheet: 'alerts' }); this.flashMsg('دخلت، التنبيهات شغّالة'); }
@@ -909,6 +913,8 @@ class Component extends React.Component {
   renderVals() {
     var self = this, S = this.state;
     var fmt = function (n) { return Math.round(n).toLocaleString('en-US'); };
+    // links come from scraped ads: only real web addresses may be opened
+    var okUrl = function (u) { return typeof u === 'string' && /^https?:\/\//i.test(u) ? u : ''; };
     var nPics = function (n) { return n === 1 ? 'صورة واحدة' : n === 2 ? 'صورتين' : n <= 10 ? n + ' صور' : n + ' صورة'; };
     var t = S.dark ? {
       bg: '#000000', ink: '#F4F4F4', mute: '#8E8E93', line: '#232326', line2: '#3A3A3F', edge: '#5C5C62',
@@ -1213,7 +1219,7 @@ class Component extends React.Component {
         var inR = cp.adjusted >= baseLo && cp.adjusted <= baseHi;
         return { name: car.make + ' ' + car.model + ' ' + cp.year + (cp.km ? '، ' + fmt(cp.km) + ' كم' : ''), sub: cp.source + (cp.trim ? '، ' + cp.trim : ''), val: fmt(cp.price),
           tag: inR ? 'في الرينج' : (cp.adjusted < baseLo ? 'أرخص' : 'أغلى'), tagFg: inR ? t.ink : t.mute,
-          go: function () { if (cp.url && window.open) window.open(cp.url, '_blank', 'noopener'); } };
+          go: function () { if (okUrl(cp.url) && window.open) window.open(cp.url, '_blank', 'noopener'); } };
       });
     } else if (S.sheet === 'comps') {
       var srcs = ['هتلاقي', 'السوق المفتوح', 'Sylndr', 'هتلاقي', 'هتلاقي', 'السوق المفتوح'];
@@ -1248,9 +1254,9 @@ class Component extends React.Component {
       }
       itemView = {
         price: fmt(m.price), priceLabel: priceLabel, delta: dTxt, rot: m.up ? 0 : 180, chipBg: m.up ? t.ac : '#5B9CF5', chipFg: m.up ? '#FFFFFF' : '#000000',
-        story: story, rows: rowsI, url: m.url || '', hasLink: !!m.url,
+        story: story, rows: rowsI, url: okUrl(m.url), hasLink: !!okUrl(m.url),
         priceBtnLabel: m.t === 'zero' ? 'سعّر مستعملة منها' : 'سعّرها بالتفصيل',
-        priceBtnBg: m.url ? 'transparent' : t.ink, priceBtnFg: m.url ? t.ink : t.bg,
+        priceBtnBg: okUrl(m.url) ? 'transparent' : t.ink, priceBtnFg: okUrl(m.url) ? t.ink : t.bg,
         price2: function () { self.setState({ sheet: null, item: null }); self.setCar(c, m.t === 'zero' ? 60000 : m.km); },
         compare: function () {
           var id = c.make + '|' + c.model + '|' + c.year, tr = self.state.tray.slice();
@@ -1299,13 +1305,64 @@ class Component extends React.Component {
         });
       }).catch(function () { if (!ctl.stop) self.setState({ wa: null, loginErr: 'حصلت مشكلة، جرّب تاني.' }); });
     };
-    var sendLink = function () {
-      var m = self.state.loginEmail.trim();
-      if (!/^[^@\s]+@[^@\s]+\.[^@\s]{2,}$/.test(m)) return self.setState({ loginErr: 'اكتب إيميل صح، مثلاً name@gmail.com' });
-      if (!A.email) return self.setState({ loginSent: true, loginErr: '' });
-      self.setState({ loginBusy: true, loginErr: '' });
-      A.email(m).then(function () { self.setState({ loginBusy: false, loginSent: true }); },
-        function (e) { self.setState({ loginBusy: false, loginErr: /rate|seconds/i.test(String(e && e.message)) ? 'استنى دقيقة وجرّب تاني.' : 'ماقدرناش نبعت اللينك. اتأكد من الإيميل وجرّب تاني.' }); });
+    var L = S.lg || {}, lgMode = S.login === 'newpass' ? 'new' : (L.mode || 'in');
+    var setLg = function (o) { self.setState({ lg: Object.assign({}, self.state.lg || {}, o), loginErr: '' }); };
+    var mailNow = (S.loginEmail || '').trim().toLowerCase();
+    // a password worth having: 8+, letters and digits, not the obvious ones, not the email or the name
+    var passScore = (function () {
+      var p = L.pass || '';
+      if (!p) return [0, '8 حروف على الأقل، فيها حروف وأرقام.'];
+      if (p.length < 8) return [1, 'قصير. لازم 8 حروف على الأقل.'];
+      if (!/[A-Za-z؀-ۿ]/.test(p) || !/\d/.test(p)) return [1, 'لازم يبقى فيه حروف وأرقام مع بعض.'];
+      var low = p.toLowerCase();
+      if (/^(.)\1+$/.test(p) || /^(?:0?1234567890?|password\d*|qwerty\d*|abc12345?6?|a1234567|11111111a?|iloveyou\d*|sa3arly\d*)$/.test(low) || (mailNow && low === mailNow.split('@')[0]) || (mailNow && low === mailNow))
+        return [1, 'ده باسورد سهل يتخمّن. اختار غيره.'];
+      var kinds = [/[a-z]/, /[A-Z]/, /\d/, /[^A-Za-z0-9]/].filter(function (r) { return r.test(p); }).length;
+      return p.length >= 12 && kinds >= 3 ? [3, 'باسورد قوي.'] : [2, 'مقبول. أطول أو فيه رموز يبقى أقوى.'];
+    })();
+    var phoneNorm = function (v) { v = String(v || '').replace(/[٠-٩]/g, function (d) { return '٠١٢٣٤٥٦٧٨٩'.indexOf(d); }).replace(/[\s\-()]/g, '').replace(/^(\+|00)20/, '0'); return /^01[0125]\d{8}$/.test(v) ? v : null; };
+    var authErr = function (e) {
+      var m = String((e && e.message) || ''), c = (e && e.code) || '';
+      return /invalid login|invalid_credentials/i.test(m + c) ? 'الإيميل أو الباسورد غلط.'
+        : /already registered|user_already_exists/i.test(m + c) ? 'الإيميل ده عليه حساب. ادخل بيه من "دخول".'
+        : /not confirmed/i.test(m + c) ? 'أكّد الإيميل الأول من اللينك اللي بعتناهولك.'
+        : /weak|pwned|should be at least|different from the old/i.test(m + c) ? 'الباسورد ضعيف أو مستخدم قبل كده. اختار غيره.'
+        : /rate|seconds|too many/i.test(m + c) || (e && e.status === 429) ? 'محاولات كتير. استنى دقيقة وجرّب تاني.'
+        : /signups? (are )?(not allowed|disabled)/i.test(m) ? 'فتح حسابات جديدة مقفول دلوقتي.'
+        : 'حصلت مشكلة. اتأكد من النت وجرّب تاني.';
+    };
+    var lgSubmit = function () {
+      if (self.state.loginBusy) return;
+      var m = mailNow, p = L.pass || '';
+      var bad = function (t) { self.setState({ loginErr: t }); };
+      if (lgMode !== 'new' && !/^[^@\s]+@[^@\s]+\.[^@\s]{2,}$/.test(m)) return bad('اكتب إيميل صح، مثلاً name@gmail.com');
+      var busy = function () { self.setState({ loginBusy: true, loginErr: '' }); };
+      var fail = function (e) { self.setState({ loginBusy: false, loginErr: authErr(e) }); };
+      if (lgMode === 'in') {
+        if (!p) return bad('اكتب الباسورد.');
+        if (!A.signIn) return bad('الدخول مش متاح دلوقتي.');
+        busy();
+        return A.signIn(m, p).then(function () { self.setState({ loginBusy: false, lg: {} }); }, fail);
+      }
+      if (lgMode === 'reset') {
+        busy();
+        return A.resetPass(m).then(function () { self.setState({ loginBusy: false, loginSent: true, lg: { mode: 'in', sent: 'reset' } }); }, fail);
+      }
+      if (passScore[0] < 2) return bad(passScore[1]);
+      if (lgMode === 'new') {
+        busy();
+        return A.newPass(p).then(function () { self.setState({ loginBusy: false, login: null, lg: {} }); self.flashMsg('الباسورد اتغيّر'); }, fail);
+      }
+      if (L.role !== 'dealer' && L.role !== 'user') return bad('اختار: معرض ولا مشتري؟');
+      var name = (L.name || '').trim(), shop = (L.showroom || '').trim(), ph = (L.phone || '').trim();
+      if (name.length < 2) return bad('اكتب اسمك.');
+      if (L.role === 'dealer' && shop.length < 2) return bad('اكتب اسم المعرض.');
+      if (!ph || !phoneNorm(ph)) return bad('اكتب رقم موبايل مصري صح، مثلاً 01012345678');
+      busy();
+      A.signUp(m, p, { role: L.role, name: name, showroom: L.role === 'dealer' ? shop : '', phone: phoneNorm(ph) }).then(function (r) {
+        if (r === 'in') self.setState({ loginBusy: false, lg: {}, role: L.role });
+        else self.setState({ loginBusy: false, loginSent: true, lg: { mode: 'in', sent: 'confirm' } });
+      }, fail);
     };
     var P = (A.profile) || {};
     var pf = S.pf || { name: P.name || '', showroom: P.showroom || '', phone: P.phone || '', city: P.city || '' };
@@ -1500,28 +1557,50 @@ class Component extends React.Component {
       openLogin: function () { needLogin('account', null); },
       doSave: doSave, savePressed: isSaved ? 'true' : 'false', saveFill: isSaved ? t.ink : 'none',
       saveAria: isSaved ? 'اتحفظت في تسعيراتك' : S.saving ? 'بتتحفظ' : 'احفظ التسعيرة',
-      login: !!S.login, loginOff: A.ready && A.enabled === false, loginAsk: !S.loginSent && A.enabled !== false, loginSent: S.loginSent,
-      loginTitle: { save: 'احفظ التسعيرة دي', alerts: 'شغّل التنبيهات', photos: 'خلّينا نقرا الصور' }[S.login] || 'ادخل حسابك',
+      login: !!S.login, loginOff: A.ready && A.enabled === false, loginAsk: !S.loginSent && A.enabled !== false && lgMode !== 'new', loginSent: S.loginSent,
+      loginTitle: { save: 'احفظ التسعيرة دي', alerts: 'شغّل التنبيهات', photos: 'خلّينا نقرا الصور', newpass: 'اختار باسورد جديد' }[S.login] || 'ادخل حسابك',
       loginWhy: { save: 'ادخل مرة واحدة، وكل تسعيرة تحفظها هتلاقيها على أي موبايل أو كمبيوتر.', alerts: 'هنقولك أول ما سعر الزيرو يتغير أو تنزل عربية أرخص من السوق.', photos: 'بعد ما تدخل، صوّر العربية وإحنا نعرف الماركة والموديل، ونقرا العداد لوحدنا.' }[S.login] || 'تسعيراتك وتنبيهاتك تفضل معاك على أي جهاز. التسعير نفسه شغال من غير حساب.',
       loginEmail: S.loginEmail, onLoginEmail: function (e) { self.setState({ loginEmail: e.target.value, loginErr: '' }); },
-      emailBtn: S.loginBusy ? 'بيتبعت…' : 'ابعتلي لينك الدخول', emailDisabled: S.loginBusy || !mailOk, emailOp: S.loginBusy || !mailOk ? 0.45 : 1,
-      sendLink: sendLink, loginErr: S.loginErr, hasLoginErr: !!S.loginErr,
+      lg: (function () {
+        var seg = function (on) { return { bg: on ? t.bg : 'transparent', fg: on ? t.ink : t.mute }; };
+        var card = function (on) { return { bd: on ? t.ac : t.line2, bg: on ? t.ac : 'transparent', fg: on ? '#FFFFFF' : t.ink }; };
+        var si = seg(lgMode === 'in' || lgMode === 'reset'), su = seg(lgMode === 'up'), cd = card(L.role === 'dealer'), cu = card(L.role === 'user');
+        var change = function (k) { return function (e) { setLg((function (o) { o[k] = e.target.value; return o; })({})); }; };
+        return {
+          isIn: lgMode === 'in', isUp: lgMode === 'up', isReset: lgMode === 'reset', isNew: lgMode === 'new' && !S.loginSent, needPass: lgMode !== 'reset',
+          inSel: lgMode !== 'up' ? 'true' : 'false', upSel: lgMode === 'up' ? 'true' : 'false', inBg: si.bg, inFg: si.fg, upBg: su.bg, upFg: su.fg,
+          goIn: function () { setLg({ mode: 'in' }); }, goUp: function () { setLg({ mode: 'up' }); }, goReset: function () { setLg({ mode: 'reset' }); },
+          dealerOn: L.role === 'dealer' ? 'true' : 'false', userOn: L.role === 'user' ? 'true' : 'false', isDealer: L.role === 'dealer',
+          dealerBd: cd.bd, dealerBg: cd.bg, dealerFg: cd.fg, userBd: cu.bd, userBg: cu.bg, userFg: cu.fg,
+          setDealer: function () { setLg({ role: 'dealer' }); }, setUser: function () { setLg({ role: 'user' }); },
+          name: L.name || '', showroom: L.showroom || '', phone: L.phone || '', pass: L.pass || '',
+          onName: change('name'), onShowroom: change('showroom'), onPhone: change('phone'), onPass: change('pass'),
+          passType: L.show ? 'text' : 'password', passAuto: lgMode === 'in' ? 'current-password' : 'new-password',
+          passHint: lgMode === 'in' ? 'الباسورد' : 'باسورد: 8 حروف وأرقام على الأقل',
+          showOn: L.show ? 'true' : 'false', showLabel: L.show ? 'إخفاء' : 'إظهار', toggleShow: function () { setLg({ show: !L.show }); },
+          strPct: [0, 33, 66, 100][passScore[0]], strBg: [t.line, t.warn, t.mute, t.ink][passScore[0]], strTxt: passScore[1],
+          submit: lgSubmit, off: !!S.loginBusy, op: S.loginBusy ? 0.5 : 1,
+          btn: S.loginBusy ? 'لحظة…' : { in: 'ادخل', up: 'اعمل الحساب', reset: 'ابعتلي لينك أغيّر الباسورد', new: 'احفظ الباسورد الجديد' }[lgMode],
+          sentTxt: L.sent === 'reset' ? 'لو الإيميل ده عليه حساب، هيوصله لينك تغيّر بيه الباسورد. افتحه من نفس الجهاز ده. لو مش لاقيه بصّ في الـ Spam.'
+            : 'بعتنالك لينك تأكيد. افتحه وبعدين ادخل بالإيميل والباسورد. لو الإيميل عليه حساب قبل كده مش هيوصلك حاجة، ادخل بيه عادي. لو مش لاقيه بصّ في الـ Spam.'
+        };
+      })(),
+      loginErr: S.loginErr, hasLoginErr: !!S.loginErr,
       waOn: !!A.waOn, waIdle: !!A.waOn && !S.wa, waWaiting: !!(S.wa && S.wa.code), waBusy: !!(S.wa && S.wa.busy),
       waGo: waGo, waCode: S.wa && S.wa.code ? S.wa.code.slice(0, 3) + ' ' + S.wa.code.slice(3) : '', waLink: (S.wa && S.wa.link) || '',
       waCancel: function () { if (self._waCtl) self._waCtl.stop = true; self.setState({ wa: null }); },
       loginKey: function (e) {
         if (e.key === 'Escape') { if (A.pending) A.pending(null); self.setState({ login: null }); }
-        else if (e.key === 'Enter' && e.target && e.target.name === 'email') { e.preventDefault(); sendLink(); }
+        else if (e.key === 'Enter' && e.target && e.target.tagName === 'INPUT') { e.preventDefault(); lgSubmit(); }
       },
       goGoogle: function () {
         if (!A.google) return;
         self.setState({ loginErr: '' });
-        A.google().catch(function () { self.setState({ loginErr: 'الدخول بجوجل مش متاح دلوقتي. ادخل بالإيميل.' }); });
+        A.google().catch(function () { self.setState({ loginErr: 'الدخول بجوجل مش متاح دلوقتي. ادخل بالإيميل والباسورد.' }); });
       },
       googleOn: A.googleOn !== false,
-      mailBg: A.googleOn === false ? t.ink : 'transparent', mailFg: A.googleOn === false ? t.bg : t.ink,
-      closeLogin: function () { if (A.pending) A.pending(null); if (self._waCtl) self._waCtl.stop = true; self.setState({ login: null, wa: null }); },
-      editEmail: function () { self.setState({ loginSent: false }); },
+      closeLogin: function () { if (A.pending) A.pending(null); if (self._waCtl) self._waCtl.stop = true; self.setState({ login: null, wa: null, lg: {} }); },
+      editEmail: function () { self.setState({ loginSent: false, lg: { mode: 'in' } }); },
       hasFlash: !!S.flash, flash: S.flash,
       isDealer: isDealer, isUser: !isDealer, showBuyRow: isDealer && !S.hideBuy,
       goHomeTop: function () { self.setState({ sheet: null, zp: null, menu: false, myOpen: null }); self.go('home', 'b'); },
@@ -1649,7 +1728,7 @@ class Component extends React.Component {
         var nx = arr[i + 1], d = nx ? h.price - nx.price : 0;
         return { date: dmy(h.date), price: fmt(h.price), d: d ? (d > 0 ? '+' : '−') + fmt(Math.abs(d)) : '', c: d > 0 ? t.warn : '#5B9CF5' };
       }),
-      zdHasUrl: !!(zpTrim && zpTrim.url), zdUrl: zpTrim && zpTrim.url ? zpTrim.url : '', zdSource: zpTrim && zpTrim.source ? zpTrim.source : 'هتلاقي',
+      zdHasUrl: !!(zpTrim && okUrl(zpTrim.url)), zdUrl: zpTrim ? okUrl(zpTrim.url) : '', zdSource: zpTrim && zpTrim.source ? zpTrim.source : 'هتلاقي',
       zdPrice2: function () {
         var inf = (CAT[ZP.make] || {})[ZP.model];
         var mk = inf ? ZP.make : (Component.fuzzy(ZP.make, Object.keys(CAT), String)[0] || {}).item;
@@ -1726,7 +1805,7 @@ class Component extends React.Component {
         var inR = cp.adjusted >= baseLo && cp.adjusted <= baseHi;
         return { name: car.make + ' ' + car.model + ' ' + cp.year + (cp.km ? '، ' + fmt(cp.km) + ' كم' : ''), sub: cp.source + (cp.trim ? '، ' + cp.trim : ''), val: fmt(cp.price),
           tag: inR ? 'في الرينج' : (cp.adjusted < baseLo ? 'أرخص' : 'أغلى'), tagFg: inR ? t.ink : t.mute,
-          go: function () { if (cp.url && window.open) window.open(cp.url, '_blank', 'noopener'); } };
+          go: function () { if (okUrl(cp.url) && window.open) window.open(cp.url, '_blank', 'noopener'); } };
       }) : prices.map(function (pr, i) {
         var y = (car.year || 2022) + (i % 3 === 0 ? -1 : i % 3 === 1 ? 0 : 1), kmc = Math.max(5000, Math.round((S.km + (i - 6) * 9000) / 1000) * 1000);
         var inRange = pr >= finalLo && pr <= finalHi;
@@ -3064,12 +3143,66 @@ class Component extends React.Component {
             كمّل بجوجل
           </button>
 <div aria-hidden="true" style={css(`display: flex; align-items: center; gap: 12px; color: ${v.t.mute}; font-size: 12px; margin: 4px 0`)}>
-<span style={css(`flex: 1; height: 1px; background: ${v.t.line}`)}></span>أو بالإيميل<span style={css(`flex: 1; height: 1px; background: ${v.t.line}`)}></span>
+<span style={css(`flex: 1; height: 1px; background: ${v.t.line}`)}></span>أو<span style={css(`flex: 1; height: 1px; background: ${v.t.line}`)}></span>
+</div>
+</>)}
+<div role="tablist" aria-label="دخول أو حساب جديد" style={css(`display: grid; grid-template-columns: 1fr 1fr; gap: 4px; padding: 4px; border-radius: 12px; background: ${v.t.soft}`)}>
+<button className="press" role="tab" aria-selected={v.lg.inSel} onClick={v.lg.goIn} style={css(`height: 40px; border-radius: 9px; border: none; background: ${v.lg.inBg}; color: ${v.lg.inFg}; font-size: 14px; font-weight: 600`)}>دخول</button>
+<button className="press" role="tab" aria-selected={v.lg.upSel} onClick={v.lg.goUp} style={css(`height: 40px; border-radius: 9px; border: none; background: ${v.lg.upBg}; color: ${v.lg.upFg}; font-size: 14px; font-weight: 600`)}>حساب جديد</button>
+</div>
+{(v.lg.isUp) && (<>
+<div className="fu" style={css("display: flex; flex-direction: column; gap: 10px")}>
+<span style={css(`font-size: 13px; color: ${v.t.mute}`)}>إنت مين؟</span>
+<div role="radiogroup" aria-label="نوع الحساب" style={css("display: grid; grid-template-columns: 1fr 1fr; gap: 8px")}>
+<button className="press" role="radio" aria-checked={v.lg.dealerOn} onClick={v.lg.setDealer} style={css(`min-height: 64px; padding: 10px 12px; border-radius: 12px; border: 1px solid ${v.lg.dealerBd}; background: ${v.lg.dealerBg}; color: ${v.lg.dealerFg}; display: flex; flex-direction: column; gap: 3px; align-items: flex-start; text-align: right`)}><span style={css("font-size: 15px; font-weight: 600")}>معرض أو تاجر</span><span style={css("font-size: 11px; opacity: .8")}>بشتري وببيع عربيات</span></button>
+<button className="press" role="radio" aria-checked={v.lg.userOn} onClick={v.lg.setUser} style={css(`min-height: 64px; padding: 10px 12px; border-radius: 12px; border: 1px solid ${v.lg.userBd}; background: ${v.lg.userBg}; color: ${v.lg.userFg}; display: flex; flex-direction: column; gap: 3px; align-items: flex-start; text-align: right`)}><span style={css("font-size: 15px; font-weight: 600")}>مشتري</span><span style={css("font-size: 11px; opacity: .8")}>بشتري أو ببيع عربيتي</span></button>
+</div>
+<label htmlFor="lg-name" style={css("position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0)")}>اسمك</label>
+<input id="lg-name" type="text" name="name" autoComplete="name" maxLength="60" value={v.lg.name} onChange={v.lg.onName} placeholder="اسمك" style={css(`height: 52px; border-radius: 12px; border: 1px solid ${v.t.line2}; background: ${v.t.soft}; color: ${v.t.ink}; caret-color: ${v.t.ac}; padding: 0 16px; font-family: 'Alexandria', sans-serif; font-size: 16px; width: 100%; box-sizing: border-box`)} />
+{(v.lg.isDealer) && (<>
+<label htmlFor="lg-shop" style={css("position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0)")}>اسم المعرض</label>
+<input id="lg-shop" type="text" name="organization" autoComplete="organization" maxLength="60" value={v.lg.showroom} onChange={v.lg.onShowroom} placeholder="اسم المعرض" style={css(`height: 52px; border-radius: 12px; border: 1px solid ${v.t.line2}; background: ${v.t.soft}; color: ${v.t.ink}; caret-color: ${v.t.ac}; padding: 0 16px; font-family: 'Alexandria', sans-serif; font-size: 16px; width: 100%; box-sizing: border-box`)} />
+</>)}
+<label htmlFor="lg-phone" style={css("position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0)")}>رقم الموبايل</label>
+<input id="lg-phone" type="tel" name="tel" autoComplete="tel" inputMode="tel" dir="ltr" maxLength="16" value={v.lg.phone} onChange={v.lg.onPhone} placeholder="01xxxxxxxxx" style={css(`height: 52px; border-radius: 12px; border: 1px solid ${v.t.line2}; background: ${v.t.soft}; color: ${v.t.ink}; caret-color: ${v.t.ac}; padding: 0 16px; font-family: 'Alexandria', sans-serif; font-size: 16px; width: 100%; box-sizing: border-box; text-align: left`)} />
 </div>
 </>)}
 <label htmlFor="lg-mail" style={css("position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0)")}>الإيميل</label>
-<input id="lg-mail" type="email" name="email" autoComplete="email" inputMode="email" dir="ltr" value={v.loginEmail} onChange={v.onLoginEmail} placeholder="name@gmail.com" style={css(`height: 52px; border-radius: 14px; border: 1px solid ${v.t.line2}; background: ${v.t.soft}; color: ${v.t.ink}; caret-color: ${v.t.ac}; padding: 0 16px; font-family: 'Alexandria', sans-serif; font-size: 16px; text-align: left`)} />
-<button className="press" onClick={v.sendLink} disabled={v.emailDisabled} style={css(`height: 52px; border-radius: 14px; background: ${v.mailBg}; border: 1px solid ${v.t.ink}; color: ${v.mailFg}; font-size: 15px; font-weight: 600; opacity: ${v.emailOp}`)}>{v.emailBtn}</button>
+<input id="lg-mail" type="email" name="email" autoComplete="username" inputMode="email" dir="ltr" maxLength="120" value={v.loginEmail} onChange={v.onLoginEmail} placeholder="name@gmail.com" style={css(`height: 52px; border-radius: 12px; border: 1px solid ${v.t.line2}; background: ${v.t.soft}; color: ${v.t.ink}; caret-color: ${v.t.ac}; padding: 0 16px; font-family: 'Alexandria', sans-serif; font-size: 16px; width: 100%; box-sizing: border-box; text-align: left`)} />
+{(v.lg.needPass) && (<>
+<div style={css("position: relative")}>
+<label htmlFor="lg-pass" style={css("position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0)")}>الباسورد</label>
+<input id="lg-pass" type={v.lg.passType} name="password" autoComplete={v.lg.passAuto} dir="ltr" maxLength="72" value={v.lg.pass} onChange={v.lg.onPass} placeholder={v.lg.passHint} style={css(`height: 52px; border-radius: 12px; border: 1px solid ${v.t.line2}; background: ${v.t.soft}; color: ${v.t.ink}; caret-color: ${v.t.ac}; padding: 0 16px; font-family: 'Alexandria', sans-serif; font-size: 16px; width: 100%; box-sizing: border-box; text-align: left; padding-right: 64px`)} />
+<button className="press" onClick={v.lg.toggleShow} aria-pressed={v.lg.showOn} style={css(`position: absolute; top: 6px; right: 6px; height: 40px; padding: 0 10px; border: none; background: none; color: ${v.t.mute}; font-size: 12px`)}>{v.lg.showLabel}</button>
+</div>
+</>)}
+{(v.lg.isUp) && (<>
+<div style={css("display: flex; align-items: center; gap: 10px")}>
+<span aria-hidden="true" style={css(`flex: none; width: 72px; height: 4px; border-radius: 2px; background: ${v.t.line}; overflow: hidden; display: flex`)}><span style={css(`width: ${v.lg.strPct}%; background: ${v.lg.strBg}; transition: width .25s ease`)}></span></span>
+<span style={css(`font-size: 12px; line-height: 1.6; color: ${v.t.mute}`)}>{v.lg.strTxt}</span>
+</div>
+</>)}
+<button className="press" onClick={v.lg.submit} disabled={v.lg.off} style={css(`height: 52px; border-radius: 14px; border: none; background: ${v.t.ac}; color: #FFFFFF; font-size: 15px; font-weight: 600; opacity: ${v.lg.op}`)}>{v.lg.btn}</button>
+{(v.hasLoginErr) && (<>
+<p role="alert" style={css(`margin: 0; font-size: 13px; line-height: 1.6; color: ${v.t.warn}`)}>{v.loginErr}</p>
+</>)}
+{(v.lg.isIn) && (<>
+<button className="press" onClick={v.lg.goReset} style={css(`align-self: flex-start; min-height: 36px; padding: 0; background: none; border: none; color: ${v.t.ink}; font-size: 13px; text-decoration: underline; text-underline-offset: 4px`)}>نسيت الباسورد؟</button>
+</>)}
+{(v.lg.isReset) && (<>
+<button className="press" onClick={v.lg.goIn} style={css(`align-self: flex-start; min-height: 36px; padding: 0; background: none; border: none; color: ${v.t.ink}; font-size: 13px; text-decoration: underline; text-underline-offset: 4px`)}>رجوع للدخول</button>
+</>)}
+</div>
+</>)}
+{(v.lg.isNew) && (<>
+<div style={css("display: flex; flex-direction: column; gap: 12px")}>
+<div style={css("position: relative")}>
+<label htmlFor="lg-new" style={css("position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0)")}>الباسورد الجديد</label>
+<input id="lg-new" type={v.lg.passType} name="new-password" autoComplete="new-password" dir="ltr" maxLength="72" value={v.lg.pass} onChange={v.lg.onPass} placeholder="8 حروف وأرقام على الأقل" style={css(`height: 52px; border-radius: 12px; border: 1px solid ${v.t.line2}; background: ${v.t.soft}; color: ${v.t.ink}; caret-color: ${v.t.ac}; padding: 0 16px; font-family: 'Alexandria', sans-serif; font-size: 16px; width: 100%; box-sizing: border-box; text-align: left; padding-right: 64px`)} />
+<button className="press" onClick={v.lg.toggleShow} aria-pressed={v.lg.showOn} style={css(`position: absolute; top: 6px; right: 6px; height: 40px; padding: 0 10px; border: none; background: none; color: ${v.t.mute}; font-size: 12px`)}>{v.lg.showLabel}</button>
+</div>
+<span style={css(`font-size: 12px; line-height: 1.6; color: ${v.t.mute}`)}>{v.lg.strTxt}</span>
+<button className="press" onClick={v.lg.submit} disabled={v.lg.off} style={css(`height: 52px; border-radius: 14px; border: none; background: ${v.t.ac}; color: #FFFFFF; font-size: 15px; font-weight: 600; opacity: ${v.lg.op}`)}>{v.lg.btn}</button>
 {(v.hasLoginErr) && (<>
 <p role="alert" style={css(`margin: 0; font-size: 13px; line-height: 1.6; color: ${v.t.warn}`)}>{v.loginErr}</p>
 </>)}
@@ -3079,12 +3212,12 @@ class Component extends React.Component {
 <div className="fu" role="status" style={css(`display: flex; flex-direction: column; gap: 12px; padding: 18px; border-radius: 16px; border: 1px solid ${v.t.line2}`)}>
 <svg width="34" height="26" viewBox="0 0 34 26" aria-hidden="true"><rect x="1" y="1" width="32" height="24" rx="3" stroke={v.t.ink} strokeWidth="1.4" fill="none"></rect><path d="M2 3l15 11L32 3" stroke={v.t.ac} strokeWidth="1.6" fill="none"></path></svg>
 <span style={css("font-size: 16px; font-weight: 600")}>بصّ على الإيميل</span>
-<span style={css(`font-size: 13px; line-height: 1.8; color: ${v.t.mute}`)}>بعتنالك لينك دخول على <span dir="ltr" style={css(`color: ${v.t.ink}`)}>{v.loginEmail}</span>. افتحه من الموبايل ده وهتدخل على طول. لو مش لاقيه، بصّ في الـ Spam.</span>
-<button className="press" onClick={v.editEmail} style={css(`align-self: flex-start; min-height: 40px; padding: 0; background: none; border: none; color: ${v.t.ink}; font-size: 13px; text-decoration: underline`)}>غيّر الإيميل</button>
+<span style={css(`font-size: 13px; line-height: 1.8; color: ${v.t.mute}`)}>{v.lg.sentTxt}</span>
+<button className="press" onClick={v.editEmail} style={css(`align-self: flex-start; min-height: 40px; padding: 0; background: none; border: none; color: ${v.t.ink}; font-size: 13px; text-decoration: underline`)}>رجوع</button>
 </div>
 </>)}
 <button className="press" onClick={v.closeLogin} style={css(`min-height: 44px; background: none; border: none; color: ${v.t.mute}; font-size: 14px`)}>مش دلوقتي، كمّل من غير حساب</button>
-<p style={css(`margin: 0; font-size: 11px; line-height: 1.7; color: ${v.t.mute}; text-align: center`)}>بنستخدم الإيميل للدخول بس. مش هنبعتلك إعلانات.</p>
+<p style={css(`margin: 0; font-size: 11px; line-height: 1.7; color: ${v.t.mute}; text-align: center`)}>الباسورد بيتخزن متشفر ومحدش عندنا يقدر يشوفه. مش هنبعتلك إعلانات.</p>
 </section>
 </div>
 </>)}

@@ -115,3 +115,13 @@ def test_fix_official_names():
     assert f("GAC", "GS4 Automtic / GE", "GAC GS4 2025 Automtic / GE") == ("GS4", "A/T / GE")
     assert f("BMW", "IX2 Automtic", "BMW IX2 Automtic 2027") == ("IX2", "A/T")
     assert f("Hyundai", "Elantra", "A/T / Smart") == ("Elantra", "A/T / Smart")
+
+
+def test_lockdown_leaves_no_open_table(db):
+    from sa3arly import secure
+    from pathlib import Path
+    db.execute("create table if not exists zz_open (id int)")
+    assert secure.lockdown(db) == 0
+    assert db.execute("select rowsecurity from pg_tables where tablename = 'zz_open'").fetchone()[0] is True
+    assert (Path(__file__).parent.parent / "db/migrations/007_lockdown.sql").read_text() == secure.LOCKDOWN
+    db.execute("drop table zz_open")

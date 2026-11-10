@@ -18,7 +18,7 @@ const auth = {
   cities: [],
   garage: [],         // عربياتي: the user's own cars (list rows: cover photo only)
   garageReady: false,
-  google, email, signOut, save, remove, pending, takePending, saveProfile, photo,
+  google, signIn, signUp, resetPass, newPass, signOut, save, remove, pending, takePending, saveProfile, photo,
   carGet, carAdd, carEdit, carRemove, carPhotos, waStart, waWait,
 };
 Component.auth = auth;
@@ -38,7 +38,11 @@ export async function initAuth() {
         .then((r) => r.json()).then((st) => { auth.googleOn = !!(st.external && st.external.google); refresh(); }).catch(() => {});
       const { createClient } = await import('@supabase/supabase-js');
       sb = createClient(cfg.supabaseUrl, cfg.anonKey, { auth: { persistSession: true, detectSessionInUrl: true, flowType: 'pkce' } });
-      sb.auth.onAuthStateChange((_ev, session) => { setUser(session); });
+      sb.auth.onAuthStateChange((ev, session) => {
+        setUser(session);
+        // came back from the "forgot password" link: ask for the new password
+        if (ev === 'PASSWORD_RECOVERY' && app && app.onRecovery) setTimeout(() => app.onRecovery(), 0);
+      });
       const { data } = await sb.auth.getSession();
       await setUser(data.session);
     }
@@ -58,6 +62,7 @@ async function setUser(session) {
   // clean the auth code out of the address bar after a redirect
   if (/[?&](code|error)=/.test(location.search)) history.replaceState(null, '', location.pathname);
   await load();
+  await firstProfile(u);
   if (app && app.onSignedIn) app.onSignedIn();
   refresh();
 }
@@ -111,10 +116,37 @@ function google() {
     .then((r) => { if (r.error) throw r.error; });
 }
 
-function email(address) {
+// Accounts with a password. Supabase Auth keeps only a bcrypt hash of it; the app never stores or logs the password.
+function signIn(address, password) {
   if (!sb) return Promise.reject(new Error('off'));
-  return sb.auth.signInWithOtp({ email: address, options: { emailRedirectTo: location.origin + '/' } })
-    .then((r) => { if (r.error) throw r.error; });
+  return sb.auth.signInWithPassword({ email: address, password }).then((r) => { if (r.error) throw r.error; });
+}
+
+// 'in' when the account is open right away, 'confirm' when the project asks to confirm the email first.
+// What the user typed about himself rides in the account's metadata and becomes his profile on the first sign-in.
+function signUp(address, password, about) {
+  if (!sb) return Promise.reject(new Error('off'));
+  return sb.auth.signUp({ email: address, password, options: { emailRedirectTo: location.origin + '/', data: about } })
+    .then((r) => { if (r.error) throw r.error; return r.data && r.data.session ? 'in' : 'confirm'; });
+}
+
+function resetPass(address) {
+  if (!sb) return Promise.reject(new Error('off'));
+  return sb.auth.resetPasswordForEmail(address, { redirectTo: location.origin + '/' }).then((r) => { if (r.error) throw r.error; });
+}
+
+function newPass(password) {
+  if (!sb) return Promise.reject(new Error('off'));
+  return sb.auth.updateUser({ password }).then((r) => { if (r.error) throw r.error; });
+}
+
+// first sign-in after sign-up: what he typed (role, name, showroom, phone) becomes the profile. The server checks every field again.
+async function firstProfile(u) {
+  const m = (u && u.user_metadata) || {};
+  if (!m.role || (auth.profile && auth.profile.role)) return;
+  const f = { role: m.role };
+  for (const k of ['name', 'showroom', 'phone']) if (typeof m[k] === 'string' && m[k]) f[k] = m[k].slice(0, 60);
+  try { await saveProfile(f); } catch (e) { /* he can fill it later from the profile screen */ }
 }
 
 async function signOut() {

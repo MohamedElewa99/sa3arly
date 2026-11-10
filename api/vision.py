@@ -29,7 +29,7 @@ class handler(BaseHTTPRequestHandler):
     def do_GET(self):
         """/api/vision?check=1: is photo reading set up and working? (never shows the key)"""
         if query(self).get("check"):
-            return send(self, 200, vision.check())
+            return send(self, 200, vision.check(), cache=600)   # cached: anyone can call it, and each real check spends AI quota
         send(self, 400, {"error": "POST a photo, or GET ?check=1"})
 
     def do_POST(self):
