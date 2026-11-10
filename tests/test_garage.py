@@ -19,7 +19,7 @@ def test_clean():
     assert garage.clean({**CAR, "status": "gone"})[1] == "status"
     assert garage.clean({**CAR, "price": 5})[1] == "price"
     assert garage.clean({**CAR, "photos": ["http://x"]})[1] == "photos"
-    assert garage.clean({**CAR, "photos": [PIC] * 9})[1] == "photos"
+    assert garage.clean({**CAR, "photos": [PIC] * 21})[1] == "photos"
     assert garage.clean({"km": 5})[1] == "car"
     f, _ = garage.clean({"status": "sold"}, partial=True)
     assert f == {"status": "sold"}                        # an edit touches only what was sent

@@ -32,7 +32,7 @@ export async function initAuth() {
     const cfg = await fetch(API + '/api/config').then((r) => r.json());
     auth.enabled = !!cfg.auth;
     auth.waOn = !!(cfg.auth && cfg.whatsapp);
-    if (cfg.vision) Component.readPhoto = readPhoto;
+    if (cfg.vision) { Component.readPhoto = readPhoto; Component.inspectPhotos = inspectPhotos; Component.writeAd = writeAd; }
     if (auth.enabled) {
       fetch(cfg.supabaseUrl + '/auth/v1/settings', { headers: { apikey: cfg.anonKey } })
         .then((r) => r.json()).then((st) => { auth.googleOn = !!(st.external && st.external.google); refresh(); }).catch(() => {});
@@ -149,11 +149,19 @@ async function carRemove(id) {
   refresh();
 }
 // photos picked in the app (blob: or data: URLs) -> { photos: up to 8 JPEGs ~800px, cover: one ~240px thumbnail }
+// up to 20 photos per car: a few stay sharp, a long set is saved smaller so the car stays light to open
 async function carPhotos(urls) {
-  const list = (urls || []).filter(Boolean).slice(0, 8);
+  const list = (urls || []).filter(Boolean).slice(0, 20);
+  const many = list.length > 8;
   const photos = [];
+  let total = 0;
   for (const u of list) {
-    try { photos.push(await shrinkUrl(u, 800, 0.72)); } catch (e) { /* unreadable: skip it */ }
+    try {
+      const d = await shrinkUrl(u, many ? 600 : 800, many ? 0.6 : 0.72);
+      if (total + d.length > 2300000) break;
+      total += d.length;
+      photos.push(d);
+    } catch (e) { /* unreadable: skip it */ }
   }
   let cover = null;
   if (photos.length) { try { cover = await shrinkUrl(photos[0], 240, 0.7); } catch (e) { cover = null; } }
@@ -223,6 +231,56 @@ async function readPhoto(kind, file, makes) {
     throw e;
   }
   return res.json();
+}
+
+async function vision(body) {
+  if (!auth.user) { const e = new Error('sign in'); e.status = 401; throw e; }
+  const res = await fetch(API + '/api/vision', {
+    method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + auth.token },
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) {
+    const e = new Error('vision ' + res.status); e.status = res.status;
+    try { e.detail = (await res.json()).error || ''; } catch (x) { e.detail = ''; }
+    throw e;
+  }
+  return res.json();
+}
+
+// small copies of the photos, in order, that fit one request (the server reads at most 20)
+async function smallSet(urls, most) {
+  let list = (urls || []).filter(Boolean);
+  if (list.length > most) {                       // a long set: spread evenly over it instead of taking the first ones
+    const step = list.length / most;
+    list = Array.from({ length: most }, (_, i) => list[Math.floor(i * step)]);
+  }
+  const size = list.length > 12 ? 560 : 720;
+  const images = [], sent = [];
+  let total = 0;
+  for (const u of list) {
+    try {
+      const d = await shrinkUrl(u, size, 0.62);
+      if (total + d.length > 3600000) break;
+      total += d.length;
+      images.push(d); sent.push(u);
+    } catch (e) { /* unreadable: skip it */ }
+  }
+  return { images, sent };
+}
+
+// the whole set at once: the car, the km, a score per area and the visible defects. `sent` maps a defect's photo number back to the photo
+async function inspectPhotos(urls, makes) {
+  const { images, sent } = await smallSet(urls, 20);
+  if (!images.length) { const e = new Error('no photos'); e.status = 400; throw e; }
+  const r = await vision({ kind: 'inspect', images, makes: makes || [] });
+  r.sent = sent;
+  return r;
+}
+
+// a ready ad for one car of عربياتي
+async function writeAd(car, photos) {
+  const { images } = await smallSet(photos, 6);
+  return vision({ kind: 'ad', car, images });
 }
 
 function shrink(file, max, q) {

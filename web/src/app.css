@@ -1,3 +1,4 @@
+:root{--ac:#E3232C}
 body{margin:0}
 a{color:inherit}
 button{font-family:'Alexandria',sans-serif;cursor:pointer}
@@ -8,8 +9,8 @@ button,a,input,select{touch-action:manipulation;-webkit-tap-highlight-color:tran
 h1,h2{text-wrap:balance}
 main,nav{overscroll-behavior:contain}
 .num{font-variant-numeric:tabular-nums}
-::selection{background:#F2A93B;color:#000}
-input,select{caret-color:#F2A93B}
+::selection{background:var(--ac);color:#fff}
+input,select{caret-color:var(--ac)}
 main{scrollbar-width:thin;scrollbar-color:rgba(127,127,127,.45) transparent}
 button:disabled{cursor:not-allowed}
 .press:active{transform:scale(.96)}
@@ -39,7 +40,7 @@ button:disabled{cursor:not-allowed}
 @keyframes pen{0%{opacity:0;right:4%}8%{opacity:1}92%{opacity:1}100%{opacity:0;right:96%}}
 @keyframes settle{0%{filter:blur(3px)}100%{filter:blur(0)}}
 .write{animation:write 1.6s cubic-bezier(.65,.05,.36,1) .15s both,settle 1.6s ease-out .15s both}
-.pen{position:absolute;top:58%;width:7px;height:7px;border-radius:50%;background:#F2A93B;animation:pen 1.6s cubic-bezier(.65,.05,.36,1) .15s both;pointer-events:none}
+.pen{position:absolute;top:58%;width:7px;height:7px;border-radius:50%;background:var(--ac);animation:pen 1.6s cubic-bezier(.65,.05,.36,1) .15s both;pointer-events:none}
 
 @media (hover:hover){.press:hover{transform:translateY(-1px)}}
 /* loading: a little car driving on a moving road (used wherever we wait) */
@@ -61,7 +62,7 @@ button:disabled{cursor:not-allowed}
 /* colours glide instead of snapping when something is picked */
 .press{transition:transform .18s cubic-bezier(.2,.8,.2,1),opacity .15s ease,background-color .25s ease,border-color .25s ease,color .25s ease,box-shadow .25s ease}
 input,textarea{transition:border-color .25s ease,background-color .25s ease,box-shadow .25s ease}
-input:not([type=range]):not([type=checkbox]):focus,textarea:focus{box-shadow:0 2px 0 -1px #F2A93B}
+input:not([type=range]):not([type=checkbox]):focus,textarea:focus{box-shadow:0 2px 0 -1px var(--ac)}
 /* a small bounce when an option turns on */
 @keyframes tap{0%{transform:scale(.93)}55%{transform:scale(1.035)}100%{transform:scale(1)}}
 .press[aria-pressed="true"],.press[aria-checked="true"],.press[aria-selected="true"]{animation:tap .34s cubic-bezier(.2,.8,.2,1)}
@@ -85,7 +86,7 @@ input[type=checkbox]:checked{transform:scale(1.12)}
 /* photos fade in instead of popping */
 :where(.app-col) img{animation:fadeIn .4s ease backwards}
 /* the main button breathes, quietly */
-@keyframes breathe{0%,100%{box-shadow:0 0 0 0 rgba(242,169,59,0)}50%{box-shadow:0 0 0 7px rgba(242,169,59,.16)}}
+@keyframes breathe{0%,100%{box-shadow:0 0 0 0 rgba(227,35,44,0)}50%{box-shadow:0 0 0 7px rgba(227,35,44,.22)}}
 [data-scr="home"]>footer .press{animation:breathe 3.4s ease-in-out 1.5s infinite}
 /* messages slide up from the bottom */
 @keyframes toastIn{from{opacity:0;transform:translate(-50%,-14px) scale(.94)}to{opacity:1;transform:translate(-50%,0) scale(1)}}

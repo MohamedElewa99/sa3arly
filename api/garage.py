@@ -48,7 +48,7 @@ class handler(BaseHTTPRequestHandler):
         uid = signed_in(self)
         if not uid:
             return
-        f, why = garage.clean(read_json(self))
+        f, why = garage.clean(read_json(self, 4_200_000))
         if f is None:
             return send(self, 400, {"error": why})
         try:
@@ -67,7 +67,7 @@ class handler(BaseHTTPRequestHandler):
         cid = car_id(self)
         if cid is None:
             return
-        f, why = garage.clean(read_json(self), partial=True)
+        f, why = garage.clean(read_json(self, 4_200_000), partial=True)
         if f is None:
             return send(self, 400, {"error": why})
         try:

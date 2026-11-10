@@ -27,6 +27,9 @@ class JsonlStore:
     def known_ids(self, source):
         return set()
 
+    def all_ids(self, source):
+        return set()
+
     def listing(self, l: Listing):
         d = l.dict()
         d["dedupe_key"] = dedupe_key(l.make_raw, l.model_raw, l.year, l.km, l.price_egp)
@@ -177,6 +180,10 @@ class PgStore:
     def known_ids(self, source):
         return {r[0] for r in self.cx.execute(
             "select source_id from listings where source = %s and description is not null", (source,))}
+
+    def all_ids(self, source):
+        """Every ad of this source already stored: tells a new ad from one we are only refreshing."""
+        return {r[0] for r in self.cx.execute("select source_id from listings where source = %s", (source,))}
 
     # -- writes (buffered: one round trip per batch instead of 1-2 per row)
     def listing(self, l: Listing):

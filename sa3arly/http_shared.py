@@ -39,9 +39,9 @@ def anon_key() -> str:
     return os.environ.get("SUPABASE_ANON_KEY", "") or os.environ.get("SUPABASE_PUBLISHABLE_KEY", "")
 
 
-def read_json(handler) -> dict:
+def read_json(handler, limit: int = 2_500_000) -> dict:
     n = int(handler.headers.get("Content-Length") or 0)
-    if not n or n > 2_500_000:
+    if not n or n > limit:
         return {}
     try:
         body = json.loads(handler.rfile.read(n))

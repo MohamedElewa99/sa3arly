@@ -35,21 +35,36 @@ class handler(BaseHTTPRequestHandler):
     def do_POST(self):
         if not vision.provider():
             return send(self, 503, {"error": "off"})
-        body = read_json(self)
-        jpeg = vision.decode(body.get("image", ""))
+        body = read_json(self, 4_200_000)   # a set of small photos; Vercel itself stops at 4.5 MB
         kind = body.get("kind")
-        if not jpeg or kind not in ("car", "odo"):
-            return send(self, 400, {"error": "image (data:image/jpeg) and kind car|odo are required"})
+        if kind not in ("car", "odo", "inspect", "ad"):
+            return send(self, 400, {"error": "kind car|odo|inspect|ad is required"})
+        jpeg = jpegs = None
+        if kind in ("car", "odo"):
+            jpeg = vision.decode(body.get("image", ""))
+            if not jpeg:
+                return send(self, 400, {"error": "image (data:image/jpeg) is required"})
+        else:
+            jpegs = vision.decode_set(body.get("images"))
+            if kind == "inspect" and not jpegs:
+                return send(self, 400, {"error": "images (a list of data:image/jpeg) is required"})
+            if kind == "ad" and not (isinstance(body.get("car"), dict) and body["car"].get("make")):
+                return send(self, 400, {"error": "car {make, model, year} is required"})
         uid = user_id(self)
         if not uid:
             return send(self, 401, {"error": "sign in"})
         if not allowed(uid):
             return send(self, 429, {"error": "slow down"})
+        makes = body.get("makes") if isinstance(body.get("makes"), list) else None
+        makes = [str(m)[:40] for m in makes] if makes else None
         try:
             if kind == "odo":
                 return send(self, 200, vision.odometer(jpeg))
-            makes = body.get("makes") if isinstance(body.get("makes"), list) else None
-            send(self, 200, vision.car(jpeg, [str(m)[:40] for m in makes] if makes else None))
+            if kind == "inspect":
+                return send(self, 200, vision.inspect(jpegs, makes))
+            if kind == "ad":
+                return send(self, 200, vision.ad(body["car"], jpegs[:6]))
+            send(self, 200, vision.car(jpeg, makes))
         except vision.VisionError as e:
             send(self, 502, {"error": str(e)})
         except Exception as e:

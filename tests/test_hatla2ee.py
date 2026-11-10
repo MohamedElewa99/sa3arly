@@ -57,3 +57,31 @@ def test_brand_page_lists_every_model():
              "https://eg.hatla2ee.com/en/car/alpha-romeo/Stelvio/year/2026", "https://eg.hatla2ee.com/en/car/kia/Rio"]
     brand, models = parse_brand_models(text, links, "alpha-romeo")
     assert brand == "Alfa Romeo" and models == ["Stelvio", "156", "Giulietta Quadrifoglio Verde"]
+
+
+def test_daily_walk_goes_as_deep_as_the_new_ads(capsys):
+    """Pages 1-3 hold new ads, the rest only ads we already have: the walk stops after a quiet stretch, not at a fixed page."""
+    from sa3arly.scrapers import hatla2ee as h
+
+    class Pages:
+        overloaded = blocked = False
+
+        def __init__(self):
+            self.page = 0
+
+        def get(self, url, **k):
+            self.page = int(url.rsplit("/", 1)[1]) if "/page/" in url else 1
+
+        def cards(self, ad_re):
+            return [{"href": f"https://eg.hatla2ee.com/en/car/kia/cerato/{self.page * 100 + i}",
+                     "text": "Kia Cerato 2020\n2020\n90,000 KM\nAutomatic\nGas\n900,000\nEGP\nCairo\nKia\nCerato\nCall"} for i in range(3)]
+
+    have = {str(p * 100 + i) for p in range(4, 60) for i in range(3)}
+    f = Pages()
+    got = list(h.scrape_used(f, max_pages=50, detail_for_new=False, have_ids=have, min_pages=2, quiet_pages=3))
+    assert f.page == 6 and len(got) == 18                       # 3 pages of new ads + 3 quiet ones
+    assert "nothing new" in capsys.readouterr().out
+    f = Pages()
+    assert len(list(h.scrape_used(f, max_pages=5, detail_for_new=False, have_ids=set()))) == 15 and "raise it" in capsys.readouterr().out
+    f = Pages()
+    assert len(list(h.scrape_used(f, max_pages=4, detail_for_new=False))) == 12      # the weekly sweep: every page, no early stop

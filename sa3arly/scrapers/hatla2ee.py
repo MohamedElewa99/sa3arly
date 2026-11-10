@@ -324,16 +324,22 @@ def parse_ad_page(text: str, lst: Listing) -> Listing:
 
 
 def scrape_used(f: Fetcher, max_pages: int = 800, known_ids: Optional[set] = None,
-                detail_for_new: bool = True, max_details: int = 300) -> Iterator[Listing]:
+                detail_for_new: bool = True, max_details: int = 300,
+                have_ids: Optional[set] = None, min_pages: int = 40, quiet_pages: int = 6) -> Iterator[Listing]:
     """Walk /en/car, /en/car/page/2 ... (newest first) until a page brings no unseen ad.
 
     Ad pages (description, colour, posted date) are opened only for ads not yet in the
     database, at most `max_details` per run: the first ~20k-ad backlog fills over a few days
     while every run still refreshes all prices from the list pages.
+
+    The daily run passes `have_ids` (every ad id already stored): the walk then goes as deep as the new ads go,
+    and stops after `quiet_pages` pages in a row that bring nothing new (never before `min_pages`), so a busy
+    day is read to its end without sweeping the whole site every night.
     """
     known_ids = known_ids or set()
     seen: set[str] = set()
     details = 0
+    quiet = 0
     for page in range(1, max_pages + 1):
         url = f"{BASE}/en/car" if page == 1 else f"{BASE}/en/car/page/{page}"
         f.get(url, scroll=True)
@@ -341,11 +347,14 @@ def scrape_used(f: Fetcher, max_pages: int = 800, known_ids: Optional[set] = Non
         if not rows:
             print(f"[hatla2ee] no new ads on page {page}; stop")
             return
+        fresh = 0
         for r in rows:
             seen.add(r["href"])
             lst = parse_card(r["text"], r["href"])
             if not lst:
                 continue
+            if have_ids is not None and lst.source_id not in have_ids:
+                fresh += 1
             if f.overloaded and detail_for_new:
                 print("[hatla2ee] site is slow — no more ad pages this run, list pages only")
                 detail_for_new = False
@@ -359,3 +368,10 @@ def scrape_used(f: Fetcher, max_pages: int = 800, known_ids: Optional[set] = Non
                         raise
                     print(f"[hatla2ee] ad page failed {lst.url}: {e}")
             yield lst
+        if have_ids is not None:
+            quiet = 0 if fresh else quiet + 1
+            if page >= min_pages and quiet >= quiet_pages:
+                print(f"[hatla2ee] {quiet} pages in a row with nothing new (page {page}); every new ad is in, stop")
+                return
+    if have_ids is not None:
+        print(f"[hatla2ee] reached --max-pages {max_pages} while pages still had new ads: raise it")

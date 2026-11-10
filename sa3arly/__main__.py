@@ -74,19 +74,25 @@ def run_trims(f, store, max_pages):
 def run_used(f, store, source, max_pages, max_details=300):
     mod = USED[source]
     known = store.known_ids(source)
-    n = 0
+    have = store.all_ids(source) if hasattr(store, "all_ids") else set()
+    n = new = 0
     if mod is more_sites:
         gen = more_sites.scrape_used(f, source, max_pages=max_pages)
     else:
         kw = {"max_details": max_details} if source == "hatla2ee" else {}
+        if source == "hatla2ee" and max_pages < 700 and have:
+            kw["have_ids"] = have           # the daily run: go as deep as the new ads go
         gen = mod.scrape_used(f, max_pages=max_pages, known_ids=known, **kw)
     for l in gen:
         store.listing(l)
         n += 1
+        new += l.source_id not in have
         if n % 100 == 0:
             print(f"[{source}] {n} listings")
-    print(f"[{source}] listings saved: {n}")
-    store.run(f"{source}:used", pages=f.pages, items=n)
+    print(f"[{source}] listings saved: {n} ({new} new, {n - new} refreshed, {f.pages} pages)")
+    store.run(f"{source}:used", pages=f.pages, items=n, note=f"{new} new")
+    if not n:
+        raise RuntimeError(f"{source} gave no ads at all: the site changed or is blocking, check it")
     full_sweep = source in ("opensooq", "sylndr") or max_pages >= 700   # small sites are read whole every run
     if hasattr(store, "mark_removed") and source != "facebook" and full_sweep:
         store.mark_removed(source)          # only after a full sweep, so unseen = really gone

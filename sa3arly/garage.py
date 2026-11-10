@@ -29,7 +29,7 @@ alter table my_cars enable row level security;
 """
 LIMIT = 300                   # cars per user
 STATUSES = ("available", "reserved", "sold")
-PHOTOS_MAX = 8                # per car
+PHOTOS_MAX = 20               # per car (the app sends them smaller when there are many)
 PHOTO_MAX = 200_000           # chars of one data: URL (the app sends ~800px JPEGs, usually 50-120 KB)
 COVER_MAX = 40_000            # the small list thumbnail
 DETAILS_MAX = 20_000
