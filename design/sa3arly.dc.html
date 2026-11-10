@@ -2898,7 +2898,10 @@ class Component extends DCLogic {
         : /weak|pwned|should be at least|different from the old/i.test(m + c) ? 'الباسورد ضعيف أو مستخدم قبل كده. اختار غيره.'
         : /rate|seconds|too many/i.test(m + c) || (e && e.status === 429) ? 'محاولات كتير. استنى دقيقة وجرّب تاني.'
         : /signups? (are )?(not allowed|disabled)/i.test(m) ? 'فتح حسابات جديدة مقفول دلوقتي.'
-        : 'حصلت مشكلة. اتأكد من النت وجرّب تاني.';
+        : /email_address_invalid|email address .* invalid|invalid.*email|validation_failed/i.test(m + c) ? 'الإيميل ده مش مقبول. راجع كتابته حرف حرف (خصوصاً اللي بعد @).'
+        : /error sending|smtp|unexpected_failure|over_email_send/i.test(m + c) ? 'السيرفر ماقدرش يبعت إيميل التأكيد دلوقتي. جرّب كمان ساعة.'
+        : /failed to fetch|network|load failed/i.test(m) ? 'مفيش اتصال. اتأكد من النت وجرّب تاني.'
+        : 'حصلت مشكلة، جرّب تاني.' + (c || m ? ' (' + String(c || m).slice(0, 60) + ')' : '');
     };
     var lgSubmit = function () {
       if (self.state.loginBusy) return;
