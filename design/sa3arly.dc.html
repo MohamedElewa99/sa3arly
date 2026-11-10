@@ -170,24 +170,18 @@ input[type=checkbox]:checked{transform:scale(1.12)}
       <input id="q" name="search" value="{{ q }}" onChange="{{ onQ }}" placeholder="قارن عربيات… مثلاً: كورولا 2020" autocomplete="off" style="flex: 1; min-width: 0; height: 44px; border: none; background: transparent; color: {{ t.ink }}; caret-color: #F2A93B; font-family: 'Alexandria', sans-serif; font-size: 15px">
     </div>
 <sc-if value="{{ noQuery }}" hint-placeholder-val="{{ true }}">
-    <button class="press" onClick="{{ openZero }}" style="margin-top: 10px; width: 100%; min-height: 52px; padding: 0 16px; border-radius: 16px; border: 1px solid {{ t.line2 }}; background: none; color: {{ t.ink }}; display: flex; align-items: center; gap: 12px; text-align: right">
-      <svg width="20" height="20" viewBox="0 0 20 20" aria-hidden="true" style="flex: none"><path d="M2 9.5V2.5h7l9 9-7 7z" stroke="#F2A93B" stroke-width="1.5" fill="none" stroke-linejoin="round"></path><circle cx="6" cy="6" r="1.4" fill="#F2A93B"></circle></svg>
-      <span style="flex: 1; display: flex; flex-direction: column; gap: 2px">
-        <span style="font-size: 15px; font-weight: 600">سعر الزيرو</span>
-        <span style="font-size: 12px; color: {{ t.mute }}">كل الماركات والموديلات والفئات، بتتحدث كل يوم</span>
-      </span>
-      <span aria-hidden="true" style="font-size: 18px; color: {{ t.mute }}">←</span>
-    </button>
-    <sc-if value="{{ isDealer }}" hint-placeholder-val="{{ true }}">
-    <button class="press" onClick="{{ openGarage }}" style="margin-top: 8px; width: 100%; min-height: 52px; padding: 0 16px; border-radius: 16px; border: 1px solid {{ t.line2 }}; background: none; color: {{ t.ink }}; display: flex; align-items: center; gap: 12px; text-align: right">
-      <svg width="20" height="20" viewBox="0 0 20 20" aria-hidden="true" style="flex: none"><path d="M2 18V8l8-5 8 5v10" stroke="#F2A93B" stroke-width="1.5" fill="none" stroke-linejoin="round"></path><path d="M5.5 18v-5h9v5M5.5 15.5h9" stroke="#F2A93B" stroke-width="1.5" fill="none"></path></svg>
-      <span style="flex: 1; display: flex; flex-direction: column; gap: 2px">
-        <span style="font-size: 15px; font-weight: 600">عربياتي</span>
-        <span style="font-size: 12px; color: {{ t.mute }}">{{ myHomeSub }}</span>
-      </span>
-      <span aria-hidden="true" style="font-size: 18px; color: {{ t.mute }}">←</span>
-    </button>
-    </sc-if>
+    <div style="margin-top: 12px; display: flex; gap: 8px">
+      <button class="press" onClick="{{ openZero }}" style="flex: 1; min-width: 0; height: 46px; padding: 0 14px; border-radius: 999px; border: 1px solid {{ t.line2 }}; background: none; color: {{ t.ink }}; display: flex; align-items: center; justify-content: center; gap: 8px; font-size: 14px; font-weight: 500">
+        <svg width="16" height="16" viewBox="0 0 20 20" aria-hidden="true" style="flex: none"><path d="M2 9.5V2.5h7l9 9-7 7z" stroke="#F2A93B" stroke-width="1.6" fill="none" stroke-linejoin="round"></path><circle cx="6" cy="6" r="1.4" fill="#F2A93B"></circle></svg>
+        سعر الزيرو
+      </button>
+      <sc-if value="{{ isDealer }}" hint-placeholder-val="{{ true }}">
+      <button class="press" onClick="{{ openGarage }}" style="flex: 1; min-width: 0; height: 46px; padding: 0 14px; border-radius: 999px; border: 1px solid {{ t.line2 }}; background: none; color: {{ t.ink }}; display: flex; align-items: center; justify-content: center; gap: 8px; font-size: 14px; font-weight: 500">
+        <svg width="16" height="16" viewBox="0 0 20 20" aria-hidden="true" style="flex: none"><path d="M2 18V8l8-5 8 5v10" stroke="#F2A93B" stroke-width="1.6" fill="none" stroke-linejoin="round"></path><path d="M5.5 18v-5h9v5M5.5 15.5h9" stroke="#F2A93B" stroke-width="1.6" fill="none"></path></svg>
+        عربياتي<sc-if value="{{ myHasAny }}" hint-placeholder-val="{{ false }}"><span class="num" style="font-size: 12px; color: {{ t.mute }}">{{ myTotal }}</span></sc-if>
+      </button>
+      </sc-if>
+    </div>
     </sc-if>
     <sc-if value="{{ hasResults }}" hint-placeholder-val="{{ false }}">
       <div class="fade" style="display: flex; flex-direction: column; margin-top: 4px">
@@ -212,9 +206,9 @@ input[type=checkbox]:checked{transform:scale(1.12)}
       <button class="press pop" onClick="{{ goCompare }}" style="margin-top: 12px; height: 48px; border-radius: 999px; border: 1px solid {{ t.ink }}; background: none; color: {{ t.ink }}; font-size: 15px; font-weight: 500">قارن الـ {{ trayCount }} عربيات</button>
     </sc-if>
 
-    <section aria-labelledby="mkt" style="margin-top: 36px; display: flex; flex-direction: column">
+    <section aria-labelledby="mkt" style="margin-top: 40px; display: flex; flex-direction: column">
       <div style="display: flex; align-items: baseline; justify-content: space-between">
-        <h2 id="mkt" style="margin: 0; font-size: 17px; font-weight: 600">السوق النهارده</h2>
+        <h2 id="mkt" style="margin: 0; font-size: 13px; font-weight: 500; color: {{ t.mute }}">السوق النهارده</h2>
         <button class="press" onClick="{{ toggleMore }}" style="min-height: 40px; padding: 0; background: none; border: none; color: {{ t.mute }}; font-size: 13px">{{ moreLabel }}</button>
       </div>
       <sc-if value="{{ moreOpen }}" hint-placeholder-val="{{ false }}">
@@ -227,9 +221,9 @@ input[type=checkbox]:checked{transform:scale(1.12)}
       <ul style="list-style: none; margin: 6px 0 0; padding: 0">
         <sc-for list="{{ market }}" as="mk" hint-placeholder-count="5">
           <li style="border-bottom: 1px solid {{ t.line }}">
-            <button class="press" onClick="{{ mk.go }}" aria-label="{{ mk.aria }}" style="width: 100%; min-height: 68px; padding: 10px 0; display: flex; align-items: center; justify-content: space-between; gap: 12px; background: none; border: none; color: {{ t.ink }}; text-align: right">
+            <button class="press" onClick="{{ mk.go }}" aria-label="{{ mk.aria }}" style="width: 100%; min-height: 60px; padding: 8px 0; display: flex; align-items: center; justify-content: space-between; gap: 12px; background: none; border: none; color: {{ t.ink }}; text-align: right">
               <span style="display: flex; flex-direction: column; gap: 3px; min-width: 0">
-                <span style="font-size: 15px; font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap">{{ mk.name }}</span>
+                <span style="font-size: 14px; font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap">{{ mk.name }}</span>
                 <span style="font-size: 12px; color: {{ t.mute }}">{{ mk.kind }}، {{ mk.when }}</span>
               </span>
               <span style="flex: none; display: flex; flex-direction: column; align-items: flex-start; gap: 3px">
@@ -244,11 +238,9 @@ input[type=checkbox]:checked{transform:scale(1.12)}
       </ul>
     </section>
 
+    <sc-if value="{{ hasRecent }}" hint-placeholder-val="{{ true }}">
     <section aria-labelledby="mine" style="margin-top: 36px; display: flex; flex-direction: column">
-      <h2 id="mine" style="margin: 0 0 4px; font-size: 17px; font-weight: 600">تسعيراتك</h2>
-      <sc-if value="{{ noRecent }}" hint-placeholder-val="{{ false }}">
-        <p style="margin: 6px 0 4px; font-size: 13px; line-height: 1.7; color: {{ t.mute }}">لسه ماسعّرتش أي عربية. أول ما تسعّر، هتلاقيها هنا.</p>
-      </sc-if>
+      <h2 id="mine" style="margin: 0 0 4px; font-size: 13px; font-weight: 500; color: {{ t.mute }}">تسعيراتك</h2>
       <sc-for list="{{ recent }}" as="rc" hint-placeholder-count="2">
         <button class="press" onClick="{{ rc.go }}" style="min-height: 68px; padding: 10px 0; display: flex; align-items: center; justify-content: space-between; gap: 12px; background: none; border: none; border-bottom: 1px solid {{ t.line }}; color: {{ t.ink }}; text-align: right">
           <span style="display: flex; flex-direction: column; gap: 3px; min-width: 0">
@@ -262,6 +254,7 @@ input[type=checkbox]:checked{transform:scale(1.12)}
         <button class="press" onClick="{{ openLogin }}" style="min-height: 48px; padding: 0; background: none; border: none; color: {{ t.mute }}; font-size: 13px; text-align: right">ادخل حسابك عشان تسعيراتك تتحفظ وتلاقيها على أي موبايل ←</button>
       </sc-if>
     </section>
+    </sc-if>
   </main>
 
   <sc-if value="{{ installShow }}" hint-placeholder-val="{{ false }}">
@@ -1274,29 +1267,36 @@ input[type=checkbox]:checked{transform:scale(1.12)}
 <sc-if value="{{ menu }}" hint-placeholder-val="{{ false }}">
 <div style="position: absolute; inset: 0; z-index: 10">
   <button class="fade" onClick="{{ closeMenu }}" aria-label="اقفل القائمة" style="position: absolute; inset: 0; border: none; background: rgba(0,0,0,0.55); padding: 0"></button>
-  <nav class="sheet" role="dialog" aria-modal="true" aria-label="القائمة" onKeyDown="{{ menuKey }}" style="position: absolute; top: 0; bottom: 0; right: 0; width: 300px; background: {{ t.bg }}; border-left: 1px solid {{ t.line }}; display: flex; flex-direction: column; padding: 18px 22px 26px; box-sizing: border-box">
+  <nav class="sheet" role="dialog" aria-modal="true" aria-label="القائمة" onKeyDown="{{ menuKey }}" style="position: absolute; top: 0; bottom: 0; right: 0; width: 284px; background: {{ t.bg }}; border-left: 1px solid {{ t.line }}; display: flex; flex-direction: column; padding: 14px 14px 22px; box-sizing: border-box">
     <div style="display: flex; align-items: center; justify-content: space-between">
       <button onClick="{{ goHomeTop }}" aria-label="سعرلي، الرئيسية" translate="no" style="background: none; border: none; padding: 0; color: {{ t.ink }}; cursor: pointer; font-family: 'Aref Ruqaa', serif; font-size: 34px; font-weight: 700; line-height: 1.4">سعرلي</button>
       <button class="press" onClick="{{ closeMenu }}" aria-label="اقفل" style="width: 44px; height: 44px; background: none; border: none; color: {{ t.ink }}; padding: 0; display: flex; align-items: center; justify-content: center">
         <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><path d="M1 1l14 14M15 1L1 15" stroke="currentColor" stroke-width="1.4"></path></svg>
       </button>
     </div>
-    <div style="margin-top: 18px; display: flex; flex-direction: column">
+    <button class="press fu" onClick="{{ menuAcc.go }}" style="margin-top: 14px; min-height: 60px; padding: 0 12px; border-radius: 16px; border: none; background: {{ t.soft }}; color: {{ t.ink }}; display: flex; align-items: center; gap: 12px; text-align: right">
+      <sc-if value="{{ hasAvatar }}" hint-placeholder-val="{{ false }}"><img src="{{ avatarSrc }}" alt="" width="36" height="36" style="flex: none; width: 36px; height: 36px; border-radius: 50%; object-fit: cover"></sc-if>
+      <sc-if value="{{ hasInitial }}" hint-placeholder-val="{{ false }}"><span aria-hidden="true" style="flex: none; width: 36px; height: 36px; border-radius: 50%; background: {{ t.ink }}; color: {{ t.bg }}; font-size: 15px; font-weight: 600; display: flex; align-items: center; justify-content: center">{{ initial }}</span></sc-if>
+      <sc-if value="{{ noUser }}" hint-placeholder-val="{{ true }}"><span aria-hidden="true" style="flex: none; width: 36px; height: 36px; border-radius: 50%; border: 1px solid {{ t.line2 }}; display: flex; align-items: center; justify-content: center"><svg width="16" height="16" viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="6.5" r="3.8" stroke="currentColor" stroke-width="1.4" fill="none"></circle><path d="M2.5 19c.8-4 3.8-6 7.5-6s6.7 2 7.5 6" stroke="currentColor" stroke-width="1.4" fill="none"></path></svg></span></sc-if>
+      <span style="flex: 1; min-width: 0; font-size: 15px; font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap">{{ menuAcc.label }}</span>
+    </button>
+    <div style="margin-top: 10px; display: flex; flex-direction: column; overflow-y: auto; min-height: 0">
       <sc-for list="{{ menuItems }}" as="m" hint-placeholder-count="5">
-        <button class="press fu" onClick="{{ m.go }}" disabled="{{ m.soon }}" style="min-height: 64px; display: flex; align-items: center; justify-content: space-between; gap: 10px; background: none; border: none; border-bottom: 1px solid {{ t.line }}; color: {{ t.ink }}; text-align: right; padding: 0; animation-delay: {{ m.delay }}s; opacity: {{ m.op }}">
-          <span style="display: flex; flex-direction: column; gap: 3px">
-            <span style="font-size: 16px; font-weight: 500">{{ m.label }}</span>
-            <span style="font-size: 12px; color: {{ t.mute }}">{{ m.sub }}</span>
-          </span>
-          <sc-if value="{{ m.soon }}" hint-placeholder-val="{{ false }}"><span style="font-size: 11px; color: {{ t.mute }}; border: 1px solid {{ t.line2 }}; border-radius: 999px; padding: 3px 10px">قريب</span></sc-if>
-        </button>
+        <button class="press fu" onClick="{{ m.go }}" style="flex: none; min-height: 50px; margin-top: {{ m.gap }}px; display: flex; align-items: center; background: none; border: none; color: {{ t.ink }}; text-align: right; padding: 0 12px; font-size: 16px; animation-delay: {{ m.delay }}s">{{ m.label }}</button>
       </sc-for>
     </div>
-    <div style="margin-top: auto; display: flex; align-items: center; justify-content: space-between; min-height: 52px">
-      <span style="font-size: 14px">الوضع الليلي</span>
-      <button class="press" onClick="{{ toggleTheme }}" role="switch" aria-checked="{{ darkStr }}" aria-label="الوضع الليلي" style="width: 52px; height: 30px; border-radius: 999px; border: 1px solid {{ t.ink }}; background: {{ swBg }}; position: relative; padding: 0">
-        <span style="position: absolute; top: 3px; right: 3px; width: 22px; height: 22px; border-radius: 50%; background: {{ swKnob }}; transform: translateX({{ knobX }}px); transition: transform .25s ease"></span>
-      </button>
+    <div style="margin-top: auto; padding-top: 14px; display: flex; flex-direction: column; gap: 10px">
+      <div role="radiogroup" aria-label="نوع الحساب" style="display: grid; grid-template-columns: 1fr 1fr; gap: 4px; padding: 4px; border-radius: 999px; background: {{ t.soft }}">
+        <sc-for list="{{ roleSeg }}" as="rs" hint-placeholder-count="2">
+          <button class="press" role="radio" aria-checked="{{ rs.sel }}" onClick="{{ rs.pick }}" style="height: 36px; border-radius: 999px; border: none; background: {{ rs.bg }}; color: {{ rs.fg }}; font-size: 13px; font-weight: 500">{{ rs.label }}</button>
+        </sc-for>
+      </div>
+      <div style="display: flex; align-items: center; justify-content: space-between; min-height: 44px; padding: 0 12px">
+        <span style="font-size: 14px">الوضع الليلي</span>
+        <button class="press" onClick="{{ toggleTheme }}" role="switch" aria-checked="{{ darkStr }}" aria-label="الوضع الليلي" style="width: 52px; height: 30px; border-radius: 999px; border: 1px solid {{ t.ink }}; background: {{ swBg }}; position: relative; padding: 0">
+          <span style="position: absolute; top: 3px; right: 3px; width: 22px; height: 22px; border-radius: 50%; background: {{ swKnob }}; transform: translateX({{ knobX }}px); transition: transform .25s ease"></span>
+        </button>
+      </div>
     </div>
   </nav>
 </div>
@@ -2786,7 +2786,7 @@ class Component extends DCLogic {
     var role = S.role || (A.profile && A.profile.role) || null;
     var isDealer = role !== 'user';
     var setRole = function (r) {
-      self.setState({ role: r, menu: false });
+      self.setState({ role: r });
       if (A.user && A.saveProfile) A.saveProfile({ role: r }).catch(function () {});
       self.flashMsg(r === 'dealer' ? 'الحساب بقى معرض / تاجر' : 'الحساب بقى مستخدم عادي');
     };
@@ -2836,17 +2836,19 @@ class Component extends DCLogic {
       ['اتضافت', ago(mo2.at)]
     ].filter(function (r) { return r[1]; }).map(function (r) { return { k: r[0], v: r[1] }; });
 
+    var menuAcc = me ? { label: displayName || me.email, go: openAccount } : { label: 'ادخل حسابك', go: function () { needLogin('account', null); } };
     var menuItems = [
-      me ? { label: displayName || me.email, sub: 'حسابك: الصورة والمعرض والموبايل', go: openAccount, soon: false }
-         : { label: 'ادخل حسابك', sub: 'احفظ تسعيراتك وشغّل التنبيهات', go: function () { needLogin('account', null); }, soon: false },
-      { label: 'سعّر عربية', sub: 'من الصور والشيك ليست', go: function () { if (self.state.mine) self.go('home'); self.go('car'); }, soon: false },
-      { label: 'قارن عربيات', sub: 'الزيرو والمستعمل جنب بعض', go: function () { self.go('compare'); }, soon: false },
-      { label: 'سعر الزيرو', sub: 'كل الماركات والموديلات والفئات', go: function () { openZp(); }, soon: false },
-      { label: 'تنبيهاتي', sub: 'لما الزيرو يتغير أو تنزل عربية رخيصة', go: function () { if (!me) return needLogin('alerts', { kind: 'alerts' }); self.setState({ menu: false, sheet: 'alerts' }); }, soon: false },
-      { label: 'تسعيراتي', sub: 'كل العربيات اللي سعّرتها', go: function () { self.setState({ menu: false, more: true }); self.go('home', 'b'); }, soon: false },
-      { label: 'عربياتي', sub: 'العربيات اللي عندك في المعرض', go: function () { openGarage(); }, soon: false },
-      { label: 'نوع الحساب: ' + (isDealer ? 'معرض / تاجر' : 'مستخدم عادي'), sub: isDealer ? 'دوس لو بتبيع أو بتشتري عربيتك انت بس' : 'دوس لو انت معرض: عربياتي وهامش الربح وسعر الشرا', go: function () { setRole(isDealer ? 'user' : 'dealer'); }, soon: false }
-    ].filter(function (m) { return isDealer || m.label !== 'عربياتي'; }).map(function (m, i) { m.delay = (0.08 + i * 0.05).toFixed(2); m.op = m.soon ? 0.55 : 1; return m; });
+      { label: 'سعّر عربية', go: function () { if (self.state.mine) self.go('home'); self.go('car'); } },
+      { label: 'قارن عربيات', go: function () { self.go('compare'); } },
+      { label: 'سعر الزيرو', go: function () { openZp(); } },
+      { label: 'تسعيراتي', gap: 14, go: function () { self.setState({ menu: false, more: true }); self.go('home', 'b'); } },
+      { label: 'عربياتي', go: function () { openGarage(); } },
+      { label: 'تنبيهاتي', go: function () { if (!me) return needLogin('alerts', { kind: 'alerts' }); self.setState({ menu: false, sheet: 'alerts' }); } }
+    ].filter(function (m) { return isDealer || m.label !== 'عربياتي'; }).map(function (m, i) { m.delay = (0.05 + i * 0.04).toFixed(2); m.gap = m.gap || 0; return m; });
+    var roleSeg = [['dealer', 'معرض / تاجر'], ['user', 'مستخدم عادي']].map(function (r) {
+      var on = (r[0] === 'dealer') === isDealer;
+      return { label: r[1], sel: on ? 'true' : 'false', bg: on ? t.ink : 'transparent', fg: on ? t.bg : t.mute, pick: function () { if (!on) setRole(r[0]); } };
+    });
 
     return {
       t: t, dark: S.dark, light: !S.dark, darkStr: S.dark ? 'true' : 'false',
@@ -2856,7 +2858,7 @@ class Component extends DCLogic {
       enterCls: S.dir === 'b' ? 'enter-b' : 'enter-f',
       isHome: S.screen === 'home', isCompare: S.screen === 'compare', isFlow: idx >= 0,
       isCar: S.screen === 'car', isPaint: S.screen === 'paint', isMech: S.screen === 'mech', isResult: S.screen === 'result',
-      menu: S.menu, menuItems: menuItems,
+      menu: S.menu, menuItems: menuItems, menuAcc: menuAcc, roleSeg: roleSeg,
       openMenu: function () { self.setState({ menu: true }); }, closeMenu: function () { self.setState({ menu: false }); },
       goCar: function () { if (self.state.mine) self.go('home', 'f'); self.go('car', 'f'); }, goPaint: function () { self.go('paint', 'f'); },
       carNext: function () {
@@ -2908,7 +2910,7 @@ class Component extends DCLogic {
         return { label: f[1], sel: on ? 'true' : 'false', bg: on ? t.ink : 'transparent', fg: on ? t.bg : t.ink, bd: on ? t.ink : t.line2,
           pick: function () { self.setState({ mf: f[0] }); } };
       }),
-      market: MARKET.slice().sort(function (a, b) { return (b.city && b.city === P.city ? 1 : 0) - (a.city && a.city === P.city ? 1 : 0); }).filter(function (m) { return S.mf === 'all' || m.t === S.mf; }).slice(0, S.more ? 20 : 3).map(function (m) {
+      market: MARKET.slice().sort(function (a, b) { return (b.city && b.city === P.city ? 1 : 0) - (a.city && a.city === P.city ? 1 : 0); }).filter(function (m) { return S.mf === 'all' || m.t === S.mf; }).slice(0, S.more ? 20 : 2).map(function (m) {
         var d = m.delta * ease;
         var dtxt = m.pct ? (d > 0 ? '+' : '−') + Math.abs(d).toFixed(1).replace('.0', '') + '%' : (d > 0 ? '+' : '−') + fmt(Math.abs(Math.round(d / 1000) * 1000));
         if (!m.pct && d < 0) dtxt = '−' + fmt(Math.abs(Math.round(d / 1000) * 1000));
@@ -2928,6 +2930,7 @@ class Component extends DCLogic {
           go: function () { self.setCar({ make: x.car.make, model: x.car.model, year: x.car.year, trim: x.car.trim || '' }, x.km, 'result'); } };
       })).slice(0, S.more ? 30 : 4),
       noRecent: !(S.hist || []).length && !(me && (A.items || []).length),
+      hasRecent: !!((S.hist || []).length || (me && (A.items || []).length)),
       recentLogin: !me && A.enabled !== false,
       openLogin: function () { needLogin('account', null); },
       doSave: doSave, savePressed: isSaved ? 'true' : 'false', saveFill: isSaved ? t.ink : 'none',
