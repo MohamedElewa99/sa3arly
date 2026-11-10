@@ -125,3 +125,21 @@ def test_lockdown_leaves_no_open_table(db):
     assert db.execute("select rowsecurity from pg_tables where tablename = 'zz_open'").fetchone()[0] is True
     assert (Path(__file__).parent.parent / "db/migrations/007_lockdown.sql").read_text() == secure.LOCKDOWN
     db.execute("drop table zz_open")
+
+
+def test_roles_get_only_what_they_need(db):
+    from sa3arly import secure
+    from pathlib import Path
+    secure.migrate(db)
+    secure.lockdown(db)
+    secure.roles(db)
+    can = lambda role, table, verb: db.execute("select has_table_privilege(%s, %s, %s)", (role, table, verb)).fetchone()[0]
+    for t in secure.USER_TABLES:
+        assert can("sa3_api", t, "insert") and can("sa3_api", t, "delete") and not can("sa3_scraper", t, "select")
+    for t in ("listings", "zero_prices", "price_models"):
+        assert can("sa3_api", t, "select") and not can("sa3_api", t, "insert") and not can("sa3_api", t, "delete")
+        assert can("sa3_scraper", t, "insert") and can("sa3_scraper", t, "update")
+    for r in ("sa3_api", "sa3_scraper"):
+        assert not db.execute("select has_schema_privilege(%s, 'public', 'create')", (r,)).fetchone()[0]
+        assert not db.execute("select rolcanlogin or rolsuper or rolbypassrls or rolcreaterole from pg_roles where rolname = %s", (r,)).fetchone()[0]
+    assert (Path(__file__).parent.parent / "db/migrations/008_roles.sql").read_text() == secure.ROLES

@@ -86,12 +86,6 @@ class PgStore:
     def __init__(self, url: str):
         import psycopg
         self.cx = psycopg.connect(url, autocommit=True)
-        try:                                    # every run: tables added since the last one are locked too
-            from .secure import lockdown
-            left = lockdown(self.cx)
-            print(f"[db] lockdown: {left} tables without row level security")
-        except Exception as e:
-            print(f"[db] lockdown FAILED: {e}")
         self._makes, self._models = {}, {}
         self._model_names: dict[int, list[str]] = {}     # make_id -> model names (N+1 fix for zero())
         self._pending: dict[tuple, dict] = {}            # (source, source_id) -> row, last one wins
@@ -125,10 +119,14 @@ class PgStore:
                 self._model_names[make_id].append(raw.strip())
         return self._models[key]
 
+    def _ddl(self, sql):
+        from .secure import ddl
+        ddl(self.cx, sql)        # the scraper's own role may not create tables: the owner's lockdown job does
+
     def catalog_model(self, make_raw, model_raw, source):
         """A model the listing sites list for a brand (even with no ads now), so the app can offer it."""
         if not getattr(self, "_catalog_ready", False):
-            self.cx.execute("""create table if not exists model_catalog (
+            self._ddl("""create table if not exists model_catalog (
                                  model_id int primary key references models(id), source text not null,
                                  seen_on date not null default current_date)""")
             self._catalog_ready = True
@@ -151,11 +149,11 @@ class PgStore:
 
     def _trims_ready(self):
         if not getattr(self, "_trim_tables", False):
-            self.cx.execute("""create table if not exists trim_prices (
+            self._ddl("""create table if not exists trim_prices (
                                  model_id int not null references models(id), model_year int not null, trim text not null,
                                  price_egp int not null, source text not null, source_url text, seen_on date not null default current_date,
                                  primary key (model_id, model_year, trim, source))""")
-            self.cx.execute("create table if not exists trim_pages (url text primary key, seen_on date not null default current_date)")
+            self._ddl("create table if not exists trim_pages (url text primary key, seen_on date not null default current_date)")
             self._trim_tables = True
 
     def trim_pages_done(self) -> set:

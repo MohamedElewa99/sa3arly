@@ -1,6 +1,8 @@
 """A user's saved pricings (see db/migrations/002_saved_quotes.sql)."""
 from __future__ import annotations
 
+from .secure import ddl
+
 import json
 
 # same as db/migrations/002_saved_quotes.sql (db/ isn't shipped to Vercel), run once per cold start
@@ -29,7 +31,7 @@ _ready = False
 def ensure(cx) -> None:
     global _ready
     if not _ready:
-        cx.execute(MIGRATION)
+        ddl(cx, MIGRATION)
         _ready = True
 
 

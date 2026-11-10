@@ -32,7 +32,7 @@ def supabase_url() -> str:
     if os.environ.get("SUPABASE_URL"):
         return os.environ["SUPABASE_URL"].rstrip("/")
     user = urlparse(os.environ.get("DATABASE_URL", "")).username or ""
-    ref = user.split(".", 1)[1] if user.startswith("postgres.") else ""
+    ref = user.split(".", 1)[1] if "." in user else ""        # pooler users are <role>.<ref>, whatever the role
     return f"https://{ref}.supabase.co" if ref else ""
 
 

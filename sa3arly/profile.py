@@ -1,6 +1,8 @@
 """A user's profile: name, showroom, phone, city and photo (see db/migrations/003_profiles.sql)."""
 from __future__ import annotations
 
+from .secure import ddl
+
 import re
 
 # same as db/migrations/003_profiles.sql (db/ isn't shipped to Vercel), run once per cold start
@@ -34,8 +36,8 @@ _ready = False
 def ensure(cx) -> None:
     global _ready
     if not _ready:
-        cx.execute(MIGRATION)
-        cx.execute(ROLE_MIGRATION)
+        ddl(cx, MIGRATION)
+        ddl(cx, ROLE_MIGRATION)
         _ready = True
 
 

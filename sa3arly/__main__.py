@@ -220,12 +220,18 @@ def main(argv=None):
     if a.cmd == "lockdown":
         import os
         import psycopg
-        from .secure import lockdown
+        from .secure import lockdown, migrate, roles
         with psycopg.connect(os.environ["DATABASE_URL"], autocommit=True) as cx:
             before = cx.execute("select count(*) from pg_tables where schemaname = 'public' and not rowsecurity").fetchone()[0]
+            migrate(cx)
             left = lockdown(cx)
+            roles(cx)
             grants = cx.execute("select count(*) from information_schema.role_table_grants where table_schema = 'public' and grantee in ('anon', 'authenticated')").fetchone()[0]
+            who = cx.execute("""select grantee, count(distinct table_name), string_agg(distinct privilege_type, ',')
+                                from information_schema.role_table_grants where table_schema = 'public' and grantee like 'sa3_%'
+                                group by 1 order by 1""").fetchall()
         print(f"[lockdown] tables without row level security: {before} before, {left} now; grants left to the public roles: {grants}")
+        print(f"[lockdown] working roles: {who}")
         return 1 if left or grants else 0
     if a.cmd == "probe":
         return probe(headless=not a.show)

@@ -1,6 +1,8 @@
 """عربياتي: a trader's own cars in stock, private to each user (see db/migrations/004_my_cars.sql)."""
 from __future__ import annotations
 
+from .secure import ddl
+
 import json
 import re
 
@@ -41,7 +43,7 @@ _ready = False
 def ensure(cx) -> None:
     global _ready
     if not _ready:
-        cx.execute(MIGRATION)
+        ddl(cx, MIGRATION)
         _ready = True
 
 

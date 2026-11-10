@@ -7,6 +7,8 @@
 Incoming WhatsApp messages are free, and nothing is sent back, so a sign-in costs nothing."""
 from __future__ import annotations
 
+from .secure import ddl
+
 import hashlib
 import hmac
 import json
@@ -40,7 +42,7 @@ _ready = False
 def ensure(cx) -> None:
     global _ready
     if not _ready:
-        cx.execute(MIGRATION)
+        ddl(cx, MIGRATION)
         _ready = True
 
 

@@ -14,6 +14,8 @@ The model predicts log(asking price) at three quantiles (25 %, 50 %, 75 %): a le
 """
 from __future__ import annotations
 
+from .secure import ddl
+
 import json
 import math
 import time
@@ -458,7 +460,7 @@ def _compact(dump: dict) -> list:
 
 
 def save(cx, model: dict) -> int:
-    cx.execute(MIGRATION)
+    ddl(cx, MIGRATION)
     r = cx.execute("insert into price_models (n_train, metrics, model) values (%s, %s::jsonb, %s::jsonb) returning id",
                    (model["metrics"]["n_train"], json.dumps(model["metrics"]), json.dumps(model, separators=(",", ":")))).fetchone()
     cx.execute("delete from price_models where id not in (select id from price_models order by created_at desc limit 3)")

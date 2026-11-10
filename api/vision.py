@@ -14,7 +14,6 @@ PER_HOUR = 40     # photos one account can read per hour (keeps the shared free 
 def allowed(uid: str) -> bool:
     try:
         with connect() as cx:
-            cx.execute("create table if not exists vision_uses (user_id uuid not null, at timestamptz not null default now())")
             cx.execute("delete from vision_uses where at < now() - interval '1 hour'")
             n = cx.execute("select count(*) from vision_uses where user_id = %s", (uid,)).fetchone()[0]
             if n >= PER_HOUR:
