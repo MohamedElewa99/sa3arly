@@ -94,6 +94,8 @@ def _closest(comps: list[Comparable], trim: Optional[str], km: int) -> tuple[lis
         if len(same) >= MIN_SIMILAR:
             notes.append(f"نفس الفئة ({trim}) بس: {len(same)} من {len(comps)}")
             comps = same
+    if km is None:                 # an ad that gives no km: every km counts as close
+        return comps, notes
     band = max(40_000, km * 0.5)
     near = [c for c in comps if c.km is not None and abs(c.km - km) <= band]
     if len(near) >= MIN_SIMILAR and len(near) < len(comps):
@@ -275,7 +277,7 @@ class Pricer:
 
         for c in comps:
             adj = c.price * (1 + y_rate) ** (year - c.year)
-            if c.km is not None:
+            if c.km is not None and km is not None:
                 adj *= (1 + k_rate) ** ((c.km - km) / 10_000)   # comparable drove more -> worth more at our km
             adj *= 1 - DEAL_DISCOUNT.get(c.source, DEAL_DISCOUNT["default"])
             c.adjusted = adj

@@ -87,3 +87,10 @@ def test_closest_and_outliers_helpers():
     for c in pool:
         c.adjusted = c.price
     assert 400 not in [c.price for c in _iqr_on(pool, lambda c: c.adjusted)]
+
+
+def test_closest_without_km_keeps_everything():
+    from sa3arly.pricing import _closest
+    comps = [type("C", (), {"km": k, "trim": None})() for k in (10_000, 90_000, None)]
+    out, notes = _closest(comps, None, None)
+    assert out == comps and notes == []

@@ -383,6 +383,8 @@ def blend_eval(cx, rows, n: int = 400, **kw) -> dict:
     res: dict[str, dict[str, list]] = {}
     for f, y in m["_test"][:n]:
         mk, mo, yr, km, trim, url = f["_ad"]
+        if km is None:                 # the app always has a km; ads without one say nothing about the blend
+            continue
         price = math.exp(y)
         pr.exclude_url = url
         q = pr.quote(mk, mo, yr, km, trim=trim)
