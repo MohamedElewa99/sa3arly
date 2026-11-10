@@ -73,6 +73,7 @@ def run_trims(f, store, max_pages):
 
 def run_used(f, store, source, max_pages, max_details=300):
     mod = USED[source]
+    max_pages = max_pages or 100_000        # 0 = no limit: every page until the site itself runs out
     known = store.known_ids(source)
     have = store.all_ids(source) if hasattr(store, "all_ids") else set()
     n = new = 0
@@ -80,8 +81,6 @@ def run_used(f, store, source, max_pages, max_details=300):
         gen = more_sites.scrape_used(f, source, max_pages=max_pages)
     else:
         kw = {"max_details": max_details} if source == "hatla2ee" else {}
-        if source == "hatla2ee" and max_pages < 700 and have:
-            kw["have_ids"] = have           # the daily run: go as deep as the new ads go
         gen = mod.scrape_used(f, max_pages=max_pages, known_ids=known, **kw)
     for l in gen:
         store.listing(l)
@@ -194,8 +193,7 @@ def main(argv=None):
     cc.add_argument("--top", type=int, default=0, help="instead: the N models with the most ads, all makes")
     u = sub.add_parser("used")
     u.add_argument("--source", choices=USED, required=True)
-    u.add_argument("--max-pages", type=int, default=60,
-                   help="list pages to walk, newest first (60 = all new ads of a day; 800 = full sweep)")
+    u.add_argument("--max-pages", type=int, default=0, help="stop after this many list pages (0 = read every page to the end of the site)")
     u.add_argument("--max-details", type=int, default=300,
                    help="ad pages to open for description/colour/posted date (new ads only)")
     pr = sub.add_parser("price", help="fair market range for one car")

@@ -1,10 +1,10 @@
 name: scrape
 
-# Hatla2ee answers a page in ~10 s, so work is split:
-#   daily  03:17 Cairo : Hatla2ee zero prices + its used list as deep as the new ads go (up to 250 pages, +300 ad pages), all of OpenSooq and Sylndr
-#   daily  15:17 Cairo : the afternoon's new ads: Hatla2ee again (stops at the first stretch with nothing new) and Sylndr
+# Every run reads every list page of every source to its end: no page limit (Hatla2ee ~205 pages, ~40 min).
+#   daily  03:17 Cairo : Hatla2ee zero prices, then all of Hatla2ee used (+300 ad pages for new ads), all of OpenSooq, all of Sylndr
+#   daily  15:17 Cairo : all three used sources again, for the day's new ads
+#   Friday 05:17 Cairo : the list of models per brand
 #   a source that returns no ads at all fails its job, so GitHub emails the owner
-#   Friday 05:17 Cairo : full sweep of every list page, no ad pages (prices + removals) (~3.5 h)
 on:
   schedule:
     - cron: "17 1 * * *"
@@ -25,11 +25,11 @@ jobs:
       max-parallel: 1          # one request stream at a time to Hatla2ee
       matrix:
         job: ${{ (github.event.schedule == '17 3 * * 5' || inputs.job == 'weekly')
-                 && fromJSON('["used --source hatla2ee --max-pages 800 --max-details 0", "models"]')
+                 && fromJSON('["models"]')
                  || (inputs.job && inputs.job != 'daily') && fromJSON(format('["{0}"]', inputs.job))
                  || github.event.schedule == '17 13 * * *'
-                 && fromJSON('["used --source hatla2ee --max-pages 250 --max-details 200", "used --source sylndr --max-pages 40"]')
-                 || fromJSON('["zero --source hatla2ee", "used --source hatla2ee --max-pages 250 --max-details 300", "used --source opensooq --max-pages 400", "used --source sylndr --max-pages 40"]') }}
+                 && fromJSON('["used --source hatla2ee --max-details 300", "used --source opensooq", "used --source sylndr"]')
+                 || fromJSON('["zero --source hatla2ee", "used --source hatla2ee --max-details 300", "used --source opensooq", "used --source sylndr"]') }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
