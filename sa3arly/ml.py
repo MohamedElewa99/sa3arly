@@ -522,9 +522,10 @@ def latest(cx, ttl: int = 3600) -> Optional[Model]:
     if _cache["model"] is not None and time.time() - _cache["at"] < ttl:
         return _cache["model"]
     try:
-        if not cx.execute("select to_regclass('price_models')").fetchone()[0]:
-            return None
-        r = cx.execute("select model from price_models order by created_at desc limit 1").fetchone()
+        with cx.transaction():
+            if not cx.execute("select to_regclass('price_models')").fetchone()[0]:
+                return None
+            r = cx.execute("select model from price_models order by created_at desc limit 1").fetchone()
     except Exception:
         return None
     _cache.update(at=time.time(), model=Model(r[0]) if r else None)

@@ -6,10 +6,21 @@ import os
 from urllib.parse import parse_qs, urlparse
 
 import psycopg
+import psycopg.sql
+
+
+# Least privilege for the site: every request is one transaction that first steps down into the sa3_api role, so its
+# queries can read the market data and the users' own tables and nothing else (no writes to prices or ads, no DDL),
+# even while DATABASE_URL still holds the owner's login. SET LOCAL lasts only for the transaction, so it is safe behind
+# Supabase's connection pooler. DB_ROLE="" turns it off.
+SITE_ROLE = os.environ.get("DB_ROLE", "sa3_api")
 
 
 def connect():
-    return psycopg.connect(os.environ["DATABASE_URL"], autocommit=True, connect_timeout=8)
+    cx = psycopg.connect(os.environ["DATABASE_URL"], autocommit=not SITE_ROLE, connect_timeout=8)
+    if SITE_ROLE:
+        cx.execute(psycopg.sql.SQL("set local role {}").format(psycopg.sql.Identifier(SITE_ROLE)))
+    return cx
 
 
 def query(handler) -> dict:

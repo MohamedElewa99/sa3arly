@@ -83,7 +83,8 @@ def ddl(cx, sql: str) -> None:
     lockdown job has already made every table."""
     import psycopg
     try:
-        cx.execute(sql)
+        with cx.transaction():          # a savepoint inside a request's transaction, so a refusal does not abort it
+            cx.execute(sql)
     except psycopg.errors.InsufficientPrivilege:
         pass
 

@@ -143,3 +143,18 @@ def test_roles_get_only_what_they_need(db):
         assert not db.execute("select has_schema_privilege(%s, 'public', 'create')", (r,)).fetchone()[0]
         assert not db.execute("select rolcanlogin or rolsuper or rolbypassrls or rolcreaterole from pg_roles where rolname = %s", (r,)).fetchone()[0]
     assert (Path(__file__).parent.parent / "db/migrations/008_roles.sql").read_text() == secure.ROLES
+
+
+def test_site_connection_runs_as_sa3_api(db, monkeypatch):
+    import psycopg
+    import pytest
+    from sa3arly import http_shared, secure
+    secure.migrate(db); secure.lockdown(db); secure.roles(db)
+    monkeypatch.setenv("DATABASE_URL", db.info.dsn)
+    with http_shared.connect() as cx:
+        assert cx.execute("select current_user").fetchone()[0] == "sa3_api"
+        cx.execute("select count(*) from listings")
+        secure.ddl(cx, "create table if not exists zz_nope (i int)")          # refused quietly, the request goes on
+        cx.execute("select count(*) from profiles")
+        with pytest.raises(psycopg.errors.InsufficientPrivilege):
+            cx.execute("delete from listings")
