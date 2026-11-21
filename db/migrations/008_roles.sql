@@ -10,6 +10,12 @@ begin
     execute format('revoke all on all functions in schema public from %I', r);
     execute format('revoke create on schema public from %I', r);
     execute format('grant usage on schema public to %I', r);
+    -- the owner's connection may step down into the role (SET ROLE), without inheriting anything from it
+    if current_setting('server_version_num')::int >= 160000 then
+      execute format('grant %I to %I with set true, inherit false', r, current_user);
+    elsif not pg_has_role(current_user, r, 'MEMBER') then
+      execute format('grant %I to %I', r, current_user);
+    end if;
   end loop;
   for t in select tablename from pg_tables where schemaname = 'public' loop
     mine := t.tablename = any (array['profiles', 'saved_quotes', 'my_cars', 'phone_logins', 'vision_uses']);
