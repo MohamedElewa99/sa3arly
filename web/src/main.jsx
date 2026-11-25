@@ -84,8 +84,13 @@ const hideSplash = () => {
 // the first visit watches the word being written (1.6s); after that the app opens in about half a second
 let seen = false;
 try { seen = !!localStorage.getItem('sa3.seen'); localStorage.setItem('sa3.seen', '1'); } catch (e) { /* private mode */ }
+// the intro (first open of a visit) runs 3.2 s; "تخطي" ends it as soon as the data is in
+const intro = document.documentElement.getAttribute('data-intro') === 'on';
+const least = intro ? 3200 : seen ? 500 : 1600;
+let skipped = false;
+window.addEventListener('sa3-skip', () => { skipped = true; firstData.then(hideSplash); });
 Promise.race([firstData, new Promise((r) => setTimeout(r, seen ? 1200 : 4000))])
-  .then(() => setTimeout(hideSplash, Math.max(0, (seen ? 500 : 1600) - (Date.now() - started))));
+  .then(() => setTimeout(() => { if (!skipped) hideSplash(); }, Math.max(0, least - (Date.now() - started))));
 
 if ('serviceWorker' in navigator && import.meta.env.PROD) {
   window.addEventListener('load', () => { navigator.serviceWorker.register('/sw.js').catch(() => {}); });
