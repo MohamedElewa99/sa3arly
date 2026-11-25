@@ -26,23 +26,23 @@
     #splash.light { background: #F5F6F7; color: #000; }
     #splash.dark { background: #000; color: #F4F4F4; }
     #splash.out { opacity: 0; visibility: hidden; }
-    #splash > svg { width: min(64vw, 360px); overflow: visible; clip-path: inset(-20% 0 -20% 100%);
+    #splash svg { width: min(64vw, 360px); overflow: visible; clip-path: inset(-20% 0 -20% 100%);
       animation: wm-reveal 1.5s cubic-bezier(.65,.05,.36,1) .1s forwards; }
-    #splash > svg path { fill: currentColor; fill-opacity: 0; stroke: currentColor; stroke-width: 7; stroke-linejoin: round;
+    #splash path { fill: currentColor; fill-opacity: 0; stroke: currentColor; stroke-width: 7; stroke-linejoin: round;
       animation: wm-fill .6s ease 1.1s forwards; }
-    #splash > i { position: absolute; width: 9px; height: 9px; border-radius: 50%; background: #E3232C; top: 50%; right: calc(50% - min(32vw, 180px));
+    #splash i { position: absolute; width: 9px; height: 9px; border-radius: 50%; background: #E3232C; top: 50%; right: calc(50% - min(32vw, 180px));
       opacity: 0; animation: wm-pen 1.5s cubic-bezier(.65,.05,.36,1) .1s forwards; }
     @keyframes wm-reveal { to { clip-path: inset(-20% 0 -20% 0); } }
     @keyframes wm-fill { to { fill-opacity: 1; stroke-width: 0; } }
     @keyframes wm-pen { 0% { opacity: 0; transform: translateX(0); } 10% { opacity: 1; } 90% { opacity: 1; }
       100% { opacity: 0; transform: translateX(calc(-1 * min(64vw, 360px))); } }
     /* someone who has opened the app before: the word is already written, it just settles in */
-    #splash.quick > svg { clip-path: none; animation: wm-quick .45s cubic-bezier(.16,1,.3,1) both; }
-    #splash.quick > svg path { fill-opacity: 1; stroke-width: 0; animation: none; }
-    #splash.quick > i { display: none; }
+    #splash.quick svg { clip-path: none; animation: wm-quick .45s cubic-bezier(.16,1,.3,1) both; }
+    #splash.quick path { fill-opacity: 1; stroke-width: 0; animation: none; }
+    #splash.quick i { display: none; }
     #splash.quick { transition: opacity .3s ease, visibility .3s; }
     @keyframes wm-quick { from { opacity: 0; transform: scale(.94); } to { opacity: 1; transform: none; } }
-    @media (prefers-reduced-motion: reduce) { #splash > svg, #splash > svg path, #splash > i { animation-duration: .01s; animation-delay: 0s; } }
+    @media (prefers-reduced-motion: reduce) { #splash svg, #splash path, #splash i { animation-duration: .01s; animation-delay: 0s; } }
     /* first open of each visit: a car is drawn, checked part by part, and priced (about 3 s, CSS only, can be skipped) */
     html:not([data-intro="on"]) #intro { display: none; }
     #intro { position: absolute; inset: 0; z-index: 2; background: inherit; color: inherit; overflow: hidden;
